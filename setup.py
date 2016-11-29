@@ -1,32 +1,3 @@
-from mastodon import Mastodon
-import os.path
-
-APP_PATH = 'file.txt'
-
-
-"^login (?P<name>[a-z0-9_]{1,30}) (?P<pass>\w+)$"
-
-
-def main():
-    checkFile()
-    while True:
-        
-
-def checkFile():
-    if os.path.isfile(APP_PATH):
-        return
-    Mastodon.create_app(
-        'tootstream',
-         to_file = APP_PATH
-    )
-
-    
-if __name__ == '__main__':
-    main()
-
-    
-    #############################
-
 from setuptools import setup, find_packages
 setup(
     name="TootStream",
@@ -34,9 +5,10 @@ setup(
     packages=find_packages(),
     scripts=['tootstream.py'],
 
-    # Project uses reStructuredText, so ensure that the docutils get
-    # installed or upgraded on the target machine
-    install_requires=['docutils>=0.3'],
+    install_requires=[
+        'mastodon',
+        'click',
+    ],
 
     package_data={
         # If any package contains *.txt or *.rst files, include them:
