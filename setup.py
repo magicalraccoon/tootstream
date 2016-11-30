@@ -3,11 +3,9 @@ setup(
     name="tootstream",
     version="0.1",
     packages=find_packages(),
-    scripts=['tootstream.py'],
-
     install_requires=[
-        'mastodon',
-        'click',
+        'Mastodon.py==1.0.2',
+        'click==6.6',
     ],
 
     package_data={
