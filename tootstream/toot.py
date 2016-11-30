@@ -38,7 +38,7 @@ def login(name, password, shard=None):
 def main(name, password):
     register_app()
     mastodon = login(name, password)
-    mastodon.toot()
+    mastodon.toot("")
 
 if __name__ == '__main__':
     main()
