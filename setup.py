@@ -3,10 +3,7 @@ setup(
     name="tootstream",
     version="0.1",
     packages=find_packages(),
-    install_requires=[
-        'Mastodon.py==1.0.2',
-        'click==6.6',
-    ],
+    install_requires=[line.strip() for line in open('requirements.txt')],
 
     package_data={
         # If any package contains *.txt or *.rst files, include them:
