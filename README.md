@@ -13,7 +13,7 @@ $ python setup.py develop
 ```
 3. Run the script
 ```
-$ python tootstream/toot.py
+$ python3 tootstream/toot.py
 ```
 
 Inspired by Rainbowstream
