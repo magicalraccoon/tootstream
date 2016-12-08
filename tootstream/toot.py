@@ -59,8 +59,9 @@ def toot(mastodon, rest):
 def home(mastodon, rest):
     """Displays the Home timeline."""
     for status in reversed(mastodon.timeline_home()):
-        print("@" + status['account']['username'])
-        print(status)
+        print(status['account']['display_name'] + " @" + status['account']['username'])
+        print(status['content'])
+        print("\n")
 
 
 
