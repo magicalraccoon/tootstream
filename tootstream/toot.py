@@ -12,7 +12,6 @@ APP_CRED = os.path.expanduser('~/.config/tootstream/token.txt')
 # USER_REGEX = "[a-zA-Z0-9_]{1,30}"
 
 
-
 def register_app():
     if not os.path.exists(os.path.expanduser('~/.config/tootstream')):
         os.makedirs(os.path.expanduser('~/.config/tootstream'))
@@ -35,10 +34,12 @@ def login(mastodon, email, password, shard=None):
         to_file = APP_CRED
     )
 
+
 commands = {}
 def command(func):
     commands[func.__name__] = func
     return func
+
 
 @command
 def help(mastodon, rest):
@@ -61,8 +62,7 @@ def home(mastodon, rest):
     for status in reversed(mastodon.timeline_home()):
         print(status['account']['display_name'] + " @" + status['account']['username'])
         print(status['content'])
-        print("\n")
-
+        print("")
 
 
 @command
@@ -70,7 +70,26 @@ def note(mastodon, rest):
     """Displays the notifications timeline."""
 
     for note in reversed(mastodon.notifications()):
-        print("@" + note['account']['username'] + " sent you a " + note['type'] + "!")
+        print('\n')
+
+        # Mentions work, do not change
+        if note['type'] == 'mention':
+            print(note['account']['display_name'] + " @" + note['account']['username'] + " sent you a " + note['type'] + "!")
+            print(note['status']['content'])
+
+        # Favorites work, do not change
+        elif note['type'] == 'favourite':
+            print(note['account']['display_name'] + " @" + note['account']['username'] + " favorited your toot:")
+            print(note['status']['content'])
+
+        # Boosts work, do not change
+        elif note['type'] == 'reblog':
+            print(note['account']['display_name'] + " @" + note['account']['username'] + " boosted your toot:")
+            print(note['status']['content'])
+
+        # Follows work, do not change
+        elif note['type'] == 'follow':
+            print(note['account']['display_name'] + " @" + note['account']['username'] + " followed you!")
 
 
 @command
