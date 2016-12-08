@@ -56,13 +56,22 @@ def toot(mastodon, rest):
     print("Published: " + rest)
 
 
+# @command
+# def home(mastodon, rest):
+#     """Displays the Home timeline."""
+#     for status in reversed(mastodon.timeline_home()):
+#         print(status['account']['display_name'] + " @" + status['account']['username'])
+#         print(status['content'])
+#         print("")
+
 @command
 def home(mastodon, rest):
     """Displays the Home timeline."""
-    for status in reversed(mastodon.timeline_home()):
-        print(status['account']['display_name'] + " @" + status['account']['username'])
-        print(status['content'])
-        print("")
+    for toot in reversed(mastodon.timeline_home()):
+        print('')
+        print("  " + toot['account']['display_name'] + " @" + toot['account']['username'] + " " + toot['created_at'])
+        print("  " + "♺:" + str(toot['reblogs_count']) + " ♥:" + str(toot['favourites_count']) + " id:" + str(toot['id']))
+        print("  " + toot['content'])
 
 
 @command
@@ -70,21 +79,22 @@ def note(mastodon, rest):
     """Displays the notifications timeline."""
 
     for note in reversed(mastodon.notifications()):
-        print('\n')
+        print('')
 
         # Mentions work, do not change
         if note['type'] == 'mention':
-            print(note['account']['display_name'] + " @" + note['account']['username'] + " sent you a " + note['type'] + "!")
+            print(note['account']['display_name'] + " @" + note['account']['username'])
             print(note['status']['content'])
 
         # Favorites work, do not change
         elif note['type'] == 'favourite':
-            print(note['account']['display_name'] + " @" + note['account']['username'] + " favorited your toot:")
-            print(note['status']['content'])
+            print("   " + note['account']['display_name'] + " @" + note['account']['username'] + " favorited your status:")
+            print("   " + "♺:" + str(note['status']['reblogs_count']) + " ♥:" + str(note['status']['favourites_count']) + " " + note['status']['created_at']
+                + '\n' + "   " + note['status']['content'])
 
         # Boosts work, do not change
         elif note['type'] == 'reblog':
-            print(note['account']['display_name'] + " @" + note['account']['username'] + " boosted your toot:")
+            print(note['account']['display_name'] + " @" + note['account']['username'] + " boosted your status:")
             print(note['status']['content'])
 
         # Follows work, do not change
