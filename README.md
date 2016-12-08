@@ -2,14 +2,16 @@
 A command line interface for interacting with Mastodon instances
 
 ## Contributing
-1. Clone this repo and enter the project directory
+1. Clone this repo and enter the project directory through a virtual environment
 ```
 $ git clone https://github.com/magicalraccoon/tootstream.git
 $ cd tootstream
+$ virtualenv -p python3 tootstream
 ```
 2. Install the project dependencies
 ```
-$ python setup.py develop
+$ cd tootstream
+$ python3 setup.py install
 ```
 3. Run the script
 ```
