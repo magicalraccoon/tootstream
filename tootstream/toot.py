@@ -3,6 +3,7 @@ import click
 import readline
 import getpass
 import sys
+import re
 from mastodon import Mastodon
 
 # TODO: need to modify this to support multiple shards, since we have to register per shard
@@ -56,22 +57,15 @@ def toot(mastodon, rest):
     print("Published: " + rest)
 
 
-# @command
-# def home(mastodon, rest):
-#     """Displays the Home timeline."""
-#     for status in reversed(mastodon.timeline_home()):
-#         print(status['account']['display_name'] + " @" + status['account']['username'])
-#         print(status['content'])
-#         print("")
-
 @command
 def home(mastodon, rest):
     """Displays the Home timeline."""
     for toot in reversed(mastodon.timeline_home()):
-        print('')
         print("  " + toot['account']['display_name'] + " @" + toot['account']['username'] + " " + toot['created_at'])
         print("  " + "♺:" + str(toot['reblogs_count']) + " ♥:" + str(toot['favourites_count']) + " id:" + str(toot['id']))
-        print("  " + toot['content'])
+        # Toots with only HTML do not display (images, links)
+        print("  " + re.sub('<[^<]+?>', '', toot['content']))
+        print('')
 
 
 @command
@@ -79,28 +73,28 @@ def note(mastodon, rest):
     """Displays the notifications timeline."""
 
     for note in reversed(mastodon.notifications()):
-        print('')
-
-        # Mentions work, do not change
+        # Mentions
         if note['type'] == 'mention':
-            print(note['account']['display_name'] + " @" + note['account']['username'])
-            print(note['status']['content'])
+            print("  " + note['account']['display_name'] + " @" + note['account']['username'])
+            print("  " + re.sub('<[^<]+?>', '', note['status']['content']))
 
-        # Favorites work, do not change
+        # Favorites
         elif note['type'] == 'favourite':
-            print("   " + note['account']['display_name'] + " @" + note['account']['username'] + " favorited your status:")
-            print("   " + "♺:" + str(note['status']['reblogs_count']) + " ♥:" + str(note['status']['favourites_count']) + " " + note['status']['created_at']
-                + '\n' + "   " + note['status']['content'])
+            print("  " + note['account']['display_name'] + " @" + note['account']['username'] + " favorited your status:")
+            print("  " + "♺:" + str(note['status']['reblogs_count']) + " ♥:" + str(note['status']['favourites_count']) + " " + note['status']['created_at']
+                + '\n' + "  " + re.sub('<[^<]+?>', '', note['status']['content']))
 
-        # Boosts work, do not change
+        # Boosts
         elif note['type'] == 'reblog':
-            print(note['account']['display_name'] + " @" + note['account']['username'] + " boosted your status:")
-            print(note['status']['content'])
+            print("  " + note['account']['display_name'] + " @" + note['account']['username'] + " boosted your status:")
+            print("  " + re.sub('<[^<]+?>', '', note['status']['content']))
 
-        # Follows work, do not change
+        # Follows
         elif note['type'] == 'follow':
-            print(note['account']['display_name'] + " @" + note['account']['username'] + " followed you!")
-
+            print("  " + note['account']['display_name'] + " @" +
+            "  " + re.sub('<[^<]+?>', '', note['account']['username']) + " followed you!")
+        #blank line
+        print('')
 
 @command
 def quit(mastonon, rest):
