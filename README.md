@@ -1,22 +1,22 @@
 # tootstream
-A command line interface for interacting with Mastodon instances
+A command line interface for interacting with Mastodon instances written in python.
 
-## Contributing
-1. Clone this repo and enter the project directory through a virtual environment
+## Using tootstream
+1: Clone this repo and enter the project directory through a virtual environment
 ```
 $ git clone https://github.com/magicalraccoon/tootstream.git
 $ cd tootstream
 $ virtualenv -p python3 tootstream
 ```
-2. Install the project dependencies
+2: Install the project dependencies
 ```
 $ cd tootstream
 $ python3 setup.py install
 ```
-3. Run the script
+3: Run the script
 ```
 $ python3 tootstream/toot.py
 ```
 
-Inspired by Rainbowstream
+#### Inspired by Rainbowstream
 https://github.com/DTVD/rainbowstream
