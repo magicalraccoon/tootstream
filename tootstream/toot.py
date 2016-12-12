@@ -64,13 +64,35 @@ def home(mastodon, rest):
         print("  " + toot['account']['display_name'] + " @" + toot['account']['username'] + " " + toot['created_at'])
         print("  " + "♺:" + str(toot['reblogs_count']) + " ♥:" + str(toot['favourites_count']) + " id:" + str(toot['id']))
         # Toots with only HTML do not display (images, links)
-        print("  " + re.sub('<[^<]+?>', '', toot['content']))
+        content = toot['content']
+        # shows all boosted toots
+        if toot['reblog']:
+            content = toot['reblog']['content']
+        print("  " + re.sub('<[^<]+?>', '', content))
+        # blank line
         print('')
 
 
 @command
+def public(mastodon, rest):
+    """Displays the Public timeline."""
+    for toot in reversed(mastodon.timeline_public()):
+        print("  " + toot['account']['display_name'] + " @" + toot['account']['username'] + " " + toot['created_at'])
+        print("  " + "♺:" + str(toot['reblogs_count']) + " ♥:" + str(toot['favourites_count']) + " id:" + str(toot['id']))
+        # Toots with only HTML do not display (images, links)
+        content = toot['content']
+        # shows all boosted toots
+        if toot['reblog']:
+            content = toot['reblog']['content']
+        print("  " + re.sub('<[^<]+?>', '', content))
+        # blank line
+        print('')
+
+
+
+@command
 def note(mastodon, rest):
-    """Displays the notifications timeline."""
+    """Displays the Notifications timeline."""
 
     for note in reversed(mastodon.notifications()):
         # Mentions
@@ -93,7 +115,7 @@ def note(mastodon, rest):
         elif note['type'] == 'follow':
             print("  " + note['account']['display_name'] + " @" +
             "  " + re.sub('<[^<]+?>', '', note['account']['username']) + " followed you!")
-        #blank line
+        # blank line
         print('')
 
 @command
@@ -103,14 +125,14 @@ def quit(mastonon, rest):
 
 
 @command
-def user(mastodon, rest):
+def info(mastodon, rest):
     """Prints your user info."""
     user = mastodon.account_verify_credentials()
 
     print("@" + str(user['username']))
     print(user['display_name'])
     print(user['url'])
-    print(user['note'])
+    print(re.sub('<[^<]+?>', '', user['note']))
 
 
 def authenticated(mastodon):
