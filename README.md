@@ -7,6 +7,7 @@ A command line interface for interacting with Mastodon instances written in pyth
 $ git clone https://github.com/magicalraccoon/tootstream.git
 $ cd tootstream
 $ virtualenv -p python3 tootstream
+$ source ./tootstream/bin/activate
 ```
 2: Install the project dependencies
 ```
@@ -17,6 +18,7 @@ $ python3 setup.py install
 ```
 $ python3 tootstream/toot.py
 ```
+###### Close with: `$ deactivate`
 
 #### Inspired by Rainbowstream
 https://github.com/DTVD/rainbowstream
