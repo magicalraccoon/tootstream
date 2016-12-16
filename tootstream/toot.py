@@ -10,7 +10,6 @@ from mastodon import Mastodon
 # For now it only supports the default mastodon.social shard
 APP_PATH = os.path.expanduser('~/.config/tootstream/client.txt')
 APP_CRED = os.path.expanduser('~/.config/tootstream/token.txt')
-# USER_REGEX = "[a-zA-Z0-9_]{1,30}"
 
 
 def register_app():
@@ -58,6 +57,45 @@ def toot(mastodon, rest):
 
 
 @command
+def boost(mastodon, rest):
+    """Boosts a toot by ID."""
+    # Need to catch if boost is not a real ID
+    mastodon.status_reblog(rest)
+    boosted = mastodon.status(rest)
+    print("  Boosted: " + re.sub('<[^<]+?>', '', boosted['content']))
+
+
+@command
+def uboost(mastodon, rest):
+    """Removes a boosted tweet by ID."""
+    # Need to catch if uboost is not a real ID
+    mastodon.status_unreblog(rest)
+    uboosted = mastodon.status(rest)
+    print("  Removed boost: " + re.sub('<[^<]+?>', '', uboosted['content']))
+
+
+@command
+def fav(mastodon, rest):
+    """Favorites a toot by ID."""
+    # Need to catch if fav is not a real ID
+    mastodon.status_favourite(rest)
+    faved = mastodon.status(rest)
+    print("  Favorited: " + re.sub('<[^<]+?>', '', faved['content']))
+
+
+@command
+def ufav(mastodon, rest):
+    """Removes a favorite toot by ID."""
+    # Need to catch if ufav is not a real ID
+    mastodon.status_unfavourite(rest)
+    ufaved = mastodon.status(rest)
+    print("  Removed favorite: " + re.sub('<[^<]+?>', '', ufaved['content']))
+
+
+
+
+
+@command
 def home(mastodon, rest):
     """Displays the Home timeline."""
     for toot in reversed(mastodon.timeline_home()):
@@ -89,7 +127,6 @@ def public(mastodon, rest):
         print('')
 
 
-
 @command
 def note(mastodon, rest):
     """Displays the Notifications timeline."""
@@ -117,6 +154,7 @@ def note(mastodon, rest):
             "  " + re.sub('<[^<]+?>', '', note['account']['username']) + " followed you!")
         # blank line
         print('')
+
 
 @command
 def quit(mastonon, rest):
