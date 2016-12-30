@@ -6,8 +6,9 @@ import sys
 import re
 from mastodon import Mastodon
 
-# TODO: need to modify this to support multiple shards, since we have to register per shard
-# For now it only supports the default mastodon.social shard
+# TODO: need to modify this to support multiple shards, since we have to
+# register per shard.
+# For now it only supports the default mastodon.social shard.
 APP_PATH = os.path.expanduser('~/.config/tootstream/client.txt')
 APP_CRED = os.path.expanduser('~/.config/tootstream/token.txt')
 # USER_REGEX = "[a-zA-Z0-9_]{1,30}"
@@ -61,60 +62,91 @@ def toot(mastodon, rest):
 def home(mastodon, rest):
     """Displays the Home timeline."""
     for toot in reversed(mastodon.timeline_home()):
-        print("  " + toot['account']['display_name'] + " @" + toot['account']['username'] + " " + toot['created_at'])
-        print("  " + "♺:" + str(toot['reblogs_count']) + " ♥:" + str(toot['favourites_count']) + " id:" + str(toot['id']))
-        # Toots with only HTML do not display (images, links)
-        content = toot['content']
-        # shows all boosted toots
+        display_name = "  " + toot['account']['display_name']
+        username = " @" + toot['account']['username'] + " "
+        reblogs_count = "  ♺:" + str(toot['reblogs_count'])
+        favourites_count = " ♥:" + str(toot['favourites_count']) + " "
+        toot_id = str(toot['id'])
+
+        # Prints individual toot/tooter info
+        print(display_name + username + toot['created_at'])
+        print(reblogs_count + favourites_count + toot_id)
+
+
+        # shows boosted toots as well
         if toot['reblog']:
-            content = toot['reblog']['content']
-        print("  " + re.sub('<[^<]+?>', '', content))
-        # blank line
-        print('')
+            username = "  Boosted @" + toot['reblog']['account']['username']
+            display_name = toot['reblog']['account']['display_name'] + ": "
+            clean = re.sub('<[^<]+?>', '', toot['reblog']['content'])
+            content = username + display_name + clean
+
+        # Toots with only HTML do not display (images, links)
+        # TODO: Breaklines should be displayed correctly
+        content = "  " + re.sub('<[^<]+?>', '', toot['content'])
+        print(content + "\n")
 
 
 @command
 def public(mastodon, rest):
     """Displays the Public timeline."""
     for toot in reversed(mastodon.timeline_public()):
-        print("  " + toot['account']['display_name'] + " @" + toot['account']['username'] + " " + toot['created_at'])
-        print("  " + "♺:" + str(toot['reblogs_count']) + " ♥:" + str(toot['favourites_count']) + " id:" + str(toot['id']))
-        # Toots with only HTML do not display (images, links)
-        content = toot['content']
-        # shows all boosted toots
-        if toot['reblog']:
-            content = toot['reblog']['content']
-        print("  " + re.sub('<[^<]+?>', '', content))
-        # blank line
-        print('')
+        display_name = "  " + toot['account']['display_name']
+        username = " @" + toot['account']['username'] + " "
+        reblogs_count = "  ♺:" + str(toot['reblogs_count'])
+        favourites_count = " ♥:" + str(toot['favourites_count']) + " "
+        toot_id = str(toot['id'])
 
+        # Prints individual toot/tooter info
+        print(display_name + username + toot['created_at'])
+        print(reblogs_count + favourites_count + toot_id)
+
+
+        # shows boosted toots as well
+        if toot['reblog']:
+            username = "  Boosted @" + toot['reblog']['account']['username']
+            display_name = toot['reblog']['account']['display_name'] + ": "
+            clean = re.sub('<[^<]+?>', '', toot['reblog']['content'])
+            content = username + display_name + clean
+
+        # Toots with only HTML do not display (images, links)
+        # TODO: Breaklines should be displayed correctly
+        content = "  " + re.sub('<[^<]+?>', '', toot['content'])
+        print(content + "\n")
 
 
 @command
 def note(mastodon, rest):
     """Displays the Notifications timeline."""
-
     for note in reversed(mastodon.notifications()):
+        display_name = "  " + note['account']['display_name']
+        username = " @" + note['account']['username']
+
+
         # Mentions
         if note['type'] == 'mention':
-            print("  " + note['account']['display_name'] + " @" + note['account']['username'])
+            print(display_name + username)
             print("  " + re.sub('<[^<]+?>', '', note['status']['content']))
 
         # Favorites
         elif note['type'] == 'favourite':
-            print("  " + note['account']['display_name'] + " @" + note['account']['username'] + " favorited your status:")
-            print("  " + "♺:" + str(note['status']['reblogs_count']) + " ♥:" + str(note['status']['favourites_count']) + " " + note['status']['created_at']
-                + '\n' + "  " + re.sub('<[^<]+?>', '', note['status']['content']))
+            reblogs_count = "  " + "♺:" + str(note['status']['reblogs_count'])
+            favourites_count = " ♥:" + str(note['status']['favourites_count'])
+            time = " " + note['status']['created_at']
+            content = "  " + re.sub('<[^<]+?>', '', note['status']['content'])
+
+            print(display_name + username + " favorited your status:")
+            print(reblogs_count + favourites_count + time + '\n' + content)
 
         # Boosts
         elif note['type'] == 'reblog':
-            print("  " + note['account']['display_name'] + " @" + note['account']['username'] + " boosted your status:")
+            print(display_name + username + " boosted your status:")
             print("  " + re.sub('<[^<]+?>', '', note['status']['content']))
 
         # Follows
         elif note['type'] == 'follow':
-            print("  " + note['account']['display_name'] + " @" +
-            "  " + re.sub('<[^<]+?>', '', note['account']['username']) + " followed you!")
+            username = re.sub('<[^<]+?>', '', username)
+            print(display_name + username + " followed you!")
+
         # blank line
         print('')
 
@@ -158,7 +190,8 @@ def main(email, password):
         password = getpass.getpass()
         login(mastodon, email, password)
 
-    say_error = lambda a, b: print("Invalid command. Use 'help' for a list of commands.")
+    say_error = lambda a, b: print("Invalid command. Use 'help' for a \
+                                    list of commands.")
 
     print("Welcome to tootstream!")
     print("Enter a command. Use 'help' for a list of commands.")
