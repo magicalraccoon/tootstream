@@ -5,6 +5,7 @@ import getpass
 import sys
 import re
 from mastodon import Mastodon
+from collections import OrderedDict
 
 # TODO: need to modify this to support multiple shards, since we have to
 # register per shard.
@@ -36,7 +37,7 @@ def login(mastodon, email, password, shard=None):
     )
 
 
-commands = {}
+commands = OrderedDict()
 def command(func):
     commands[func.__name__] = func
     return func
