@@ -36,6 +36,10 @@ def login(mastodon, email, password, shard=None):
         to_file = APP_CRED
     )
 
+#####################################
+######## BEGIN COMMAND BLOCK ########
+#####################################
+
 
 commands = OrderedDict()
 def command(func):
@@ -61,40 +65,37 @@ def toot(mastodon, rest):
 @command
 def boost(mastodon, rest):
     """Boosts a toot by ID."""
-    # Need to catch if boost is not a real ID
+    # TODO catch if boost is not a real ID
     mastodon.status_reblog(rest)
     boosted = mastodon.status(rest)
     print("  Boosted: " + re.sub('<[^<]+?>', '', boosted['content']))
 
 
 @command
-def uboost(mastodon, rest):
+def unboost(mastodon, rest):
     """Removes a boosted tweet by ID."""
-    # Need to catch if uboost is not a real ID
+    # TODO catch if uboost is not a real ID
     mastodon.status_unreblog(rest)
-    uboosted = mastodon.status(rest)
-    print("  Removed boost: " + re.sub('<[^<]+?>', '', uboosted['content']))
+    unboosted = mastodon.status(rest)
+    print("  Removed boost: " + re.sub('<[^<]+?>', '', unboosted['content']))
 
 
 @command
 def fav(mastodon, rest):
     """Favorites a toot by ID."""
-    # Need to catch if fav is not a real ID
+    # TODO catch if fav is not a real ID
     mastodon.status_favourite(rest)
     faved = mastodon.status(rest)
     print("  Favorited: " + re.sub('<[^<]+?>', '', faved['content']))
 
 
 @command
-def ufav(mastodon, rest):
+def unfav(mastodon, rest):
     """Removes a favorite toot by ID."""
-    # Need to catch if ufav is not a real ID
+    # TODO catch if ufav is not a real ID
     mastodon.status_unfavourite(rest)
-    ufaved = mastodon.status(rest)
-    print("  Removed favorite: " + re.sub('<[^<]+?>', '', ufaved['content']))
-
-
-
+    unfaved = mastodon.status(rest)
+    print("  Removed favorite: " + re.sub('<[^<]+?>', '', unfaved['content']))
 
 
 @command
@@ -111,7 +112,6 @@ def home(mastodon, rest):
         print(display_name + username + toot['created_at'])
         print(reblogs_count + favourites_count + toot_id)
 
-
         # shows boosted toots as well
         if toot['reblog']:
             username = "  Boosted @" + toot['reblog']['account']['username']
@@ -119,7 +119,7 @@ def home(mastodon, rest):
             clean = re.sub('<[^<]+?>', '', toot['reblog']['content'])
             content = username + display_name + clean
 
-        # Toots with only HTML do not display (images, links)
+        # TODO: Toots with only HTML do not display (images, links)
         # TODO: Breaklines should be displayed correctly
         content = "  " + re.sub('<[^<]+?>', '', toot['content'])
         print(content + "\n")
@@ -147,7 +147,7 @@ def public(mastodon, rest):
             clean = re.sub('<[^<]+?>', '', toot['reblog']['content'])
             content = username + display_name + clean
 
-        # Toots with only HTML do not display (images, links)
+        # TODO: Toots with only HTML do not display (images, links)
         # TODO: Breaklines should be displayed correctly
         content = "  " + re.sub('<[^<]+?>', '', toot['content'])
         print(content + "\n")
@@ -190,7 +190,7 @@ def note(mastodon, rest):
 
 
 @command
-def quit(mastonon, rest):
+def quit(mastodon, rest):
     """Ends the program."""
     sys.exit("Goodbye!")
 
@@ -204,6 +204,39 @@ def info(mastodon, rest):
     print(user['display_name'])
     print(user['url'])
     print(re.sub('<[^<]+?>', '', user['note']))
+
+
+@command
+def delete(mastodon, rest):
+    """Deletes your toot by ID"""
+    mastodon.status_delete(rest)
+    print("Poof! It's gone.")
+
+@command
+def block(mastodon, rest):
+    """Blocks a user by username."""
+    # TODO: Find out how to get global usernames
+
+@command
+def unblock(mastodon, rest):
+    """Unblocks a user by username."""
+    # TODO: Find out how to get global usernames
+
+@command
+def follow(mastodon, rest):
+    """Follows an account by username."""
+    # TODO: Find out how to get global usernames
+
+@command
+def unfollow(mastodon, rest):
+    """Unfollows an account by username."""
+    # TODO: Find out how to get global usernames
+
+
+
+#####################################
+######### END COMMAND BLOCK #########
+#####################################
 
 
 def authenticated(mastodon):
