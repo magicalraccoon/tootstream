@@ -89,3 +89,9 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+
+# Ignore files created by the virtualenv
+tootstream/bin
+tootstream/include
+tootstream/share
