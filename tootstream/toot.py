@@ -266,7 +266,9 @@ def main(email, password):
     if email and password:
         login(mastodon, email, password)
     elif not authenticated(mastodon):
-        email = input("Email used to login: ")
+        email = input("Welcome to tootstream! Two-Factor-Authentication is\
+        currently not supported. Mastodon.social is the only currently \
+        supported shard. Email used to login: ")
         password = getpass.getpass()
         login(mastodon, email, password)
 
