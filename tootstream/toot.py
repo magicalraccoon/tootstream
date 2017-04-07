@@ -3,41 +3,66 @@ import click
 import getpass
 import sys
 import re
+import configparser
 from html.parser import HTMLParser
 from mastodon import Mastodon
 from collections import OrderedDict
 
-# TODO: need to modify this to support multiple shards, since we have to
-# register per shard.
-# For now it only supports the default mastodon.social shard.
-APP_PATH = os.path.expanduser('~/.config/tootstream/client.txt')
-APP_CRED = os.path.expanduser('~/.config/tootstream/token.txt')
 
+CONF_PATH = os.path.expanduser('~/.config/tootstream/')
+CONF_FILE = "tootstream.conf"
 
 html_parser = HTMLParser()
 
 
-def register_app():
-    if not os.path.exists(os.path.expanduser('~/.config/tootstream')):
-        os.makedirs(os.path.expanduser('~/.config/tootstream'))
-    if os.path.isfile(APP_PATH):
-        return
-    Mastodon.create_app(
+def parse_config():
+    if not os.path.exists(CONF_PATH):
+        os.makedirs(CONF_PATH)
+
+    filename = CONF_PATH + CONF_FILE
+    if not os.path.isfile(filename):
+        return {}
+
+    config = configparser.ConfigParser()
+
+    parsed = config.read(filename)
+    if len(parsed) == 0:
+        return {}
+
+    return config
+
+def save_config(instance, client_id, client_secret, token):
+    if not os.path.exists(CONF_PATH):
+        os.makedirs(CONF_PATH)
+    config = configparser.ConfigParser()
+    config['default'] = {'instance':instance,
+                         'client_id':client_id,
+                         'client_secret':client_secret,
+                         'token':token}
+
+    with open(CONF_PATH + CONF_FILE, 'w') as configfile:
+        config.write(configfile)
+
+def register_app(instance):
+    # filename = CONF_PATH + instance + CLIENT_FILE
+    # if not os.path.exists(CONF_PATH):
+        # os.makedirs(CONF_PATH)
+    # if os.path.isfile(filename):
+        # return
+
+    return Mastodon.create_app(
         'tootstream',
-        to_file=APP_PATH
+        api_base_url = "https://" + instance
     )
 
 
-def login(mastodon, email, password, shard=None):
+def login(mastodon, instance, email, password):
     """
-    Login to the mastodon.social shard.
+    Login to a Mastodon instance.
     Return a Mastodon client if login success, otherwise returns None.
     """
-    mastodon.log_in(
-        email,
-        password,
-        to_file = APP_CRED
-    )
+
+    return mastodon.log_in(email, password)
 
 
 def tprint(toot):
@@ -256,26 +281,62 @@ def authenticated(mastodon):
 
 
 @click.command()
+@click.option('--instance')
 @click.option('--email')
 @click.option('--password')
-def main(email, password):
-    register_app()
+def main(instance, email, password):
+    config = parse_config()
 
-    mastodon = Mastodon(client_id=APP_PATH, access_token=APP_CRED)
+    if (not 'default' in config):
+        config['default'] = {}
 
-    if email and password:
-        login(mastodon, email, password)
-    elif not authenticated(mastodon):
-        email = input("Welcome to tootstream! Two-Factor-Authentication is\
-        currently not supported. Mastodon.social is the only currently \
-        supported shard. Email used to login: ")
-        password = getpass.getpass()
-        login(mastodon, email, password)
+    if (instance != None):
+        # Nothing to do, just use value passed on the command line
+        pass
+    elif "instance" in config['default']:
+        instance = config['default']['instance']
+    else: instance = input("Which instance would you like to connect to? ")
+
+
+    client_id = None
+    if "client_id" in config['default']:
+        client_id = config['default']['client_id']
+
+    client_secret = None
+    if "client_secret" in config['default']:
+        client_secret = config['default']['client_secret']
+
+    if (client_id == None or client_secret == None):
+        client_id, client_secret = register_app(instance)
+
+    token = None
+    if "token" in config['default']:
+        token = config['default']['token']
+
+    if (token == None or email != None or password != None):
+        if (email == None):
+            email = input("Welcome to tootstream! Two-Factor-Authentication is currently not supported. Email used to login: ")
+        if (password == None):
+            password = getpass.getpass()
+
+        mastodon = Mastodon(
+                client_id = client_id,
+                client_secret = client_secret,
+                api_base_url = "https://" + instance)
+        token = login(mastodon, instance, email, password)
+
+    mastodon = Mastodon(
+            client_id = client_id,
+            client_secret = client_secret,
+            access_token = token,
+            api_base_url = "https://" + instance)
+
+    save_config(instance, client_id, client_secret, token)
 
     say_error = lambda a, b: tprint("Invalid command. Use 'help' for a \
                                     list of commands.")
 
-    print("Welcome to tootstream!")
+    print("You are connected to " + instance)
     print("Enter a command. Use 'help' for a list of commands.")
     print("\n")
 
