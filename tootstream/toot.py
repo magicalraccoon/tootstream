@@ -159,6 +159,7 @@ def home(mastodon, rest):
         cprint(display_name, random.choice(COLORS), end="")
         cprint(username, 'green', end="")
         cprint(toot['created_at'], 'grey')
+
         cprint(reblogs_count, 'cyan', end="")
         cprint(favourites_count, 'yellow', end="")
         cprint("id:" + toot_id, 'red')
@@ -168,7 +169,9 @@ def home(mastodon, rest):
             username = "  Boosted @" + toot['reblog']['account']['username']
             display_name = toot['reblog']['account']['display_name'] + ": "
             clean = re.sub('<[^<]+?>', '', toot['reblog']['content'])
-            content = username + display_name + clean
+            content = username + display_name
+            cprint(content, 'blue')
+            cprint("  " + clean, 'white')
 
         # TODO: Toots with only HTML do not display (images, links)
         # TODO: Breaklines should be displayed correctly
