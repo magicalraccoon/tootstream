@@ -4,16 +4,17 @@ import getpass
 import sys
 import re
 import configparser
+import random
 from html.parser import HTMLParser
 from mastodon import Mastodon
 from collections import OrderedDict
 from termcolor import colored, cprint
 
-
 CONF_PATH = os.path.expanduser('~/.config/tootstream/')
 CONF_FILE = "tootstream.conf"
-
 html_parser = HTMLParser()
+
+COLORS = ['red','green','yellow','blue','magenta','cyan','white']
 
 
 def parse_config():
@@ -154,9 +155,11 @@ def home(mastodon, rest):
         toot_id = str(toot['id'])
 
         # Prints individual toot/tooter info
-        cprint(display_name, 'green', end="",)
+        random.seed(display_name)
+        cprint(display_name, random.choice(COLORS), end="")
         cprint(username + toot['created_at'], 'yellow')
-        cprint(reblogs_count + favourites_count, 'cyan', end="")
+        cprint(reblogs_count, 'cyan', end="")
+        cprint(favourites_count, 'yellow', end="")
         cprint(toot_id, 'red', attrs=['bold'])
 
         # shows boosted toots as well
