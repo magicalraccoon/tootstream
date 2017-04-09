@@ -4,15 +4,17 @@ import getpass
 import sys
 import re
 import configparser
+import random
 from html.parser import HTMLParser
 from mastodon import Mastodon
 from collections import OrderedDict
-
+from termcolor import colored, cprint
 
 CONF_PATH = os.path.expanduser('~/.config/tootstream/')
 CONF_FILE = "tootstream.conf"
-
 html_parser = HTMLParser()
+
+COLORS = ['red','green','yellow','blue','magenta','cyan','white']
 
 
 def parse_config():
@@ -65,9 +67,15 @@ def login(mastodon, instance, email, password):
     return mastodon.log_in(email, password)
 
 
-def tprint(toot):
+def tprint(toot, color, bgColor):
+    # color = 'red', 'cyan'
+    # bgColor = "on_red", 'on_cyan'
+    printFn = lambda x: cprint(x, color)
+    if bgColor != "":
+        bg = 'on_' + bgColor
+        printFn = lambda x: cprint(x, color, bg)
     """Prints string with unescaped HTML characters"""
-    print(html_parser.unescape(toot))
+    printFn(html_parser.unescape(toot))
 
 #####################################
 ######## BEGIN COMMAND BLOCK ########
@@ -92,7 +100,8 @@ def help(mastodon, rest):
 def toot(mastodon, rest):
     """Publish a toot. ex: 'toot Hello World' will publish 'Hello World'."""
     mastodon.toot(rest)
-    print("Published: " + rest)
+    cprint("You tooted: ", 'magenta', attrs=['bold'], end="")
+    cprint(rest, 'magenta', 'on_white', attrs=['bold', 'underline'])
 
 
 @command
@@ -101,7 +110,8 @@ def boost(mastodon, rest):
     # TODO catch if boost is not a real ID
     mastodon.status_reblog(rest)
     boosted = mastodon.status(rest)
-    tprint("  Boosted: " + re.sub('<[^<]+?>', '', boosted['content']))
+    msg = "  Boosted: " + re.sub('<[^<]+?>', '', boosted['content'])
+    tprint(msg, 'green', 'red')
 
 
 @command
@@ -110,7 +120,8 @@ def unboost(mastodon, rest):
     # TODO catch if uboost is not a real ID
     mastodon.status_unreblog(rest)
     unboosted = mastodon.status(rest)
-    tprint("  Removed boost: " + re.sub('<[^<]+?>', '', unboosted['content']))
+    msg = "  Removed boost: " + re.sub('<[^<]+?>', '', unboosted['content'])
+    tprint(msg, 'red', 'green')
 
 
 @command
@@ -119,7 +130,8 @@ def fav(mastodon, rest):
     # TODO catch if fav is not a real ID
     mastodon.status_favourite(rest)
     faved = mastodon.status(rest)
-    tprint("  Favorited: " + re.sub('<[^<]+?>', '', faved['content']))
+    msg = "  Favorited: " + re.sub('<[^<]+?>', '', faved['content'])
+    tprint(msg, 'red', 'yellow')
 
 @command
 def rep(mastodon, rest):
@@ -147,22 +159,27 @@ def unfav(mastodon, rest):
     # TODO catch if ufav is not a real ID
     mastodon.status_unfavourite(rest)
     unfaved = mastodon.status(rest)
-    tprint("  Removed favorite: " + re.sub('<[^<]+?>', '', unfaved['content']))
+    msg = "  Removed favorite: " + re.sub('<[^<]+?>', '', unfaved['content'])
+    tprint(msg, 'yellow', 'red')
 
 
 @command
 def home(mastodon, rest):
     """Displays the Home timeline."""
     for toot in reversed(mastodon.timeline_home()):
-        display_name = "  " + toot['account']['display_name']
-        username = " @" + toot['account']['username'] + " "
+        display_name = "  " + toot['account']['display_name'] + " "
+        username = "@" + toot['account']['username'] + " "
         reblogs_count = "  ♺:" + str(toot['reblogs_count'])
         favourites_count = " ♥:" + str(toot['favourites_count']) + " "
         toot_id = str(toot['id'])
 
         # Prints individual toot/tooter info
-        tprint(display_name + username + toot['created_at'])
-        print(reblogs_count + favourites_count + toot_id)
+        random.seed(display_name)
+        cprint(display_name, random.choice(COLORS), end="")
+        cprint(username + toot['created_at'], 'yellow')
+        cprint(reblogs_count, 'cyan', end="")
+        cprint(favourites_count, 'yellow', end="")
+        cprint(toot_id, 'red', attrs=['bold'])
 
         # shows boosted toots as well
         if toot['reblog']:
@@ -175,7 +192,7 @@ def home(mastodon, rest):
         # TODO: Breaklines should be displayed correctly
         content = "  " + re.sub('<[^<]+?>', '', toot['content'])
         #content = toot['content']
-        tprint(content + "\n")
+        tprint(content + "\n", 'white', '')
 
 
 @command
@@ -189,8 +206,10 @@ def public(mastodon, rest):
         toot_id = str(toot['id'])
 
         # Prints individual toot/tooter info
-        tprint(display_name + username + toot['created_at'])
-        tprint(reblogs_count + favourites_count + toot_id)
+        cprint(display_name, 'green', end="",)
+        cprint(username + toot['created_at'], 'yellow')
+        cprint(reblogs_count + favourites_count, 'cyan', end="")
+        cprint(toot_id, 'red', attrs=['bold'])
 
 
         # shows boosted toots as well
@@ -203,7 +222,7 @@ def public(mastodon, rest):
         # TODO: Toots with only HTML do not display (images, links)
         # TODO: Breaklines should be displayed correctly
         content = "  " + re.sub('<[^<]+?>', '', toot['content'])
-        tprint(content + "\n")
+        tprint(content + "\n", 'white', '')
 
 @command
 def note(mastodon, rest):
@@ -215,8 +234,8 @@ def note(mastodon, rest):
 
         # Mentions
         if note['type'] == 'mention':
-            tprint(display_name + username)
-            tprint("  " + re.sub('<[^<]+?>', '', note['status']['content']))
+            tprint(display_name + username, 'magenta', '')
+            tprint("  " + re.sub('<[^<]+?>', '', note['status']['content']), 'magenta', '')
 
         # Favorites
         elif note['type'] == 'favourite':
@@ -224,18 +243,20 @@ def note(mastodon, rest):
             favourites_count = " ♥:" + str(note['status']['favourites_count'])
             time = " " + note['status']['created_at']
             content = "  " + re.sub('<[^<]+?>', '', note['status']['content'])
-            tprint(display_name + username + " favorited your status:")
-            tprint(reblogs_count + favourites_count + time + '\n' + content)
+            tprint(display_name + username + " favorited your status:", 'green', '')
+            tprint(reblogs_count + favourites_count + time + '\n' + content, 'green', '')
 
         # Boosts
         elif note['type'] == 'reblog':
-            tprint(display_name + username + " boosted your status:")
-            tprint("  " + re.sub('<[^<]+?>', '', note['status']['content']))
+            tprint(display_name + username + " boosted your status:", 'yellow', '')
+            tprint("  "+re.sub('<[^<]+?>', '', note['status']['content']), 'yellow', '')
 
         # Follows
         elif note['type'] == 'follow':
             username = re.sub('<[^<]+?>', '', username)
-            tprint(display_name + username + " followed you!")
+            display_name = note['account']['display_name']
+            cprint("  ", end="")
+            cprint(display_name + username + " followed you!", 'red', 'on_green')
 
         # blank line
         print('')
@@ -253,9 +274,9 @@ def info(mastodon, rest):
     user = mastodon.account_verify_credentials()
 
     print("@" + str(user['username']))
-    tprint(user['display_name'])
+    tprint(user['display_name'], 'cyan', 'red')
     print(user['url'])
-    tprint(re.sub('<[^<]+?>', '', user['note']))
+    tprint(re.sub('<[^<]+?>', '', user['note']), 'red', 'green')
 
 
 @command
@@ -352,8 +373,7 @@ def main(instance, email, password):
 
     save_config(instance, client_id, client_secret, token)
 
-    say_error = lambda a, b: tprint("Invalid command. Use 'help' for a \
-                                    list of commands.")
+    say_error = lambda a, b: tprint("Invalid command. Use 'help' for a list of commands.", 'white', 'red')
 
     print("You are connected to " + instance)
     print("Enter a command. Use 'help' for a list of commands.")
