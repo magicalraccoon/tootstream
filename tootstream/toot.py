@@ -9,15 +9,12 @@ from mastodon import Mastodon
 from collections import OrderedDict
 
 
-#CONF_PATH = os.path.expanduser('~/.config/tootstream/')
-#CONF_FILE = "tootstream.conf"
-
 html_parser = HTMLParser()
 
 
 def parse_config(filename):
     (dirpath, basename) = os.path.split(filename)
-    if not os.path.exists(dirpath):
+    if not (dirpath == "" or os.path.exists(dirpath)):
         os.makedirs(dirpath)
 
     if not os.path.isfile(filename):
@@ -33,7 +30,7 @@ def parse_config(filename):
 
 def save_config(filename, instance, client_id, client_secret, token):
     (dirpath, basename) = os.path.split(filename)
-    if not os.path.exists(dirpath):
+    if not (dirpath == "" or os.path.exists(dirpath)):
         os.makedirs(dirpath)
     config = configparser.ConfigParser()
     config['default'] = {'instance':instance,
