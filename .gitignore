@@ -95,3 +95,6 @@ ENV/
 tootstream/bin
 tootstream/include
 tootstream/share
+tootstream/pip-selfcheck.json
+
+.DS_Store
