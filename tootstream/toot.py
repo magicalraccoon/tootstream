@@ -8,11 +8,11 @@ import random
 from html.parser import HTMLParser
 from mastodon import Mastodon
 from collections import OrderedDict
-from termcolor import colored, cprint
+from termcolor import cprint
 
 html_parser = HTMLParser()
 
-COLORS = ['red','green','yellow','blue','magenta','cyan','white']
+COLORS = ['red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white']
 
 
 def parse_config(filename):
@@ -36,13 +36,16 @@ def save_config(filename, instance, client_id, client_secret, token):
     if not (dirpath == "" or os.path.exists(dirpath)):
         os.makedirs(dirpath)
     config = configparser.ConfigParser()
-    config['default'] = {'instance':instance,
-                         'client_id':client_id,
-                         'client_secret':client_secret,
-                         'token':token}
+    config['default'] = {
+        'instance': instance,
+        'client_id': client_id,
+        'client_secret': client_secret,
+        'token': token
+    }
 
     with open(filename, 'w') as configfile:
         config.write(configfile)
+
 
 def register_app(instance):
     # filename = CONF_PATH + instance + CLIENT_FILE
@@ -53,7 +56,7 @@ def register_app(instance):
 
     return Mastodon.create_app(
         'tootstream',
-        api_base_url = "https://" + instance
+        api_base_url="https://" + instance
     )
 
 
@@ -76,12 +79,13 @@ def tprint(toot, color, bgColor):
     """Prints string with unescaped HTML characters"""
     printFn(html_parser.unescape(toot))
 
+
 #####################################
 ######## BEGIN COMMAND BLOCK ########
 #####################################
-
-
 commands = OrderedDict()
+
+
 def command(func):
     commands[func.__name__] = func
     return func
@@ -132,6 +136,26 @@ def fav(mastodon, rest):
     msg = "  Favorited: " + re.sub('<[^<]+?>', '', faved['content'])
     tprint(msg, 'red', 'yellow')
 
+@command
+def rep(mastodon, rest):
+    """Reply to a toot by ID."""
+    # TODO catch if toot ID is not a real ID
+    command = rest.split(' ', 1)
+    parent_id = command[0]
+    try:
+        reply_text = command[1]
+    except IndexError:
+        reply_text = ''
+    parent_toot = mastodon.status(parent_id)
+    mentions = [i['acct'] for i in parent_toot['mentions']]
+    mentions.append(parent_toot['account']['acct'])
+    mentions = ["@%s" % i for i in list(set(mentions))] # Remove dups
+    mentions = ' '.join(mentions)
+    # TODO: Ensure that content warning visibility carries over to reply
+    reply_toot = mastodon.status_post('%s %s' % (mentions, reply_text),
+                                      in_reply_to_id=int(parent_id))
+    msg = "  Replied with: " + re.sub('<[^<]+?>', '', reply_toot['content'])
+    tprint(msg, 'red', 'yellow')
 
 @command
 def unfav(mastodon, rest):
@@ -148,7 +172,7 @@ def home(mastodon, rest):
     """Displays the Home timeline."""
     for toot in reversed(mastodon.timeline_home()):
         display_name = "  " + toot['account']['display_name'] + " "
-        username = "@" + toot['account']['username'] + " "
+        username = "@" + toot['account']['acct'] + " "
         reblogs_count = "  ♺:" + str(toot['reblogs_count'])
         favourites_count = " ♥:" + str(toot['favourites_count']) + " "
         toot_id = str(toot['id'])
@@ -156,24 +180,27 @@ def home(mastodon, rest):
         # Prints individual toot/tooter info
         random.seed(display_name)
         cprint(display_name, random.choice(COLORS), end="")
-        cprint(username + toot['created_at'], 'yellow')
+        cprint(username, 'green', end="")
+        cprint(toot['created_at'], 'grey')
+
         cprint(reblogs_count, 'cyan', end="")
         cprint(favourites_count, 'yellow', end="")
-        cprint(toot_id, 'red', attrs=['bold'])
+        cprint("id:" + toot_id, 'red')
 
-        # shows boosted toots as well
-        if toot['reblog']:
-            username = "  Boosted @" + toot['reblog']['account']['username']
-            display_name = toot['reblog']['account']['display_name'] + ": "
-            clean = re.sub('<[^<]+?>', '', toot['reblog']['content'])
-            content = username + display_name + clean
 
         # TODO: Toots with only HTML do not display (images, links)
         # TODO: Breaklines should be displayed correctly
         content = "  " + re.sub('<[^<]+?>', '', toot['content'])
-        #content = toot['content']
-        tprint(content + "\n", 'white', '')
 
+
+        # shows boosted toots as well
+        if toot['reblog']:
+            username = "  Boosted @" + toot['reblog']['account']['acct'] +": "
+            clean = re.sub('<[^<]+?>', '', toot['reblog']['content'])
+            cprint(username, 'blue', end='')
+            print(clean + "\n")
+
+        else: print(content + "\n")
 
 @command
 def public(mastodon, rest):
@@ -191,7 +218,6 @@ def public(mastodon, rest):
         cprint(reblogs_count + favourites_count, 'cyan', end="")
         cprint(toot_id, 'red', attrs=['bold'])
 
-
         # shows boosted toots as well
         if toot['reblog']:
             username = "  Boosted @" + toot['reblog']['account']['username']
@@ -204,13 +230,13 @@ def public(mastodon, rest):
         content = "  " + re.sub('<[^<]+?>', '', toot['content'])
         tprint(content + "\n", 'white', '')
 
+
 @command
 def note(mastodon, rest):
     """Displays the Notifications timeline."""
     for note in reversed(mastodon.notifications()):
         display_name = "  " + note['account']['display_name']
         username = " @" + note['account']['username']
-
 
         # Mentions
         if note['type'] == 'mention':
@@ -265,26 +291,29 @@ def delete(mastodon, rest):
     mastodon.status_delete(rest)
     print("Poof! It's gone.")
 
+
 @command
 def block(mastodon, rest):
     """Blocks a user by username."""
     # TODO: Find out how to get global usernames
+
 
 @command
 def unblock(mastodon, rest):
     """Unblocks a user by username."""
     # TODO: Find out how to get global usernames
 
+
 @command
 def follow(mastodon, rest):
     """Follows an account by username."""
     # TODO: Find out how to get global usernames
 
+
 @command
 def unfollow(mastodon, rest):
     """Unfollows an account by username."""
     # TODO: Find out how to get global usernames
-
 
 
 #####################################
@@ -309,7 +338,7 @@ def main(instance, email, password, config):
     configpath = config
     config = parse_config(configpath)
 
-    if (not 'default' in config):
+    if 'default' not in config:
         config['default'] = {}
 
     if (instance != None):
@@ -317,7 +346,8 @@ def main(instance, email, password, config):
         pass
     elif "instance" in config['default']:
         instance = config['default']['instance']
-    else: instance = input("Which instance would you like to connect to? ")
+
+    else: instance = input("Which instance would you like to connect to? eg: 'mastodon.social' ")
 
 
     client_id = None
@@ -342,22 +372,24 @@ def main(instance, email, password, config):
             password = getpass.getpass()
 
         mastodon = Mastodon(
-                client_id = client_id,
-                client_secret = client_secret,
-                api_base_url = "https://" + instance)
+            client_id=client_id,
+            client_secret=client_secret,
+            api_base_url="https://" + instance
+        )
         token = login(mastodon, instance, email, password)
 
     mastodon = Mastodon(
-            client_id = client_id,
-            client_secret = client_secret,
-            access_token = token,
-            api_base_url = "https://" + instance)
+        client_id=client_id,
+        client_secret=client_secret,
+        access_token=token,
+        api_base_url="https://" + instance)
 
     save_config(configpath, instance, client_id, client_secret, token)
 
     say_error = lambda a, b: tprint("Invalid command. Use 'help' for a list of commands.", 'white', 'red')
 
-    print("You are connected to " + instance)
+    print("You are connected to ", end="")
+    cprint(instance, 'green', attrs=['bold'])
     print("Enter a command. Use 'help' for a list of commands.")
     print("\n")
 
@@ -374,6 +406,7 @@ def main(instance, email, password, config):
         command = command[0]
         cmd_func = commands.get(command, say_error)
         cmd_func(mastodon, rest)
+
 
 if __name__ == '__main__':
     main()
