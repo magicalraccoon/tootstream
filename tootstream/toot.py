@@ -157,10 +157,11 @@ def home(mastodon, rest):
         # Prints individual toot/tooter info
         random.seed(display_name)
         cprint(display_name, random.choice(COLORS), end="")
-        cprint(username + toot['created_at'], 'yellow')
+        cprint(username, 'green', end="")
+        cprint(toot['created_at'], 'grey')
         cprint(reblogs_count, 'cyan', end="")
         cprint(favourites_count, 'yellow', end="")
-        cprint(toot_id, 'red', attrs=['bold'])
+        cprint("id:" + toot_id, 'red')
 
         # shows boosted toots as well
         if toot['reblog']:
@@ -316,7 +317,7 @@ def main(instance, email, password):
         pass
     elif "instance" in config['default']:
         instance = config['default']['instance']
-    else: instance = input("Which instance would you like to connect to? ")
+    else: instance = input("Which instance would you like to connect to? eg: 'mastodon.social' ")
 
 
     client_id = None
@@ -356,7 +357,8 @@ def main(instance, email, password):
 
     say_error = lambda a, b: tprint("Invalid command. Use 'help' for a list of commands.", 'white', 'red')
 
-    print("You are connected to " + instance)
+    print("You are connected to ", end="")
+    cprint(instance, 'green', attrs=['bold'])
     print("Enter a command. Use 'help' for a list of commands.")
     print("\n")
 
