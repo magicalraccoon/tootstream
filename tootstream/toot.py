@@ -67,15 +67,15 @@ def login(mastodon, instance, email, password):
     return mastodon.log_in(email, password)
 
 
-def tprint(toot, color, bgColor):
-    # color = 'red', 'cyan'
-    # bgColor = "on_red", 'on_cyan'
-    printFn = lambda x: cprint(x, color)
-    if bgColor != "":
-        bg = 'on_' + bgColor
-        printFn = lambda x: cprint(x, color, bg)
-    """Prints string with unescaped HTML characters"""
-    printFn(html_parser.unescape(toot))
+def tprint(toot, color, bg_color=None):
+    """Prints string with unescaped HTML characters
+
+    color can be 'red', 'cyan'...
+    bg_color (default None) can be "red", "cyan" or "on_red", "on_cyan"...
+    """
+    if bg_color and not bg_color.startswith('on_'):
+        bg_color = 'on_{}'.format(bg_color)
+    cprint(html_parser.unescape(toot), color, on_color=bg_color)
 
 #####################################
 ######## BEGIN COMMAND BLOCK ########
@@ -173,7 +173,7 @@ def home(mastodon, rest):
         # TODO: Breaklines should be displayed correctly
         content = "  " + re.sub('<[^<]+?>', '', toot['content'])
         #content = toot['content']
-        tprint(content + "\n", 'white', '')
+        tprint(content + "\n", 'white')
 
 
 @command
@@ -203,7 +203,7 @@ def public(mastodon, rest):
         # TODO: Toots with only HTML do not display (images, links)
         # TODO: Breaklines should be displayed correctly
         content = "  " + re.sub('<[^<]+?>', '', toot['content'])
-        tprint(content + "\n", 'white', '')
+        tprint(content + "\n", 'white')
 
 @command
 def note(mastodon, rest):
@@ -215,8 +215,8 @@ def note(mastodon, rest):
 
         # Mentions
         if note['type'] == 'mention':
-            tprint(display_name + username, 'magenta', '')
-            tprint("  " + re.sub('<[^<]+?>', '', note['status']['content']), 'magenta', '')
+            tprint(display_name + username, 'magenta')
+            tprint("  " + re.sub('<[^<]+?>', '', note['status']['content']), 'magenta')
 
         # Favorites
         elif note['type'] == 'favourite':
@@ -224,13 +224,13 @@ def note(mastodon, rest):
             favourites_count = " ♥:" + str(note['status']['favourites_count'])
             time = " " + note['status']['created_at']
             content = "  " + re.sub('<[^<]+?>', '', note['status']['content'])
-            tprint(display_name + username + " favorited your status:", 'green', '')
-            tprint(reblogs_count + favourites_count + time + '\n' + content, 'green', '')
+            tprint(display_name + username + " favorited your status:", 'green')
+            tprint(reblogs_count + favourites_count + time + '\n' + content, 'green')
 
         # Boosts
         elif note['type'] == 'reblog':
-            tprint(display_name + username + " boosted your status:", 'yellow', '')
-            tprint("  "+re.sub('<[^<]+?>', '', note['status']['content']), 'yellow', '')
+            tprint(display_name + username + " boosted your status:", 'yellow')
+            tprint("  "+re.sub('<[^<]+?>', '', note['status']['content']), 'yellow')
 
         # Follows
         elif note['type'] == 'follow':
