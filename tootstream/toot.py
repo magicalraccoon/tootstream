@@ -136,7 +136,6 @@ def fav(mastodon, rest):
 @command
 def rep(mastodon, rest):
     """Reply to a toot by ID."""
-    # 2045196
     # TODO catch if toot ID is not a real ID
     command = rest.split(' ', 1)
     parent_id = command[0]
@@ -145,13 +144,15 @@ def rep(mastodon, rest):
     except IndexError:
         reply_text = ''
     parent_toot = mastodon.status(parent_id)
-    mentions = ' '.join(parent_toot['mentions'])
-    is_sensitive = parent_toot['sensitive'] or False
-    warning_text = parent_toot['spoiler_text']
+    mentions = [i['acct'] for i in parent_toot['mentions']]
+    mentions.append(parent_toot['account']['acct'])
+    mentions = ["@%s" % i for i in list(set(mentions))] # Remove dups
+    mentions = ' '.join(mentions)
     # TODO: Ensure that content warning visibility carries over to reply
     reply_toot = mastodon.status_post('%s %s' % (mentions, reply_text),
                                       in_reply_to_id=int(parent_id))
-    tprint("  Replied to: " + re.sub('<[^<]+?>', '', reply_toot['content']))
+    msg = "  Replied with: " + re.sub('<[^<]+?>', '', reply_toot['content'])
+    tprint(msg, 'red', 'yellow')
 
 @command
 def unfav(mastodon, rest):
