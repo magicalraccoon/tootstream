@@ -139,7 +139,7 @@ def rep(mastodon, rest):
     # TODO: Ensure that content warning visibility carries over to reply
     reply_toot = mastodon.status_post('%s %s' % (mentions, reply_text),
                                       in_reply_to_id=int(parent_id))
-    tprint("  Replied to: " + re.sub('<[^<]+?>', '', reply_toot['content']))
+    tprint("  Replied with: " + re.sub('<[^<]+?>', '', reply_toot['content']))
 
 @command
 def unfav(mastodon, rest):
