@@ -175,7 +175,7 @@ def home(mastodon, rest):
     """Displays the Home timeline."""
     for toot in reversed(mastodon.timeline_home()):
         display_name = "  " + toot['account']['display_name'] + " "
-        username = "@" + toot['account']['username'] + " "
+        username = "@" + toot['account']['acct'] + " "
         reblogs_count = "  ♺:" + str(toot['reblogs_count'])
         favourites_count = " ♥:" + str(toot['favourites_count']) + " "
         toot_id = str(toot['id'])
@@ -190,21 +190,20 @@ def home(mastodon, rest):
         cprint(favourites_count, 'yellow', end="")
         cprint("id:" + toot_id, 'red')
 
-        # shows boosted toots as well
-        if toot['reblog']:
-            username = "  Boosted @" + toot['reblog']['account']['username']
-            display_name = toot['reblog']['account']['display_name'] + ": "
-            clean = re.sub('<[^<]+?>', '', toot['reblog']['content'])
-            content = username + display_name
-            cprint(content, 'blue')
-            cprint("  " + clean, 'white')
 
         # TODO: Toots with only HTML do not display (images, links)
         # TODO: Breaklines should be displayed correctly
         content = "  " + re.sub('<[^<]+?>', '', toot['content'])
-        # content = toot['content']
-        tprint(content + "\n", 'white', '')
 
+
+        # shows boosted toots as well
+        if toot['reblog']:
+            username = "  Boosted @" + toot['reblog']['account']['acct'] +": "
+            clean = re.sub('<[^<]+?>', '', toot['reblog']['content'])
+            cprint(username, 'blue', end='')
+            print(clean + "\n")
+
+        else: print(content + "\n")
 
 @command
 def public(mastodon, rest):
@@ -349,8 +348,7 @@ def main(instance, email, password):
     elif "instance" in config['default']:
         instance = config['default']['instance']
 
-    else: 
-        instance = input("Which instance would you like to connect to? eg: 'mastodon.social' ")
+    else: instance = input("Which instance would you like to connect to? eg: 'mastodon.social' ")
 
 
     client_id = None
