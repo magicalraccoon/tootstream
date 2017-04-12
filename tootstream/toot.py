@@ -98,6 +98,50 @@ def login(mastodon, instance, email, password):
     return mastodon.log_in(email, password)
 
 
+#client_id, client_secret, token = parse_or_input_profile(profile, instance, email, password)
+def parse_or_input_profile(profile, instance=None, email=None, password=None):
+    # validate a profile, request user input as necessary
+    if (instance != None):
+        # Nothing to do, just use value passed on the command line
+        pass
+    elif "instance" in cfg[profile]:
+        instance = cfg[profile]['instance']
+    else:
+        cprint("  Which instance would you like to connect to? eg: 'mastodon.social'", 'blue')
+        instance = input("  Instance: ")
+
+
+    client_id = None
+    if "client_id" in cfg[profile]:
+        client_id = cfg[profile]['client_id']
+
+    client_secret = None
+    if "client_secret" in cfg[profile]:
+        client_secret = cfg[profile]['client_secret']
+
+    if (client_id == None or client_secret == None):
+        client_id, client_secret = register_app(instance)
+
+    token = None
+    if "token" in cfg[profile]:
+        token = cfg[profile]['token']
+
+    if (token == None or email != None or password != None):
+        if (email == None):
+            email = input("  Email used to login: ")
+        if (password == None):
+            password = getpass.getpass("  Password: ")
+
+        mastodon = Mastodon(
+            client_id=client_id,
+            client_secret=client_secret,
+            api_base_url="https://" + instance
+        )
+        token = login(mastodon, instance, email, password)
+
+    return instance, client_id, client_secret, token
+
+
 def tprint(text, color, bgColor):
     printFn = lambda x: cprint(x, color)
     if bgColor != "":
@@ -384,42 +428,8 @@ def main(instance, email, password, config, profile):
     if not cfg.has_section(profile):
         cfg.add_section(profile)
 
-    if (instance != None):
-        # Nothing to do, just use value passed on the command line
-        pass
-    elif "instance" in cfg[profile]:
-        instance = cfg[profile]['instance']
+    instance, client_id, client_secret, token = parse_or_input_profile(profile, instance, email, password)
 
-    else: instance = input("Which instance would you like to connect to? eg: 'mastodon.social' ")
-
-
-    client_id = None
-    if "client_id" in cfg[profile]:
-        client_id = cfg[profile]['client_id']
-
-    client_secret = None
-    if "client_secret" in cfg[profile]:
-        client_secret = cfg[profile]['client_secret']
-
-    if (client_id == None or client_secret == None):
-        client_id, client_secret = register_app(instance)
-
-    token = None
-    if "token" in cfg[profile]:
-        token = cfg[profile]['token']
-
-    if (token == None or email != None or password != None):
-        if (email == None):
-            email = input("Welcome to tootstream! Two-Factor-Authentication is currently not supported. Email used to login: ")
-        if (password == None):
-            password = getpass.getpass()
-
-        mastodon = Mastodon(
-            client_id=client_id,
-            client_secret=client_secret,
-            api_base_url="https://" + instance
-        )
-        token = login(mastodon, instance, email, password)
 
     mastodon = Mastodon(
         client_id=client_id,
@@ -436,8 +446,10 @@ def main(instance, email, password, config, profile):
 
     save_config(configpath)
 
+
     say_error = lambda a, b: tprint("Invalid command. Use 'help' for a list of commands.", 'white', 'red')
 
+    cprint("Welcome to tootstream! Two-Factor-Authentication is currently not supported.", 'blue')
     print("You are connected to ", end="")
     cprint(instance, 'green', attrs=['bold'])
     print("Enter a command. Use 'help' for a list of commands.")
