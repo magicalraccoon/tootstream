@@ -6,12 +6,10 @@ import re
 import configparser
 import random
 import readline
-from html.parser import HTMLParser
+from toot_parser import TootParser
 from mastodon import Mastodon
 from collections import OrderedDict
 from termcolor import cprint
-
-html_parser = HTMLParser()
 
 COLORS = ['red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white']
 
@@ -39,9 +37,16 @@ class IdDict:
         except:
             tprint('Invalid ID.', 'red', '')
             return None
-        
+
 IDS = IdDict();
 
+toot_parser = TootParser(indent='  ')
+
+def get_content(toot):
+    html = toot['content']
+    toot_parser.reset()
+    toot_parser.feed(html)
+    return toot_parser.get_text()
 
 def parse_config(filename):
     (dirpath, basename) = os.path.split(filename)
@@ -97,15 +102,12 @@ def login(mastodon, instance, email, password):
     return mastodon.log_in(email, password)
 
 
-def tprint(toot, color, bgColor):
-    # color = 'red', 'cyan'
-    # bgColor = "on_red", 'on_cyan'
+def tprint(text, color, bgColor):
     printFn = lambda x: cprint(x, color)
     if bgColor != "":
         bg = 'on_' + bgColor
         printFn = lambda x: cprint(x, color, bg)
-    """Prints string with unescaped HTML characters"""
-    printFn(html_parser.unescape(toot))
+    printFn(text)
 
 
 #####################################
@@ -143,7 +145,7 @@ def boost(mastodon, rest):
         return
     mastodon.status_reblog(rest)
     boosted = mastodon.status(rest)
-    msg = "  Boosted: " + re.sub('<[^<]+?>', '', boosted['content'])
+    msg = "  Boosted: " + get_content(boosted)
     tprint(msg, 'green', 'red')
 
 
@@ -155,7 +157,7 @@ def unboost(mastodon, rest):
         return
     mastodon.status_unreblog(rest)
     unboosted = mastodon.status(rest)
-    msg = "  Removed boost: " + re.sub('<[^<]+?>', '', unboosted['content'])
+    msg = "  Removed boost: " + get_content(unboosted)
     tprint(msg, 'red', 'green')
 
 
@@ -167,7 +169,7 @@ def fav(mastodon, rest):
         return
     mastodon.status_favourite(rest)
     faved = mastodon.status(rest)
-    msg = "  Favorited: " + re.sub('<[^<]+?>', '', faved['content'])
+    msg = "  Favorited: " + get_content(faved)
     tprint(msg, 'red', 'yellow')
 
 @command
@@ -189,7 +191,7 @@ def rep(mastodon, rest):
     # TODO: Ensure that content warning visibility carries over to reply
     reply_toot = mastodon.status_post('%s %s' % (mentions, reply_text),
                                       in_reply_to_id=int(parent_id))
-    msg = "  Replied with: " + re.sub('<[^<]+?>', '', reply_toot['content'])
+    msg = "  Replied with: " + get_content(reply_toot)
     tprint(msg, 'red', 'yellow')
 
 @command
@@ -200,7 +202,7 @@ def unfav(mastodon, rest):
         return
     mastodon.status_unfavourite(rest)
     unfaved = mastodon.status(rest)
-    msg = "  Removed favorite: " + re.sub('<[^<]+?>', '', unfaved['content'])
+    msg = "  Removed favorite: " + get_content(unfaved)
     tprint(msg, 'yellow', 'red')
 
 
@@ -225,20 +227,15 @@ def home(mastodon, rest):
         
         cprint("id:" + toot_id, 'red')
 
-
-        # TODO: Toots with only HTML do not display (images, links)
-        # TODO: Breaklines should be displayed correctly
-        content = "  " + re.sub('<[^<]+?>', '', toot['content'])
-
-
-        # shows boosted toots as well
+        # Shows boosted toots as well
         if toot['reblog']:
             username = "  Boosted @" + toot['reblog']['account']['acct'] +": "
-            clean = re.sub('<[^<]+?>', '', toot['reblog']['content'])
             cprint(username, 'blue', end='')
-            print(clean + "\n")
+            content = get_content(toot['reblog'])
+        else:
+            content = get_content(toot)
 
-        else: print(content + "\n")
+        print(content + "\n")
 
 @command
 def public(mastodon, rest):
@@ -256,17 +253,15 @@ def public(mastodon, rest):
         cprint(reblogs_count + favourites_count, 'cyan', end="")
         cprint(toot_id, 'red', attrs=['bold'])
 
-        # shows boosted toots as well
+        # Shows boosted toots as well
         if toot['reblog']:
-            username = "  Boosted @" + toot['reblog']['account']['username']
-            display_name = toot['reblog']['account']['display_name'] + ": "
-            clean = re.sub('<[^<]+?>', '', toot['reblog']['content'])
-            content = username + display_name + clean
+            username = "  Boosted @" + toot['reblog']['account']['acct'] +": "
+            cprint(username, 'blue', end='')
+            content = get_content(toot['reblog'])
+        else:
+            content = get_content(toot)
 
-        # TODO: Toots with only HTML do not display (images, links)
-        # TODO: Breaklines should be displayed correctly
-        content = "  " + re.sub('<[^<]+?>', '', toot['content'])
-        tprint(content + "\n", 'white', '')
+        print(content + "\n")
 
 
 @command
@@ -279,21 +274,21 @@ def note(mastodon, rest):
         # Mentions
         if note['type'] == 'mention':
             tprint(display_name + username, 'magenta', '')
-            tprint("  " + re.sub('<[^<]+?>', '', note['status']['content']), 'magenta', '')
+            tprint(get_content(note['status']), 'magenta', '')
 
         # Favorites
         elif note['type'] == 'favourite':
             reblogs_count = "  " + "♺:" + str(note['status']['reblogs_count'])
             favourites_count = " ♥:" + str(note['status']['favourites_count'])
             time = " " + note['status']['created_at']
-            content = "  " + re.sub('<[^<]+?>', '', note['status']['content'])
+            content = get_content(note['status'])
             tprint(display_name + username + " favorited your status:", 'green', '')
             tprint(reblogs_count + favourites_count + time + '\n' + content, 'green', '')
 
         # Boosts
         elif note['type'] == 'reblog':
             tprint(display_name + username + " boosted your status:", 'yellow', '')
-            tprint("  "+re.sub('<[^<]+?>', '', note['status']['content']), 'yellow', '')
+            tprint(get_content(note['status']), 'yellow', '')
 
         # Follows
         elif note['type'] == 'follow':
