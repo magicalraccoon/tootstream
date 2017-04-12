@@ -11,8 +11,6 @@ from mastodon import Mastodon
 from collections import OrderedDict
 from termcolor import cprint
 
-CONF_PATH = os.path.expanduser('~/.config/tootstream/')
-CONF_FILE = "tootstream.conf"
 html_parser = HTMLParser()
 
 COLORS = ['red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white']
@@ -45,11 +43,11 @@ class IdDict:
 IDS = IdDict();
 
 
-def parse_config():
-    if not os.path.exists(CONF_PATH):
-        os.makedirs(CONF_PATH)
+def parse_config(filename):
+    (dirpath, basename) = os.path.split(filename)
+    if not (dirpath == "" or os.path.exists(dirpath)):
+        os.makedirs(dirpath)
 
-    filename = CONF_PATH + CONF_FILE
     if not os.path.isfile(filename):
         return {}
 
@@ -61,10 +59,10 @@ def parse_config():
 
     return config
 
-
-def save_config(instance, client_id, client_secret, token):
-    if not os.path.exists(CONF_PATH):
-        os.makedirs(CONF_PATH)
+def save_config(filename, instance, client_id, client_secret, token):
+    (dirpath, basename) = os.path.split(filename)
+    if not (dirpath == "" or os.path.exists(dirpath)):
+        os.makedirs(dirpath)
     config = configparser.ConfigParser()
     config['default'] = {
         'instance': instance,
@@ -73,7 +71,7 @@ def save_config(instance, client_id, client_secret, token):
         'token': token
     }
 
-    with open(CONF_PATH + CONF_FILE, 'w') as configfile:
+    with open(filename, 'w') as configfile:
         config.write(configfile)
 
 
@@ -376,8 +374,10 @@ def authenticated(mastodon):
 @click.option('--instance')
 @click.option('--email')
 @click.option('--password')
-def main(instance, email, password):
-    config = parse_config()
+@click.option('--config', '-c', type=click.Path(exists=False, readable=True), default='~/.config/tootstream/tootstream.conf')
+def main(instance, email, password, config):
+    configpath = os.path.expanduser(config)
+    config = parse_config(configpath)
 
     if 'default' not in config:
         config['default'] = {}
@@ -425,7 +425,7 @@ def main(instance, email, password):
         access_token=token,
         api_base_url="https://" + instance)
 
-    save_config(instance, client_id, client_secret, token)
+    save_config(configpath, instance, client_id, client_secret, token)
 
     say_error = lambda a, b: tprint("Invalid command. Use 'help' for a list of commands.", 'white', 'red')
 
