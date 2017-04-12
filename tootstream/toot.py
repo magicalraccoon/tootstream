@@ -31,7 +31,7 @@ class IdDict:
     def to_global(self, local_id):
         """Returns the global ID for a local ID, or None if ID is invalid.
         Also prints an error message"""
-        local_id = int(local_id) 
+        local_id = int(local_id)
         try:
             return self._map[local_id]
         except:
@@ -57,7 +57,11 @@ def parse_config(filename):
         print("...No configuration found, generating...")
         return
 
-    cfg.read(filename)
+    try:
+        cfg.read(filename)
+    except configparser.Error:
+        cprint("This does not look like a valid configuration:"+filename, 'red')
+        sys.exit("Goodbye!")
 
 
 def save_config(filename):
@@ -65,8 +69,11 @@ def save_config(filename):
     if not (dirpath == "" or os.path.exists(dirpath)):
         os.makedirs(dirpath)
 
-    with open(filename, 'w') as configfile:
-        cfg.write(configfile)
+    try:
+        with open(filename, 'w') as configfile:
+            cfg.write(configfile)
+    except os.error:
+        cprint("Unable to write configuration to "+filename, 'red')
 
 
 def register_app(instance):
@@ -213,7 +220,7 @@ def home(mastodon, rest):
 
         cprint(reblogs_count, 'cyan', end="")
         cprint(favourites_count, 'yellow', end="")
-        
+
         cprint("id:" + toot_id, 'red')
 
         # Shows boosted toots as well
@@ -369,9 +376,11 @@ def authenticated(mastodon):
                help='Name of profile for saved credentials (default)' )
 def main(instance, email, password, config, profile):
     configpath = os.path.expanduser(config)
-    parse_config(configpath)
+    if os.path.isfile(configpath) and not os.access(configpath, os.W_OK):
+        # warn the user before they're asked for input
+        cprint("Config file does not appear to be writable: "+configpath, 'red')
 
-    #global cfg
+    parse_config(configpath)
     if not cfg.has_section(profile):
         cfg.add_section(profile)
 
