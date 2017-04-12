@@ -370,11 +370,18 @@ def authenticated(mastodon):
     return True
 
 
-@click.command()
-@click.option('--instance')
-@click.option('--email')
-@click.option('--password')
-@click.option('--config', '-c', type=click.Path(exists=False, readable=True), default='~/.config/tootstream/tootstream.conf')
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.option( '--instance', '-i', metavar='<string>',
+               help='Hostname of the instance to connect' )
+@click.option( '--email', '-e', metavar='<string>',
+               help='Email to login' )
+@click.option( '--password', '-p', metavar='<PASSWD>',
+               help='Password to login (UNSAFE)' )
+@click.option( '--config', '-c', metavar='<file>',
+               type=click.Path(exists=False, readable=True),
+               default='~/.config/tootstream/tootstream.conf',
+               help='Location of alternate configuration file to load' )
 def main(instance, email, password, config):
     configpath = os.path.expanduser(config)
     config = parse_config(configpath)
