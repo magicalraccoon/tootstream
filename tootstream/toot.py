@@ -16,6 +16,33 @@ html_parser = HTMLParser()
 
 COLORS = ['red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white']
 
+class IdDict:
+    """Represents a mapping of local (tootstream) ID's to global
+    (mastodon) IDs."""
+    def __init__(self):
+        self._map = []
+
+    def to_local(self, global_id):
+        """Returns the local ID for a global ID"""
+        global_id = int(global_id) # In case a string gets passed
+        try:
+            return self._map.index(global_id)
+        except ValueError:
+            self._map.append(global_id)
+            return len(self._map) - 1
+
+    def to_global(self, local_id):
+        """Returns the global ID for a local ID, or None if ID is invalid.
+        Also prints an error message"""
+        local_id = int(local_id) 
+        try:
+            return self._map[local_id]
+        except:
+            tprint('Invalid ID.', 'red', '')
+            return None
+        
+IDS = IdDict();
+
 
 def parse_config():
     if not os.path.exists(CONF_PATH):
@@ -112,7 +139,9 @@ def toot(mastodon, rest):
 @command
 def boost(mastodon, rest):
     """Boosts a toot by ID."""
-    # TODO catch if boost is not a real ID
+    rest = IDS.to_global(rest)
+    if rest is None:
+        return
     mastodon.status_reblog(rest)
     boosted = mastodon.status(rest)
     msg = "  Boosted: " + re.sub('<[^<]+?>', '', boosted['content'])
@@ -122,7 +151,9 @@ def boost(mastodon, rest):
 @command
 def unboost(mastodon, rest):
     """Removes a boosted tweet by ID."""
-    # TODO catch if uboost is not a real ID
+    rest = IDS.to_global(rest)
+    if rest is None:
+        return
     mastodon.status_unreblog(rest)
     unboosted = mastodon.status(rest)
     msg = "  Removed boost: " + re.sub('<[^<]+?>', '', unboosted['content'])
@@ -132,7 +163,9 @@ def unboost(mastodon, rest):
 @command
 def fav(mastodon, rest):
     """Favorites a toot by ID."""
-    # TODO catch if fav is not a real ID
+    rest = IDS.to_global(rest)
+    if rest is None:
+        return
     mastodon.status_favourite(rest)
     faved = mastodon.status(rest)
     msg = "  Favorited: " + re.sub('<[^<]+?>', '', faved['content'])
@@ -141,9 +174,10 @@ def fav(mastodon, rest):
 @command
 def rep(mastodon, rest):
     """Reply to a toot by ID."""
-    # TODO catch if toot ID is not a real ID
     command = rest.split(' ', 1)
-    parent_id = command[0]
+    parent_id = IDS.to_global(command[0])
+    if parent_id is None:
+        return
     try:
         reply_text = command[1]
     except IndexError:
@@ -162,7 +196,9 @@ def rep(mastodon, rest):
 @command
 def unfav(mastodon, rest):
     """Removes a favorite toot by ID."""
-    # TODO catch if ufav is not a real ID
+    rest = IDS.to_global(rest)
+    if rest is None:
+        return
     mastodon.status_unfavourite(rest)
     unfaved = mastodon.status(rest)
     msg = "  Removed favorite: " + re.sub('<[^<]+?>', '', unfaved['content'])
@@ -177,7 +213,7 @@ def home(mastodon, rest):
         username = "@" + toot['account']['acct'] + " "
         reblogs_count = "  ♺:" + str(toot['reblogs_count'])
         favourites_count = " ♥:" + str(toot['favourites_count']) + " "
-        toot_id = str(toot['id'])
+        toot_id = str(IDS.to_local(toot['id']))
 
         # Prints individual toot/tooter info
         random.seed(display_name)
@@ -187,6 +223,7 @@ def home(mastodon, rest):
 
         cprint(reblogs_count, 'cyan', end="")
         cprint(favourites_count, 'yellow', end="")
+        
         cprint("id:" + toot_id, 'red')
 
 
@@ -212,7 +249,7 @@ def public(mastodon, rest):
         username = " @" + toot['account']['username'] + " "
         reblogs_count = "  ♺:" + str(toot['reblogs_count'])
         favourites_count = " ♥:" + str(toot['favourites_count']) + " "
-        toot_id = str(toot['id'])
+        toot_id = str(IDS.to_local(toot['id']))
 
         # Prints individual toot/tooter info
         cprint(display_name, 'green', end="",)
@@ -290,6 +327,9 @@ def info(mastodon, rest):
 @command
 def delete(mastodon, rest):
     """Deletes your toot by ID"""
+    rest = IDS.to_global(rest)
+    if rest is None:
+        return
     mastodon.status_delete(rest)
     print("Poof! It's gone.")
 
