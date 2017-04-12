@@ -335,7 +335,7 @@ def authenticated(mastodon):
 @click.option('--password')
 @click.option('--config', '-c', type=click.Path(exists=False, readable=True), default='~/.config/tootstream/tootstream.conf')
 def main(instance, email, password, config):
-    configpath = config
+    configpath = os.path.expanduser(config)
     config = parse_config(configpath)
 
     if 'default' not in config:
