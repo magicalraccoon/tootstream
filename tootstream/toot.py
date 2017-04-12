@@ -39,7 +39,7 @@ class IdDict:
             return None
 
 IDS = IdDict();
-
+cfg = configparser.ConfigParser()
 toot_parser = TootParser(indent='  ')
 
 def get_content(toot):
@@ -54,30 +54,19 @@ def parse_config(filename):
         os.makedirs(dirpath)
 
     if not os.path.isfile(filename):
-        return {}
+        print("...No configuration found, generating...")
+        return
 
-    config = configparser.ConfigParser()
+    cfg.read(filename)
 
-    parsed = config.read(filename)
-    if len(parsed) == 0:
-        return {}
 
-    return config
-
-def save_config(filename, instance, client_id, client_secret, token):
+def save_config(filename):
     (dirpath, basename) = os.path.split(filename)
     if not (dirpath == "" or os.path.exists(dirpath)):
         os.makedirs(dirpath)
-    config = configparser.ConfigParser()
-    config['default'] = {
-        'instance': instance,
-        'client_id': client_id,
-        'client_secret': client_secret,
-        'token': token
-    }
 
     with open(filename, 'w') as configfile:
-        config.write(configfile)
+        cfg.write(configfile)
 
 
 def register_app(instance):
@@ -352,6 +341,12 @@ def unfollow(mastodon, rest):
     # TODO: Find out how to get global usernames
 
 
+@command
+def profile(mastodon, rest):
+    """Create or load another profile."""
+    # TODO: implement.
+
+
 #####################################
 ######### END COMMAND BLOCK #########
 #####################################
@@ -370,36 +365,39 @@ def authenticated(mastodon):
 @click.option('--email')
 @click.option('--password')
 @click.option('--config', '-c', type=click.Path(exists=False, readable=True), default='~/.config/tootstream/tootstream.conf')
-def main(instance, email, password, config):
+@click.option( '--profile', '-P', metavar='<string>', default='default',
+               help='Name of profile for saved credentials (default)' )
+def main(instance, email, password, config, profile):
     configpath = os.path.expanduser(config)
-    config = parse_config(configpath)
+    parse_config(configpath)
 
-    if 'default' not in config:
-        config['default'] = {}
+    #global cfg
+    if not cfg.has_section(profile):
+        cfg.add_section(profile)
 
     if (instance != None):
         # Nothing to do, just use value passed on the command line
         pass
-    elif "instance" in config['default']:
-        instance = config['default']['instance']
+    elif "instance" in cfg[profile]:
+        instance = cfg[profile]['instance']
 
     else: instance = input("Which instance would you like to connect to? eg: 'mastodon.social' ")
 
 
     client_id = None
-    if "client_id" in config['default']:
-        client_id = config['default']['client_id']
+    if "client_id" in cfg[profile]:
+        client_id = cfg[profile]['client_id']
 
     client_secret = None
-    if "client_secret" in config['default']:
-        client_secret = config['default']['client_secret']
+    if "client_secret" in cfg[profile]:
+        client_secret = cfg[profile]['client_secret']
 
     if (client_id == None or client_secret == None):
         client_id, client_secret = register_app(instance)
 
     token = None
-    if "token" in config['default']:
-        token = config['default']['token']
+    if "token" in cfg[profile]:
+        token = cfg[profile]['token']
 
     if (token == None or email != None or password != None):
         if (email == None):
@@ -420,7 +418,14 @@ def main(instance, email, password, config):
         access_token=token,
         api_base_url="https://" + instance)
 
-    save_config(configpath, instance, client_id, client_secret, token)
+    cfg[profile] = {
+        'instance': instance,
+        'client_id': client_id,
+        'client_secret': client_secret,
+        'token': token
+    }
+
+    save_config(configpath)
 
     say_error = lambda a, b: tprint("Invalid command. Use 'help' for a list of commands.", 'white', 'red')
 
