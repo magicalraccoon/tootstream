@@ -5,6 +5,7 @@ import sys
 import re
 import configparser
 import random
+import readline
 from html.parser import HTMLParser
 from mastodon import Mastodon
 from collections import OrderedDict
