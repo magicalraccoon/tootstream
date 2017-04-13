@@ -125,6 +125,39 @@ def printTootNicely(toot):
     content = get_content(toot)
     print(content + "\n")
 
+def printTimelineToot(toot, mastodon):
+    display_name = "  " + toot['account']['display_name']
+    username = " @" + toot['account']['username'] + " "
+    reblogs_count = "  ♺:" + str(toot['reblogs_count'])
+    favourites_count = " ♥:" + str(toot['favourites_count']) + " "
+    toot_id = str(IDS.to_local(toot['id']))
+
+    # Prints individual toot/tooter info
+    cprint(display_name, 'green', end="",)
+    cprint(username + toot['created_at'], 'yellow')
+    cprint(reblogs_count + favourites_count, 'cyan', end="")
+    cprint(toot_id, 'red', attrs=['bold'])
+    content = get_content(toot)
+
+    # Shows boosted toots as well
+    if toot['reblog']:
+        username = "  Boosted @" + toot['reblog']['account']['acct'] +": "
+        cprint(username, 'blue', end="\n")
+        content = get_content(toot['reblog'])
+        cprint(content + "\n", 'white')
+
+    # Show context of toot being replied to
+    elif toot['in_reply_to_id']:
+        repliedToot = mastodon.status(toot['in_reply_to_id'])
+        username = "  Replied @" + repliedToot['account']['acct'] +": "
+        cprint(username, 'blue', end="\n")
+        repliedTootContent = get_content(repliedToot)
+        cprint(repliedTootContent, 'blue')
+        print(content + "\n")
+
+    else:
+        print(content + "\n")
+
 
 
 
@@ -228,67 +261,13 @@ def unfav(mastodon, rest):
 def home(mastodon, rest):
     """Displays the Home timeline."""
     for toot in reversed(mastodon.timeline_home()):
-        display_name = "  " + toot['account']['display_name'] + " "
-        username = "@" + toot['account']['acct'] + " "
-        reblogs_count = "  ♺:" + str(toot['reblogs_count'])
-        favourites_count = " ♥:" + str(toot['favourites_count']) + " "
-        toot_id = str(IDS.to_local(toot['id']))
-
-        # Prints individual toot/tooter info
-        random.seed(display_name)
-        cprint(display_name, random.choice(COLORS), end="")
-        cprint(username, 'green', end="")
-        cprint(toot['created_at'], 'grey')
-
-        cprint(reblogs_count, 'cyan', end="")
-        cprint(favourites_count, 'yellow', end="")
-        
-        cprint("id:" + toot_id, 'red')
-
-        # Shows boosted toots as well
-        if toot['reblog']:
-            username = "  Boosted @" + toot['reblog']['account']['acct'] +": "
-            cprint(username, 'blue', end='')
-            content = get_content(toot['reblog'])
-        else:
-            content = get_content(toot)
-
-        print(content + "\n")
+        printTimelineToot(toot, mastodon)
 
 @command
 def public(mastodon, rest):
     """Displays the Public timeline."""
     for toot in reversed(mastodon.timeline_public()):
-        display_name = "  " + toot['account']['display_name']
-        username = " @" + toot['account']['username'] + " "
-        reblogs_count = "  ♺:" + str(toot['reblogs_count'])
-        favourites_count = " ♥:" + str(toot['favourites_count']) + " "
-        toot_id = str(IDS.to_local(toot['id']))
-
-        # Prints individual toot/tooter info
-        cprint(display_name, 'green', end="",)
-        cprint(username + toot['created_at'], 'yellow')
-        cprint(reblogs_count + favourites_count, 'cyan', end="")
-        cprint(toot_id, 'red', attrs=['bold'])
-
-        # Shows boosted toots as well
-        if toot['reblog']:
-            username = "  Boosted @" + toot['reblog']['account']['acct'] +": "
-            cprint(username, 'blue', end='')
-            content = get_content(toot['reblog'])
-        # Show context of toot being replied to
-        if toot['in_reply_to_id']:
-            repliedToot = mastodon.status(toot['in_reply_to_id'])
-            username = "  Replied @" + repliedToot['account']['acct'] +": "
-            cprint(username, 'blue', end="")
-            repliedTootContent = get_content(repliedToot)
-            cprint(repliedTootContent, 'blue')
-
-            content = get_content(toot)
-        else:
-            content = get_content(toot)
-
-        print(content + "\n")
+        printTimelineToot(toot, mastodon)
 
 @command
 def history(mastodon, rest):
