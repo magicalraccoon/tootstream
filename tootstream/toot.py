@@ -109,7 +109,7 @@ def tprint(text, color, bgColor):
         printFn = lambda x: cprint(x, color, bg)
     printFn(text)
 
-def printTootNicely(toot):
+def printHistoryToot(toot):
     """Prints toot nicely with hardcoded colors"""
     display_name = "  " + toot['account']['display_name']
     username = " @" + toot['account']['username'] + " "
@@ -279,9 +279,10 @@ def history(mastodon, rest):
 
     # Print older toots
     if (len(dicts['ancestors']) > 0):
+        cprint("=========   " + "↓↓↓↓↓↓ Older Toots Begin ↓↓↓↓↓↓" + "   ========", 'red')
         for oldToot in dicts['ancestors']:
-            printTootNicely(oldToot)
-        cprint("=========   " + "↑↑↑↑↑↑ Older Toots ↑↑↑↑↑↑" + "   ========", 'red')
+            printHistoryToot(oldToot)
+        cprint("=========   " + "↑↑↑↑↑↑ Older Toots End ↑↑↑↑↑↑" + "   ========", 'red')
 
     # Print current toot
     currentToot = mastodon.status(rest)
@@ -298,9 +299,10 @@ def history(mastodon, rest):
    
     # Print newer toots
     if (len(dicts['descendants']) > 0):
-        cprint("=========   " + "↓↓↓↓↓↓ Newer Toots ↓↓↓↓↓↓" + "   ========", 'green')
+        cprint("=========   " + "↓↓↓↓↓↓ Newer Toots Begin ↓↓↓↓↓↓" + "   ========", 'green')
         for newToot in dicts['descendants']:
-            printTootNicely(newToot)
+            printHistoryToot(newToot)
+        cprint("=========   " + "↑↑↑↑↑↑ Newer Toots End ↑↑↑↑↑↑" + "   ========", 'green')
 
 
 @command
