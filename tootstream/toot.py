@@ -109,6 +109,24 @@ def tprint(text, color, bgColor):
         printFn = lambda x: cprint(x, color, bg)
     printFn(text)
 
+def printTootNicely(toot):
+    """Prints toot nicely with hardcoded colors"""
+    display_name = "  " + toot['account']['display_name']
+    username = " @" + toot['account']['username'] + " "
+    reblogs_count = "  ♺:" + str(toot['reblogs_count'])
+    favourites_count = " ♥:" + str(toot['favourites_count']) + " "
+    toot_id = str(IDS.to_local(toot['id']))
+
+    # Prints individual toot/tooter info
+    cprint(display_name, 'green', end="",)
+    cprint(username + toot['created_at'], 'yellow')
+    cprint(reblogs_count + favourites_count, 'cyan', end="")
+    cprint(toot_id, 'red', attrs=['bold'])
+    content = get_content(toot)
+    print(content + "\n")
+
+
+
 
 #####################################
 ######## BEGIN COMMAND BLOCK ########
@@ -262,6 +280,39 @@ def public(mastodon, rest):
             content = get_content(toot)
 
         print(content + "\n")
+
+@command
+def history(mastodon, rest):
+    """Displays the entire history of replies of a toot, highlights inspected one."""
+    rest = IDS.to_global(rest)
+    if rest is None:
+        return
+    dicts = mastodon.status_context(rest)
+
+    # Print older toots
+    if (len(dicts['ancestors']) > 0):
+        for oldToot in dicts['ancestors']:
+            printTootNicely(oldToot)
+        cprint("=========   " + "↑↑↑↑↑↑ Older Toots ↑↑↑↑↑↑" + "   ========", 'red')
+
+    # Print current toot
+    currentToot = mastodon.status(rest)
+    display_name = "  " + currentToot['account']['display_name']
+    username = " @" + currentToot['account']['username'] + " "
+    reblogs_count = "  ♺:" + str(currentToot['reblogs_count'])
+    favourites_count = " ♥:" + str(currentToot['favourites_count']) + " "
+    toot_id = str(IDS.to_local(currentToot['id']))
+    cprint(display_name, 'blue', end="")
+    cprint(username + currentToot['created_at'], 'blue')
+    cprint(reblogs_count + favourites_count, 'blue', end="")
+    cprint(toot_id, 'blue', attrs=['bold'])
+    cprint(get_content(currentToot), 'blue', end="\n")
+   
+    # Print newer toots
+    if (len(dicts['descendants']) > 0):
+        cprint("=========   " + "↓↓↓↓↓↓ Newer Toots ↓↓↓↓↓↓" + "   ========", 'green')
+        for newToot in dicts['descendants']:
+            printTootNicely(newToot)
 
 
 @command
