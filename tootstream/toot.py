@@ -276,6 +276,15 @@ def public(mastodon, rest):
             username = "  Boosted @" + toot['reblog']['account']['acct'] +": "
             cprint(username, 'blue', end='')
             content = get_content(toot['reblog'])
+        # Show context of toot being replied to
+        if toot['in_reply_to_id']:
+            repliedToot = mastodon.status(toot['in_reply_to_id'])
+            username = "  Replied @" + repliedToot['account']['acct'] +": "
+            cprint(username, 'blue', end="")
+            repliedTootContent = get_content(repliedToot)
+            cprint(repliedTootContent, 'blue')
+
+            content = get_content(toot)
         else:
             content = get_content(toot)
 
