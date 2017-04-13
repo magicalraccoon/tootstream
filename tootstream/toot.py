@@ -270,19 +270,24 @@ def public(mastodon, rest):
         printTimelineToot(toot, mastodon)
 
 @command
-def history(mastodon, rest):
-    """Displays the history of replies of a toot, ex: 'history 7'"""
+def thread(mastodon, rest):
+    """Displays the thread this toot is part of, ex: 'thread 7'"""
     rest = IDS.to_global(rest)
     if rest is None:
         return
     dicts = mastodon.status_context(rest)
 
+    # No history
+    if ((len(dicts['ancestors']) == 0) and (len(dicts['descendants']) == 0)):
+        cprint("No history to show.", 'blue')
+        return
+
     # Print older toots
     if (len(dicts['ancestors']) > 0):
-        cprint("=========   " + "↓↓↓↓↓↓ Older Toots Begin ↓↓↓↓↓↓" + "   ========", 'red')
+        cprint("  =========   " + "↓↓↓↓↓↓ Older Toots Begin ↓↓↓↓↓↓" + "   ========", 'red')
         for oldToot in dicts['ancestors']:
             printHistoryToot(oldToot)
-        cprint("=========   " + "↑↑↑↑↑↑ Older Toots End ↑↑↑↑↑↑" + "   ========", 'red')
+        cprint("  =========   " + "↑↑↑↑↑↑ Older Toots End ↑↑↑↑↑↑" + "   ========", 'red')
 
     # Print current toot
     currentToot = mastodon.status(rest)
@@ -299,10 +304,10 @@ def history(mastodon, rest):
    
     # Print newer toots
     if (len(dicts['descendants']) > 0):
-        cprint("=========   " + "↓↓↓↓↓↓ Newer Toots Begin ↓↓↓↓↓↓" + "   ========", 'green')
+        cprint("  =========   " + "↓↓↓↓↓↓ Newer Toots Begin ↓↓↓↓↓↓" + "   ========", 'green')
         for newToot in dicts['descendants']:
             printHistoryToot(newToot)
-        cprint("=========   " + "↑↑↑↑↑↑ Newer Toots End ↑↑↑↑↑↑" + "   ========", 'green')
+        cprint("  =========   " + "↑↑↑↑↑↑ Newer Toots End ↑↑↑↑↑↑" + "   ========", 'green')
 
 
 @command
