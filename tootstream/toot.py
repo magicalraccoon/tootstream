@@ -271,7 +271,7 @@ def public(mastodon, rest):
 
 @command
 def history(mastodon, rest):
-    """Displays the entire history of replies of a toot, highlights inspected one."""
+    """Displays the history of replies of a toot, ex: 'history 7'"""
     rest = IDS.to_global(rest)
     if rest is None:
         return
