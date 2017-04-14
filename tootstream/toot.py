@@ -12,6 +12,11 @@ from collections import OrderedDict
 from termcolor import cprint
 
 COLORS = ['red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white']
+RESERVED = ( "theme" )
+KEYCFGFILE = __name__ + 'cfgfile'
+KEYPROFILE = __name__ + 'profile'
+KEYPROMPT = __name__ + 'prompt'
+
 
 class IdDict:
     """Represents a mapping of local (tootstream) ID's to global
@@ -38,9 +43,11 @@ class IdDict:
             tprint('Invalid ID.', 'red', '')
             return None
 
+
 IDS = IdDict();
 cfg = configparser.ConfigParser()
 toot_parser = TootParser(indent='  ')
+
 
 def get_content(toot):
     html = toot['content']
@@ -48,7 +55,36 @@ def get_content(toot):
     toot_parser.feed(html)
     return toot_parser.get_text()
 
-def parse_config(filename):
+
+def set_configfile(filename):
+    click.get_current_context().meta[KEYCFGFILE] = filename
+    return
+
+
+def get_configfile():
+    return click.get_current_context().meta.get(KEYCFGFILE)
+
+
+def set_prompt(prompt):
+    click.get_current_context().meta[KEYPROMPT] = prompt
+    return
+
+
+def get_prompt():
+    return click.get_current_context().meta.get(KEYPROMPT)
+
+
+def set_active_profile(profile):
+    click.get_current_context().meta[KEYPROFILE] = profile
+    return
+
+
+def get_active_profile():
+    return click.get_current_context().meta.get(KEYPROFILE)
+
+
+def parse_config():
+    filename = get_configfile()
     (dirpath, basename) = os.path.split(filename)
     if not (dirpath == "" or os.path.exists(dirpath)):
         os.makedirs(dirpath)
@@ -64,7 +100,8 @@ def parse_config(filename):
         sys.exit("Goodbye!")
 
 
-def save_config(filename):
+def save_config():
+    filename = get_configfile()
     (dirpath, basename) = os.path.split(filename)
     if not (dirpath == "" or os.path.exists(dirpath)):
         os.makedirs(dirpath)
@@ -424,7 +461,8 @@ def main(instance, email, password, config, profile):
         # warn the user before they're asked for input
         cprint("Config file does not appear to be writable: "+configpath, 'red')
 
-    parse_config(configpath)
+    set_configfile(configpath)
+    parse_config()
     if not cfg.has_section(profile):
         cfg.add_section(profile)
 
@@ -444,7 +482,8 @@ def main(instance, email, password, config, profile):
         'token': token
     }
 
-    save_config(configpath)
+    set_active_profile(profile)
+    save_config()
 
 
     say_error = lambda a, b: tprint("Invalid command. Use 'help' for a list of commands.", 'white', 'red')
@@ -456,10 +495,10 @@ def main(instance, email, password, config, profile):
     print("\n")
 
     user = mastodon.account_verify_credentials()
-    prompt = "[@" + str(user['username']) + "]: "
+    set_prompt("[@" + str(user['username']) + "@" + instance + "]: ")
 
     while True:
-        command = input(prompt).split(' ', 1)
+        command = input(get_prompt()).split(' ', 1)
         rest = ""
         try:
             rest = command[1]
