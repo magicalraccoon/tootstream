@@ -448,6 +448,7 @@ def info(rest):
 @command
 def delete(rest):
     """Deletes your toot by ID"""
+    global mastodon
     rest = IDS.to_global(rest)
     if rest is None:
         return
@@ -651,7 +652,7 @@ def main(instance, email, password, config, profile):
     save_config()
 
 
-    say_error = lambda a, b: tprint("Invalid command. Use 'help' for a list of commands.", 'white', 'red')
+    say_error = lambda a: tprint("Invalid command. Use 'help' for a list of commands.", 'white', 'red')
 
     cprint("Welcome to tootstream! Two-Factor-Authentication is currently not supported.", 'blue')
     print("You are connected to ", end="")
