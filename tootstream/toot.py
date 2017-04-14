@@ -239,8 +239,35 @@ def home(mastodon, rest):
 
 @command
 def public(mastodon, rest):
-    """Displays the Public timeline."""
+    """Displays the Public (federated) timeline."""
     for toot in reversed(mastodon.timeline_public()):
+        display_name = "  " + toot['account']['display_name']
+        username = " @" + toot['account']['username'] + " "
+        reblogs_count = "  ♺:" + str(toot['reblogs_count'])
+        favourites_count = " ♥:" + str(toot['favourites_count']) + " "
+        toot_id = str(IDS.to_local(toot['id']))
+
+        # Prints individual toot/tooter info
+        cprint(display_name, 'green', end="",)
+        cprint(username + toot['created_at'], 'yellow')
+        cprint(reblogs_count + favourites_count, 'cyan', end="")
+        cprint(toot_id, 'red', attrs=['bold'])
+
+        # Shows boosted toots as well
+        if toot['reblog']:
+            username = "  Boosted @" + toot['reblog']['account']['acct'] +": "
+            cprint(username, 'blue', end='')
+            content = get_content(toot['reblog'])
+        else:
+            content = get_content(toot)
+
+        print(content + "\n")
+
+
+@command
+def local(mastodon, rest):
+    """Displays the Local (instance) timeline."""
+    for toot in reversed(mastodon.timeline_local()):
         display_name = "  " + toot['account']['display_name']
         username = " @" + toot['account']['username'] + " "
         reblogs_count = "  ♺:" + str(toot['reblogs_count'])
