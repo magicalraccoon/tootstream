@@ -83,6 +83,12 @@ def get_active_profile():
     return click.get_current_context().meta.get(KEYPROFILE)
 
 
+def get_profile_values(profile):
+    # quick return of existing profile, watch out for exceptions
+    p = cfg[profile]
+    return p['instance'], p['client_id'], p['client_secret'], p['token']
+
+
 def parse_config():
     filename = get_configfile()
     (dirpath, basename) = os.path.split(filename)
@@ -135,9 +141,18 @@ def login(mastodon, instance, email, password):
     return mastodon.log_in(email, password)
 
 
-#client_id, client_secret, token = parse_or_input_profile(profile, instance, email, password)
 def parse_or_input_profile(profile, instance=None, email=None, password=None):
-    # validate a profile, request user input as necessary
+    """
+    Validate an existing profile or get user input to generate a new one.
+    """
+    # shortcut for preexisting profiles
+    if cfg.has_section(profile):
+        try:
+            return get_profile_values(profile)
+        except:
+            pass
+
+    # no existing profile or it's incomplete
     if (instance != None):
         # Nothing to do, just use value passed on the command line
         pass
