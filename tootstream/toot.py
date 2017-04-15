@@ -31,7 +31,7 @@ class IdDict:
     def to_global(self, local_id):
         """Returns the global ID for a local ID, or None if ID is invalid.
         Also prints an error message"""
-        local_id = int(local_id) 
+        local_id = int(local_id)
         try:
             return self._map[local_id]
         except:
@@ -224,7 +224,7 @@ def home(mastodon, rest):
 
         cprint(reblogs_count, 'cyan', end="")
         cprint(favourites_count, 'yellow', end="")
-        
+
         cprint("id:" + toot_id, 'red')
 
         # Shows boosted toots as well
@@ -262,6 +262,56 @@ def public(mastodon, rest):
             content = get_content(toot)
 
         print(content + "\n")
+
+
+@command
+def search(mastodon, rest):
+    """Search for a #tag or @user."""
+    usage = str( "  usage: search #tagname\n" +
+                 "         search @username" )
+    try:
+        indicator = rest[:1]
+        search = rest[1:]
+    except:
+        cprint(usage, 'red')
+        return
+
+    # @ user search
+    if indicator == "@" and not search == "":
+        cprint("  User search is not yet implemented.", 'red')
+    # end @
+
+    # # hashtag search
+    elif indicator == "#" and not search == "":
+        for toot in reversed(mastodon.timeline_hashtag(search)):
+            display_name = "  " + toot['account']['display_name']
+            username = " @" + toot['account']['username'] + " "
+            reblogs_count = "  ♺:" + str(toot['reblogs_count'])
+            favourites_count = " ♥:" + str(toot['favourites_count']) + " "
+            toot_id = str(IDS.to_local(toot['id']))
+
+            # Prints individual toot/tooter info
+            cprint(display_name, 'green', end="",)
+            cprint(username + toot['created_at'], 'yellow')
+            cprint(reblogs_count + favourites_count, 'cyan', end="")
+            cprint(toot_id, 'red', attrs=['bold'])
+
+            # Shows boosted toots as well
+            if toot['reblog']:
+                username = "  Boosted @" + toot['reblog']['account']['acct'] +": "
+                cprint(username, 'blue', end='')
+                content = get_content(toot['reblog'])
+            else:
+                content = get_content(toot)
+
+            print(content + "\n")
+    # end #
+
+    else:
+        cprint("  Invalid format.\n"+usage, 'red')
+
+    return
+
 
 
 @command
