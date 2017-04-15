@@ -110,6 +110,14 @@ def tprint(text, color, bgColor):
     printFn(text)
 
 
+def printUser(user):
+    """Prints user data nicely with hardcoded colors."""
+    print("@" + str(user['username']))
+    tprint(user['display_name'], 'cyan', 'red')
+    print(user['url'])
+    tprint(re.sub('<[^<]+?>', '', user['note']), 'red', 'green')
+
+
 #####################################
 ######## BEGIN COMMAND BLOCK ########
 #####################################
@@ -271,19 +279,22 @@ def search(mastodon, rest):
                  "         search @username" )
     try:
         indicator = rest[:1]
-        search = rest[1:]
+        query = rest[1:]
     except:
         cprint(usage, 'red')
         return
 
     # @ user search
-    if indicator == "@" and not search == "":
-        cprint("  User search is not yet implemented.", 'red')
+    if indicator == "@" and not query == "":
+        users = mastodon.account_search(query)
+
+        for user in users:
+            printUser(user)
     # end @
 
     # # hashtag search
-    elif indicator == "#" and not search == "":
-        for toot in reversed(mastodon.timeline_hashtag(search)):
+    elif indicator == "#" and not query == "":
+        for toot in reversed(mastodon.timeline_hashtag(query)):
             display_name = "  " + toot['account']['display_name']
             username = " @" + toot['account']['username'] + " "
             reblogs_count = "  ♺:" + str(toot['reblogs_count'])
@@ -361,11 +372,7 @@ def quit(mastodon, rest):
 def info(mastodon, rest):
     """Prints your user info."""
     user = mastodon.account_verify_credentials()
-
-    print("@" + str(user['username']))
-    tprint(user['display_name'], 'cyan', 'red')
-    print(user['url'])
-    tprint(re.sub('<[^<]+?>', '', user['note']), 'red', 'green')
+    printUser(user)
 
 
 @command
