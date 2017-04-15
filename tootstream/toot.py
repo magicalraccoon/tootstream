@@ -306,6 +306,46 @@ def quit(mastodon, rest):
     """Ends the program."""
     sys.exit("Goodbye!")
 
+@command
+def view(mastodon, rest):
+    """Show toot and all its parent toots"""
+    try:
+        rest = IDS.to_global(rest)
+        if rest is None: return
+
+        while True:
+            toot = mastodon.status(rest)
+
+            # display the toot as with the public() command (TODO: should make a function)
+            display_name = "  " + toot['account']['display_name']
+            username = " @" + toot['account']['username'] + " "
+            reblogs_count = "  ♺:" + str(toot['reblogs_count'])
+            favourites_count = " ♥:" + str(toot['favourites_count']) + " "
+            toot_id = str(IDS.to_local(toot['id']))
+
+            # Prints individual toot/tooter info
+            cprint(display_name, 'green', end="",)
+            cprint(username + toot['created_at'], 'yellow')
+            cprint(reblogs_count + favourites_count, 'cyan', end="")
+            cprint(toot_id, 'red', attrs=['bold'])
+
+            # Shows boosted toots as well
+            if toot['reblog']:
+                username = "  Boosted @" + toot['reblog']['account']['acct'] +": "
+                cprint(username, 'blue', end='')
+                content = get_content(toot['reblog'])
+            else:
+                content = get_content(toot)
+            print("="*80+"\n")
+            print(content + "\n")
+
+            rest=toot['in_reply_to_id']
+            print("parent toot: "+str(rest))
+            if rest==None: break
+
+    except:
+        print("WARNING: should be followed by a toot ID")
+        return
 
 @command
 def info(mastodon, rest):
