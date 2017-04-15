@@ -10,8 +10,11 @@ from toot_parser import TootParser
 from mastodon import Mastodon
 from collections import OrderedDict
 from termcolor import cprint
+from langdetect import detect
 
 COLORS = ['red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white']
+
+langfilters = set()
 
 class IdDict:
     """Represents a mapping of local (tootstream) ID's to global
@@ -238,6 +241,22 @@ def home(mastodon, rest):
         print(content + "\n")
 
 @command
+def lang(mastodon, rest):
+    """Only show toots of given languages (fr, en, de, ja... all)"""
+    global langfilters
+    langs=rest.split()
+    for l in langs:
+        l=l.lower()
+        if l=='all':
+            langfilters=set()
+            break
+        if len(l)==2: langfilters.add(l)
+    if len(langfilters)==0:
+        print("all languages accepted !")
+    else:
+        print("accepted languages:",langfilters)
+
+@command
 def public(mastodon, rest):
     """Displays the Public timeline."""
     for toot in reversed(mastodon.timeline_public()):
@@ -247,22 +266,25 @@ def public(mastodon, rest):
         favourites_count = " ♥:" + str(toot['favourites_count']) + " "
         toot_id = str(IDS.to_local(toot['id']))
 
-        # Prints individual toot/tooter info
-        cprint(display_name, 'green', end="",)
-        cprint(username + toot['created_at'], 'yellow')
-        cprint(reblogs_count + favourites_count, 'cyan', end="")
-        cprint(toot_id, 'red', attrs=['bold'])
-
         # Shows boosted toots as well
         if toot['reblog']:
             username = "  Boosted @" + toot['reblog']['account']['acct'] +": "
-            cprint(username, 'blue', end='')
             content = get_content(toot['reblog'])
         else:
             content = get_content(toot)
 
-        print(content + "\n")
+        try: lang = detect(content)
+        except: lang = 'unk'
 
+        if len(langfilters)==0 or lang in langfilters or lang=='unk':
+            # Prints individual toot/tooter info
+            cprint(display_name, 'green', end="",)
+            cprint(username + toot['created_at'], 'yellow')
+            cprint(reblogs_count + favourites_count, 'cyan', end="")
+            cprint(toot_id, 'red', attrs=['bold'],end="")
+            cprint(" "+str(lang), 'cyan')
+            if toot['reblog']: cprint(username, 'blue', end='')
+            print(content + "\n")
 
 @command
 def note(mastodon, rest):
@@ -305,6 +327,20 @@ def note(mastodon, rest):
 def quit(mastodon, rest):
     """Ends the program."""
     sys.exit("Goodbye!")
+
+@command
+def details(mastodon, rest):
+    """Show detailed toot"""
+    try:
+        rest = IDS.to_global(rest)
+        if rest is None: return
+
+        toot = mastodon.status(rest)
+        print(toot)
+
+    except:
+        print("WARNING: should be followed by a toot ID")
+        return
 
 @command
 def view(mastodon, rest):
