@@ -245,9 +245,10 @@ def home(mastodon, rest):
 
         print(content + "\n")
 
+
 @command
 def public(mastodon, rest):
-    """Displays the Public timeline."""
+    """Displays the Public (federated) timeline."""
     for toot in reversed(mastodon.timeline_public()):
         display_name = "  " + toot['account']['display_name']
         username = " @" + toot['account']['username'] + " "
@@ -270,6 +271,69 @@ def public(mastodon, rest):
             content = get_content(toot)
 
         print(content + "\n")
+
+
+def local(mastodon, rest):
+    """Displays the Local (instance) timeline."""
+    for toot in reversed(mastodon.timeline_local()):
+        display_name = "  " + toot['account']['display_name']
+        username = " @" + toot['account']['username'] + " "
+        reblogs_count = "  ♺:" + str(toot['reblogs_count'])
+        favourites_count = " ♥:" + str(toot['favourites_count']) + " "
+        toot_id = str(IDS.to_local(toot['id']))
+
+        # Prints individual toot/tooter info
+        cprint(display_name, 'green', end="",)
+        cprint(username + toot['created_at'], 'yellow')
+        cprint(reblogs_count + favourites_count, 'cyan', end="")
+        cprint(toot_id, 'red', attrs=['bold'])
+
+        # Shows boosted toots as well
+        if toot['reblog']:
+            username = "  Boosted @" + toot['reblog']['account']['acct'] +": "
+            cprint(username, 'blue', end='')
+            content = get_content(toot['reblog'])
+        else:
+            content = get_content(toot)
+
+        print(content + "\n")
+
+
+@command
+def note(mastodon, rest):
+    """Displays the Notifications timeline."""
+    for note in reversed(mastodon.notifications()):
+        display_name = "  " + note['account']['display_name']
+        username = " @" + note['account']['username']
+
+        # Mentions
+        if note['type'] == 'mention':
+            tprint(display_name + username, 'magenta', '')
+            tprint(get_content(note['status']), 'magenta', '')
+
+        # Favorites
+        elif note['type'] == 'favourite':
+            reblogs_count = "  " + "♺:" + str(note['status']['reblogs_count'])
+            favourites_count = " ♥:" + str(note['status']['favourites_count'])
+            time = " " + note['status']['created_at']
+            content = get_content(note['status'])
+            tprint(display_name + username + " favorited your status:", 'green', '')
+            tprint(reblogs_count + favourites_count + time + '\n' + content, 'green', '')
+
+        # Boosts
+        elif note['type'] == 'reblog':
+            tprint(display_name + username + " boosted your status:", 'yellow', '')
+            tprint(get_content(note['status']), 'yellow', '')
+
+        # Follows
+        elif note['type'] == 'follow':
+            username = re.sub('<[^<]+?>', '', username)
+            display_name = note['account']['display_name']
+            cprint("  ", end="")
+            cprint(display_name + username + " followed you!", 'red', 'on_green')
+
+        # blank line
+        print('')
 
 
 @command
@@ -322,44 +386,6 @@ def search(mastodon, rest):
         cprint("  Invalid format.\n"+usage, 'red')
 
     return
-
-
-
-@command
-def note(mastodon, rest):
-    """Displays the Notifications timeline."""
-    for note in reversed(mastodon.notifications()):
-        display_name = "  " + note['account']['display_name']
-        username = " @" + note['account']['username']
-
-        # Mentions
-        if note['type'] == 'mention':
-            tprint(display_name + username, 'magenta', '')
-            tprint(get_content(note['status']), 'magenta', '')
-
-        # Favorites
-        elif note['type'] == 'favourite':
-            reblogs_count = "  " + "♺:" + str(note['status']['reblogs_count'])
-            favourites_count = " ♥:" + str(note['status']['favourites_count'])
-            time = " " + note['status']['created_at']
-            content = get_content(note['status'])
-            tprint(display_name + username + " favorited your status:", 'green', '')
-            tprint(reblogs_count + favourites_count + time + '\n' + content, 'green', '')
-
-        # Boosts
-        elif note['type'] == 'reblog':
-            tprint(display_name + username + " boosted your status:", 'yellow', '')
-            tprint(get_content(note['status']), 'yellow', '')
-
-        # Follows
-        elif note['type'] == 'follow':
-            username = re.sub('<[^<]+?>', '', username)
-            display_name = note['account']['display_name']
-            cprint("  ", end="")
-            cprint(display_name + username + " followed you!", 'red', 'on_green')
-
-        # blank line
-        print('')
 
 
 @command
