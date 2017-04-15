@@ -12,6 +12,12 @@ from collections import OrderedDict
 from termcolor import cprint
 
 COLORS = ['red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white']
+RESERVED = ( "theme" )
+KEYCFGFILE = __name__ + 'cfgfile'
+KEYPROFILE = __name__ + 'profile'
+KEYPROMPT = __name__ + 'prompt'
+KEYMASTODON = __name__ + 'mastodon'
+
 
 class IdDict:
     """Represents a mapping of local (tootstream) ID's to global
@@ -38,9 +44,11 @@ class IdDict:
             tprint('Invalid ID.', 'red', '')
             return None
 
-IDS = IdDict();
 
+IDS = IdDict();
+cfg = configparser.ConfigParser()
 toot_parser = TootParser(indent='  ')
+
 
 def get_content(toot):
     html = toot['content']
@@ -48,36 +56,81 @@ def get_content(toot):
     toot_parser.feed(html)
     return toot_parser.get_text()
 
-def parse_config(filename):
+
+def set_configfile(filename):
+    click.get_current_context().meta[KEYCFGFILE] = filename
+    return
+
+
+def get_configfile():
+    return click.get_current_context().meta.get(KEYCFGFILE)
+
+
+def set_prompt(prompt):
+    click.get_current_context().meta[KEYPROMPT] = prompt
+    return
+
+
+def get_prompt():
+    return click.get_current_context().meta.get(KEYPROMPT)
+
+
+def set_active_profile(profile):
+    click.get_current_context().meta[KEYPROFILE] = profile
+    return
+
+
+def get_active_profile():
+    return click.get_current_context().meta.get(KEYPROFILE)
+
+
+def set_active_mastodon(mastodon):
+    click.get_current_context().meta[KEYMASTODON] = mastodon
+    return
+
+
+def get_active_mastodon():
+    return click.get_current_context().meta.get(KEYMASTODON)
+
+
+def get_profile_values(profile):
+    # quick return of existing profile, watch out for exceptions
+    p = cfg[profile]
+    return p['instance'], p['client_id'], p['client_secret'], p['token']
+
+
+def get_known_profiles():
+    return list( set(cfg.sections()) - set(RESERVED) )
+
+
+def parse_config():
+    filename = get_configfile()
     (dirpath, basename) = os.path.split(filename)
     if not (dirpath == "" or os.path.exists(dirpath)):
         os.makedirs(dirpath)
 
     if not os.path.isfile(filename):
-        return {}
+        print("...No configuration found, generating...")
+        return
 
-    config = configparser.ConfigParser()
+    try:
+        cfg.read(filename)
+    except configparser.Error:
+        cprint("This does not look like a valid configuration:"+filename, 'red')
+        sys.exit("Goodbye!")
 
-    parsed = config.read(filename)
-    if len(parsed) == 0:
-        return {}
 
-    return config
-
-def save_config(filename, instance, client_id, client_secret, token):
+def save_config():
+    filename = get_configfile()
     (dirpath, basename) = os.path.split(filename)
     if not (dirpath == "" or os.path.exists(dirpath)):
         os.makedirs(dirpath)
-    config = configparser.ConfigParser()
-    config['default'] = {
-        'instance': instance,
-        'client_id': client_id,
-        'client_secret': client_secret,
-        'token': token
-    }
 
-    with open(filename, 'w') as configfile:
-        config.write(configfile)
+    try:
+        with open(filename, 'w') as configfile:
+            cfg.write(configfile)
+    except os.error:
+        cprint("Unable to write configuration to "+filename, 'red')
 
 
 def register_app(instance):
@@ -93,13 +146,85 @@ def register_app(instance):
     )
 
 
-def login(mastodon, instance, email, password):
+def login(instance, email, password):
     """
     Login to a Mastodon instance.
     Return a Mastodon client if login success, otherwise returns None.
     """
-
+    mastodon = get_active_mastodon()
     return mastodon.log_in(email, password)
+
+
+def parse_or_input_profile(profile, instance=None, email=None, password=None):
+    """
+    Validate an existing profile or get user input to generate a new one.
+    """
+    global cfg
+    # shortcut for preexisting profiles
+    if cfg.has_section(profile):
+        try:
+            return get_profile_values(profile)
+        except:
+            pass
+    else:
+        cfg.add_section(profile)
+
+    # no existing profile or it's incomplete
+    if (instance != None):
+        # Nothing to do, just use value passed on the command line
+        pass
+    elif "instance" in cfg[profile]:
+        instance = cfg[profile]['instance']
+    else:
+        cprint("  Which instance would you like to connect to? eg: 'mastodon.social'", 'blue')
+        instance = input("  Instance: ")
+
+
+    client_id = None
+    if "client_id" in cfg[profile]:
+        client_id = cfg[profile]['client_id']
+
+    client_secret = None
+    if "client_secret" in cfg[profile]:
+        client_secret = cfg[profile]['client_secret']
+
+    if (client_id == None or client_secret == None):
+        client_id, client_secret = register_app(instance)
+
+    token = None
+    if "token" in cfg[profile]:
+        token = cfg[profile]['token']
+
+    if (token == None or email != None or password != None):
+        if (email == None):
+            email = input("  Email used to login: ")
+        if (password == None):
+            password = getpass.getpass("  Password: ")
+
+        # temporary object to aquire the token
+        mastodon = Mastodon(
+            client_id=client_id,
+            client_secret=client_secret,
+            api_base_url="https://" + instance
+        )
+        token = login(instance, email, password)
+
+    return instance, client_id, client_secret, token
+
+
+def print_profiles():
+    active = get_active_profile()
+    inactiveprofiles = get_known_profiles()
+    try:
+        inactiveprofiles.remove(active)
+    except ValueError:
+        # somebody removed the active profile. don't panic.
+        pass
+    # TODO: wrap based on termwidth
+    inactives = ' '.join(inactiveprofiles)
+    cprint("  *"+active, 'red', end="")
+    cprint("  "+inactives, 'blue')
+    return
 
 
 def tprint(text, color, bgColor):
@@ -181,7 +306,7 @@ def command(func):
 
 
 @command
-def help(mastodon, rest):
+def help(rest):
     """List all commands."""
     print("Commands:")
     for command, cmd_func in commands.items():
@@ -189,16 +314,18 @@ def help(mastodon, rest):
 
 
 @command
-def toot(mastodon, rest):
+def toot(rest):
     """Publish a toot. ex: 'toot Hello World' will publish 'Hello World'."""
+    mastodon = get_active_mastodon()
     mastodon.toot(rest)
     cprint("You tooted: ", 'magenta', attrs=['bold'], end="")
     cprint(rest, 'magenta', 'on_white', attrs=['bold', 'underline'])
 
 
 @command
-def boost(mastodon, rest):
+def boost(rest):
     """Boosts a toot by ID."""
+    mastodon = get_active_mastodon()
     rest = IDS.to_global(rest)
     if rest is None:
         return
@@ -209,8 +336,9 @@ def boost(mastodon, rest):
 
 
 @command
-def unboost(mastodon, rest):
+def unboost(rest):
     """Removes a boosted tweet by ID."""
+    mastodon = get_active_mastodon()
     rest = IDS.to_global(rest)
     if rest is None:
         return
@@ -221,8 +349,9 @@ def unboost(mastodon, rest):
 
 
 @command
-def fav(mastodon, rest):
+def fav(rest):
     """Favorites a toot by ID."""
+    mastodon = get_active_mastodon()
     rest = IDS.to_global(rest)
     if rest is None:
         return
@@ -233,8 +362,9 @@ def fav(mastodon, rest):
 
 
 @command
-def rep(mastodon, rest):
+def rep(rest):
     """Reply to a toot by ID."""
+    mastodon = get_active_mastodon()
     command = rest.split(' ', 1)
     parent_id = IDS.to_global(command[0])
     if parent_id is None:
@@ -256,8 +386,9 @@ def rep(mastodon, rest):
 
 
 @command
-def unfav(mastodon, rest):
+def unfav(rest):
     """Removes a favorite toot by ID."""
+    mastodon = get_active_mastodon()
     rest = IDS.to_global(rest)
     if rest is None:
         return
@@ -268,28 +399,33 @@ def unfav(mastodon, rest):
 
 
 @command
-def home(mastodon, rest):
+def home(rest):
     """Displays the Home timeline."""
+    mastodon = get_active_mastodon()
     for toot in reversed(mastodon.timeline_home()):
         printTimelineToot(toot, mastodon)
 
 
 @command
-def public(mastodon, rest):
+def public(rest):
     """Displays the Public (federated) timeline."""
+    mastodon = get_active_mastodon()
     for toot in reversed(mastodon.timeline_public()):
         printTimelineToot(toot, mastodon)
 
 
-def local(mastodon, rest):
+@command
+def local(rest):
     """Displays the Local (instance) timeline."""
+    mastodon = get_active_mastodon()
     for toot in reversed(mastodon.timeline_local()):
         printTimelineToot(toot, mastodon)
 
 
 @command
-def thread(mastodon, rest):
+def thread(rest):
     """Displays the thread this toot is part of, ex: 'thread 7'"""
+    mastodon = get_active_mastodon()
     rest = IDS.to_global(rest)
     if rest is None:
         return
@@ -329,8 +465,9 @@ def thread(mastodon, rest):
 
 
 @command
-def note(mastodon, rest):
+def note(rest):
     """Displays the Notifications timeline."""
+    mastodon = get_active_mastodon()
     for note in reversed(mastodon.notifications()):
         display_name = "  " + note['account']['display_name']
         username = " @" + note['account']['username']
@@ -366,8 +503,9 @@ def note(mastodon, rest):
 
 
 @command
-def search(mastodon, rest):
+def search(rest):
     """Search for a #tag or @user."""
+    mastodon = get_active_mastodon()
     usage = str( "  usage: search #tagname\n" +
                  "         search @username" )
     try:
@@ -418,21 +556,23 @@ def search(mastodon, rest):
 
 
 @command
-def quit(mastodon, rest):
+def quit(rest):
     """Ends the program."""
     sys.exit("Goodbye!")
 
 
 @command
-def info(mastodon, rest):
+def info(rest):
     """Prints your user info."""
+    mastodon = get_active_mastodon()
     user = mastodon.account_verify_credentials()
     printUser(user)
 
 
 @command
-def delete(mastodon, rest):
+def delete(rest):
     """Deletes your toot by ID"""
+    mastodon = get_active_mastodon()
     rest = IDS.to_global(rest)
     if rest is None:
         return
@@ -441,27 +581,146 @@ def delete(mastodon, rest):
 
 
 @command
-def block(mastodon, rest):
+def block(rest):
     """Blocks a user by username."""
     # TODO: Find out how to get global usernames
+    mastodon = get_active_mastodon()
 
 
 @command
-def unblock(mastodon, rest):
+def unblock(rest):
     """Unblocks a user by username."""
     # TODO: Find out how to get global usernames
+    mastodon = get_active_mastodon()
 
 
 @command
-def follow(mastodon, rest):
+def follow(rest):
     """Follows an account by username."""
     # TODO: Find out how to get global usernames
+    mastodon = get_active_mastodon()
 
 
 @command
-def unfollow(mastodon, rest):
+def unfollow(rest):
     """Unfollows an account by username."""
     # TODO: Find out how to get global usernames
+    mastodon = get_active_mastodon()
+
+
+@command
+def profile(rest):
+#def profile(mastodon, rest):
+    """Profile operations: create, load, remove, list."""
+    global cfg
+    command = rest.split(' ')
+    usage = str("  usage: profile load [profilename]\n" +
+                "         profile new [profilename [email [password]]]\n" +
+                "         profile del [profilename]\n" +
+                "         profile list")
+
+    def profile_error(error):
+        cprint("  "+error, 'red')
+        return
+
+    try:
+        profile = command[1]
+    except IndexError:
+        profile = ""
+
+    # load subcommand
+    if command[0] in ["load"]:
+        if profile == "":
+            profile = input("  Profile name: ")
+
+        if profile in get_known_profiles():
+            # shortcut for preexisting profiles
+            try:
+                instance, client_id, client_secret, token = get_profile_values(profile)
+            except:
+                return profile_error("Invalid or corrupt profile")
+
+            try:
+                newmasto = Mastodon(
+                    client_id=client_id,
+                    client_secret=client_secret,
+                    access_token=token,
+                    api_base_url="https://" + instance)
+            except:
+                return profile_error("Mastodon error")
+
+            # update stuff
+            user = newmasto.account_verify_credentials()
+            set_prompt("[@" + str(user['username']) + " (" + profile + ")]: ")
+            set_active_profile(profile)
+            set_active_mastodon(newmasto)
+            cprint("  Profile " + profile + " loaded", 'green')
+            return
+        else:
+            profile_error("Profile " + profile + " doesn't seem to exist")
+            print_profiles()
+            return
+    # end load
+
+    # new/create subcommand
+    elif command[0] in ["new", "add", "create"]:
+        if profile == "":
+            profile = input("  Profile name: ")
+
+        if profile in RESERVED:
+            return profile_error("Illegal profile name: " + profile)
+        elif profile in get_known_profiles():
+            return profile_error("Profile " + profile + " exists")
+
+        instance, client_id, client_secret, token = parse_or_input_profile(profile)
+        try:
+            newmasto = Mastodon(
+                client_id=client_id,
+                client_secret=client_secret,
+                access_token=token,
+                api_base_url="https://" + instance)
+        except:
+            return profile_error("Mastodon error")
+
+        # update stuff
+        cfg[profile] = {
+            'instance': instance,
+            'client_id': client_id,
+            'client_secret': client_secret,
+            'token': token
+        }
+        user = newmasto.account_verify_credentials()
+        set_prompt("[@" + str(user['username']) + " (" + profile + ")]: ")
+        set_active_profile(profile)
+        set_active_mastodon(newmasto)
+        cprint("  Profile " + profile + " loaded", 'green')
+        return
+    # end new/create
+
+    # delete subcommand
+    elif command[0] in ["delete", "del", "rm", "remove"]:
+        if profile in [RESERVED, "default"]:
+            return profile_error("Illegal profile name: " + profile)
+        elif profile == "":
+            profile = input("  Profile name: ")
+
+        cfg.remove_section(profile)
+        save_config()
+        cprint("  Poof! It's gone.", 'blue')
+        if profile == get_active_profile():
+            set_active_profile("")
+        return
+    # end delete
+
+    # list subcommand
+    elif command[0] in ["ls", "list"]:
+        print_profiles()
+        return
+    # end list
+
+    # no subcommand; print usage
+    cprint(usage, 'red')
+    return
 
 
 #####################################
@@ -489,49 +748,21 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
                type=click.Path(exists=False, readable=True),
                default='~/.config/tootstream/tootstream.conf',
                help='Location of alternate configuration file to load' )
-def main(instance, email, password, config):
+@click.option( '--profile', '-P', metavar='<string>', default='default',
+               help='Name of profile for saved credentials (default)' )
+def main(instance, email, password, config, profile):
     configpath = os.path.expanduser(config)
-    config = parse_config(configpath)
+    if os.path.isfile(configpath) and not os.access(configpath, os.W_OK):
+        # warn the user before they're asked for input
+        cprint("Config file does not appear to be writable: "+configpath, 'red')
 
-    if 'default' not in config:
-        config['default'] = {}
+    set_configfile(configpath)
+    parse_config()
+    if not cfg.has_section(profile):
+        cfg.add_section(profile)
 
-    if (instance != None):
-        # Nothing to do, just use value passed on the command line
-        pass
-    elif "instance" in config['default']:
-        instance = config['default']['instance']
+    instance, client_id, client_secret, token = parse_or_input_profile(profile, instance, email, password)
 
-    else: instance = input("Which instance would you like to connect to? eg: 'mastodon.social' ")
-
-
-    client_id = None
-    if "client_id" in config['default']:
-        client_id = config['default']['client_id']
-
-    client_secret = None
-    if "client_secret" in config['default']:
-        client_secret = config['default']['client_secret']
-
-    if (client_id == None or client_secret == None):
-        client_id, client_secret = register_app(instance)
-
-    token = None
-    if "token" in config['default']:
-        token = config['default']['token']
-
-    if (token == None or email != None or password != None):
-        if (email == None):
-            email = input("Welcome to tootstream! Two-Factor-Authentication is currently not supported. Email used to login: ")
-        if (password == None):
-            password = getpass.getpass()
-
-        mastodon = Mastodon(
-            client_id=client_id,
-            client_secret=client_secret,
-            api_base_url="https://" + instance
-        )
-        token = login(mastodon, instance, email, password)
 
     mastodon = Mastodon(
         client_id=client_id,
@@ -539,20 +770,31 @@ def main(instance, email, password, config):
         access_token=token,
         api_base_url="https://" + instance)
 
-    save_config(configpath, instance, client_id, client_secret, token)
+    cfg[profile] = {
+        'instance': instance,
+        'client_id': client_id,
+        'client_secret': client_secret,
+        'token': token
+    }
 
-    say_error = lambda a, b: tprint("Invalid command. Use 'help' for a list of commands.", 'white', 'red')
+    set_active_mastodon(mastodon)
+    set_active_profile(profile)
+    save_config()
 
+
+    say_error = lambda a: tprint("Invalid command. Use 'help' for a list of commands.", 'white', 'red')
+
+    cprint("Welcome to tootstream! Two-Factor-Authentication is currently not supported.", 'blue')
     print("You are connected to ", end="")
     cprint(instance, 'green', attrs=['bold'])
     print("Enter a command. Use 'help' for a list of commands.")
     print("\n")
 
     user = mastodon.account_verify_credentials()
-    prompt = "[@" + str(user['username']) + "]: "
+    set_prompt("[@" + str(user['username']) + " (" + profile + ")]: ")
 
     while True:
-        command = input(prompt).split(' ', 1)
+        command = input(get_prompt()).split(' ', 1)
         rest = ""
         try:
             rest = command[1]
@@ -560,7 +802,7 @@ def main(instance, email, password, config):
             pass
         command = command[0]
         cmd_func = commands.get(command, say_error)
-        cmd_func(mastodon, rest)
+        cmd_func(rest)
 
 
 if __name__ == '__main__':
