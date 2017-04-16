@@ -319,8 +319,9 @@ def note(mastodon, rest):
 
         # Mentions
         if note['type'] == 'mention':
-            tprint(display_name + username, 'magenta', '')
-            tprint(get_content(note['status']), 'magenta', '')
+            tprint(display_name + username + " mentioned you =================", 'magenta', '')
+            printTimelineToot(note['status'], mastodon)
+            cprint("  =====================================", 'magenta')
 
         # Favorites
         elif note['type'] == 'favourite':
