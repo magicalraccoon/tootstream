@@ -46,6 +46,7 @@ def get_content(toot):
     html = toot['content']
     toot_parser.reset()
     toot_parser.feed(html)
+    toot_parser.close()
     return toot_parser.get_text()
 
 def parse_config(filename):
