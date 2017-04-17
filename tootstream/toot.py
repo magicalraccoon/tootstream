@@ -117,7 +117,7 @@ def parse_config():
     try:
         cfg.read(filename)
     except configparser.Error:
-        cprint("This does not look like a valid configuration:"+filename, 'red')
+        cprint("This does not look like a valid configuration:"+filename, fg('red'))
         sys.exit("Goodbye!")
 
 
@@ -131,7 +131,7 @@ def save_config():
         with open(filename, 'w') as configfile:
             cfg.write(configfile)
     except os.error:
-        cprint("Unable to write configuration to "+filename, 'red')
+        cprint("Unable to write configuration to "+filename, fg('red'))
 
 
 def register_app(instance):
@@ -177,7 +177,7 @@ def parse_or_input_profile(profile, instance=None, email=None, password=None):
     elif "instance" in cfg[profile]:
         instance = cfg[profile]['instance']
     else:
-        cprint("  Which instance would you like to connect to? eg: 'mastodon.social'", 'blue')
+        cprint("  Which instance would you like to connect to? eg: 'mastodon.social'", fg('blue'))
         instance = input("  Instance: ")
 
 
@@ -223,8 +223,8 @@ def print_profiles():
         pass
     # TODO: wrap based on termwidth
     inactives = ' '.join(inactiveprofiles)
-    cprint("  *"+active, 'red', end="")
-    cprint("  "+inactives, 'blue')
+    cprint("  *"+active, fg('red'), end="")
+    cprint("  "+inactives, fg('blue'))
     return
 
 
@@ -355,7 +355,7 @@ def home(rest):
 
         cprint(reblogs_count, fg('cyan'), end="")
         cprint(favourites_count, fg('yellow'), end="")
-        
+
         cprint("id:" + toot_id, fg('red'))
 
         # Shows boosted toots as well
@@ -504,7 +504,7 @@ def profile(rest):
                 "         profile list")
 
     def profile_error(error):
-        cprint("  "+error, 'red')
+        cprint("  "+error, fg('red'))
         return
 
     try:
@@ -538,7 +538,7 @@ def profile(rest):
             set_prompt("[@" + str(user['username']) + " (" + profile + ")]: ")
             set_active_profile(profile)
             set_active_mastodon(newmasto)
-            cprint("  Profile " + profile + " loaded", 'green')
+            cprint("  Profile " + profile + " loaded", fg('green'))
             return
         else:
             profile_error("Profile " + profile + " doesn't seem to exist")
@@ -577,7 +577,7 @@ def profile(rest):
         set_prompt("[@" + str(user['username']) + " (" + profile + ")]: ")
         set_active_profile(profile)
         set_active_mastodon(newmasto)
-        cprint("  Profile " + profile + " loaded", 'green')
+        cprint("  Profile " + profile + " loaded", fg('green'))
         return
     # end new/create
 
@@ -590,7 +590,7 @@ def profile(rest):
 
         cfg.remove_section(profile)
         save_config()
-        cprint("  Poof! It's gone.", 'blue')
+        cprint("  Poof! It's gone.", fg('blue'))
         if profile == get_active_profile():
             set_active_profile("")
         return
@@ -603,7 +603,7 @@ def profile(rest):
     # end list
 
     # no subcommand; print usage
-    cprint(usage, 'red')
+    cprint(usage, fg('red'))
     return
 
 
@@ -638,7 +638,7 @@ def main(instance, email, password, config, profile):
     configpath = os.path.expanduser(config)
     if os.path.isfile(configpath) and not os.access(configpath, os.W_OK):
         # warn the user before they're asked for input
-        cprint("Config file does not appear to be writable: "+configpath, 'red')
+        cprint("Config file does not appear to be writable: "+configpath, fg('red'))
 
     set_configfile(configpath)
     parse_config()
@@ -669,7 +669,7 @@ def main(instance, email, password, config, profile):
     say_error = lambda a, b: cprint("Invalid command. Use 'help' for a list of commands.",
             fg('white') + bg('red'))
 
-    cprint("Welcome to tootstream! Two-Factor-Authentication is currently not supported.", 'blue')
+    cprint("Welcome to tootstream! Two-Factor-Authentication is currently not supported.", fg('blue'))
     print("You are connected to ", end="")
     cprint(instance, fg('green') + attr('bold'))
     print("Enter a command. Use 'help' for a list of commands.")
