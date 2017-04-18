@@ -474,6 +474,52 @@ def unfollow(mastodon, rest):
     # TODO: Find out how to get global usernames
 
 
+@command
+def followers(mastodon, rest):
+    """Lists users who follow you."""
+    user = mastodon.account_verify_credentials()
+    users = mastodon.account_followers(user['id'])
+    if not users:
+        cprint("  You don't have any followers", fg('red'))
+    else:
+        cprint("  Your followers:", fg('magenta'))
+        printUsersShort(users)
+
+
+@command
+def following(mastodon, rest):
+    """Lists users you follow."""
+    user = mastodon.account_verify_credentials()
+    users = mastodon.account_following(user['id'])
+    if not users:
+        cprint("  You're safe!  There's nobody following you", fg('red'))
+    else:
+        cprint("  People following you:", fg('magenta'))
+        printUsersShort(users)
+
+
+@command
+def blocks(mastodon, rest):
+    """Lists users you have blocked."""
+    users = mastodon.blocks()
+    if not users:
+        cprint("  You haven't blocked anyone (... yet)", fg('red'))
+    else:
+        cprint("  You have blocked:", fg('magenta'))
+        printUsersShort(users)
+
+
+@command
+def mutes(mastodon, rest):
+    """Lists users you have muted."""
+    users = mastodon.mutes()
+    if not users:
+        cprint("  You haven't muted anyone (... yet)", fg('red'))
+    else:
+        cprint("  You have muted:", fg('magenta'))
+        printUsersShort(users)
+
+
 #####################################
 ######### END COMMAND BLOCK #########
 #####################################
