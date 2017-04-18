@@ -516,7 +516,7 @@ def search(rest):
         indicator = rest[:1]
         query = rest[1:]
     except:
-        cprint(usage, 'red')
+        cprint(usage, fg('red'))
         return
 
     # @ user search
@@ -537,15 +537,15 @@ def search(rest):
             toot_id = str(IDS.to_local(toot['id']))
 
             # Prints individual toot/tooter info
-            cprint(display_name, 'green', end="",)
-            cprint(username + toot['created_at'], 'yellow')
-            cprint(reblogs_count + favourites_count, 'cyan', end="")
-            cprint(toot_id, 'red', attrs=['bold'])
+            cprint(display_name, fg('green'), end="",)
+            cprint(username + toot['created_at'], fg('yellow'))
+            cprint(reblogs_count + favourites_count, fg('cyan'), end="")
+            cprint(toot_id, fg('red'), attrs=['bold'])
 
             # Shows boosted toots as well
             if toot['reblog']:
                 username = "  Boosted @" + toot['reblog']['account']['acct'] +": "
-                cprint(username, 'blue', end='')
+                cprint(username, fg('blue'), end='')
                 content = get_content(toot['reblog'])
             else:
                 content = get_content(toot)
@@ -554,7 +554,7 @@ def search(rest):
     # end #
 
     else:
-        cprint("  Invalid format.\n"+usage, 'red')
+        cprint("  Invalid format.\n"+usage, fg('red'))
 
     return
 
