@@ -106,6 +106,7 @@ def login(mastodon, instance, email, password):
 
     return mastodon.log_in(email, password)
 
+
 def cprint(text, style, end="\n"):
     print(stylize(text, style), end=end)
 
@@ -116,6 +117,23 @@ def printUser(user):
     cprint(user['display_name'], fg('cyan') + bg('red'))
     print(user['url'])
     cprint(re.sub('<[^<]+?>', '', user['note']), fg('red') + bg('green'))
+
+
+def printUsersShort(users):
+    for user in users:
+        if not user: continue
+        locked = ""
+        # lock glyphs: masto web uses FontAwesome's U+F023 (nonstandard)
+        # lock emoji: U+1F512
+        if user['locked']: locked = " \U0001f512"
+        userstr = "@"+str(user['acct'])+locked
+        userid = "(id:"+str(user['id'])+")"
+        userdisp = "'"+str(user['display_name'])+"'"
+        userurl = str(user['url'])
+        cprint("  "+userstr, fg('green'), end=" ")
+        cprint(" "+userid, fg('red'), end=" ")
+        cprint(" "+userdisp, fg('cyan'))
+        cprint("      "+userurl, fg('blue'))
 
 
 #####################################
