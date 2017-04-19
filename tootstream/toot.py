@@ -582,6 +582,52 @@ def unmute(mastodon, rest):
 
 
 @command
+def accept(mastodon, rest):
+    """Accepts a user's follow request by username or id."""
+    userid = get_userid(mastodon, rest)
+    if isinstance(userid, list):
+        cprint("  multiple matches found:", fg('red'))
+        printUsersShort(userid)
+    elif userid == -1:
+        cprint("  username not found", fg('red'))
+    else:
+        try:
+            user = mastodon.follow_request_authorize(userid)
+            # a more thorough check would be to call
+            # mastodon.account_relationships(user['id'])
+            # and check the returned data
+            # here we're lazy and assume we're good if the
+            # api return matches the request
+            if user['id'] == userid:
+                cprint("  user " + str(userid) + "'s request is accepted", fg('blue'))
+        except:
+            cprint("  ... well, it *looked* like it was working ...", fg('red'))
+
+
+@command
+def reject(mastodon, rest):
+    """Rejects a user's follow request by username or id."""
+    userid = get_userid(mastodon, rest)
+    if isinstance(userid, list):
+        cprint("  multiple matches found:", fg('red'))
+        printUsersShort(userid)
+    elif userid == -1:
+        cprint("  username not found", fg('red'))
+    else:
+        try:
+            user = mastodon.follow_request_reject(userid)
+            # a more thorough check would be to call
+            # mastodon.account_relationships(user['id'])
+            # and check the returned data
+            # here we're lazy and assume we're good if the
+            # api return matches the request
+            if user['id'] == userid:
+                cprint("  user " + str(userid) + "'s request is rejected", fg('blue'))
+        except:
+            cprint("  ... well, it *looked* like it was working ...", fg('red'))
+
+
+@command
 def followers(mastodon, rest):
     """Lists users who follow you."""
     user = mastodon.account_verify_credentials()
