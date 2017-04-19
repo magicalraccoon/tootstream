@@ -49,6 +49,29 @@ def get_content(toot):
     toot_parser.close()
     return toot_parser.get_text()
 
+
+def get_userid(mastodon, rest):
+    # we got some user input.  we need a userid (int).
+    # returns userid as int, -1 on error, or list of users if ambiguous.
+    if not rest:
+        return -1
+
+    # maybe it's already an int
+    try:
+        return int(rest)
+    except ValueError:
+        pass
+
+    # not an int
+    users = mastodon.account_search(rest)
+    if not users:
+        return -1
+    elif len(users) > 1:
+        return users
+    else:
+        return users[0]['id']
+
+
 def parse_config(filename):
     (dirpath, basename) = os.path.split(filename)
     if not (dirpath == "" or os.path.exists(dirpath)):
@@ -344,26 +367,110 @@ def delete(mastodon, rest):
 
 @command
 def block(mastodon, rest):
-    """Blocks a user by username."""
-    # TODO: Find out how to get global usernames
+    """Blocks a user by username or id."""
+    userid = get_userid(mastodon, rest)
+    if isinstance(userid, list):
+        cprint("  multiple matches found:", fg('red'))
+        printUsersShort(userid)
+    elif userid == -1:
+        cprint("  username not found", fg('red'))
+    else:
+        try:
+            relations = mastodon.account_block(userid)
+            if relations['blocking']:
+                cprint("  user " + str(userid) + " is now blocked", fg('blue'))
+        except:
+            cprint("  ... well, it *looked* like it was working ...", fg('red'))
 
 
 @command
 def unblock(mastodon, rest):
-    """Unblocks a user by username."""
-    # TODO: Find out how to get global usernames
+    """Unblocks a user by username or id."""
+    userid = get_userid(mastodon, rest)
+    if isinstance(userid, list):
+        cprint("  multiple matches found:", fg('red'))
+        printUsersShort(userid)
+    elif userid == -1:
+        cprint("  username not found", fg('red'))
+    else:
+        try:
+            relations = mastodon.account_unblock(userid)
+            if not relations['blocking']:
+                cprint("  user " + str(userid) + " is now unblocked", fg('blue'))
+        except:
+            cprint("  ... well, it *looked* like it was working ...", fg('red'))
 
 
 @command
 def follow(mastodon, rest):
-    """Follows an account by username."""
-    # TODO: Find out how to get global usernames
+    """Follows an account by username or id."""
+    userid = get_userid(mastodon, rest)
+    if isinstance(userid, list):
+        cprint("  multiple matches found:", fg('red'))
+        printUsersShort(userid)
+    elif userid == -1:
+        cprint("  username not found", fg('red'))
+    else:
+        try:
+            relations = mastodon.account_follow(userid)
+            if relations['following']:
+                cprint("  user " + str(userid) + " is now followed", fg('blue'))
+        except:
+            cprint("  ... well, it *looked* like it was working ...", fg('red'))
 
 
 @command
 def unfollow(mastodon, rest):
-    """Unfollows an account by username."""
-    # TODO: Find out how to get global usernames
+    """Unfollows an account by username or id."""
+    userid = get_userid(mastodon, rest)
+    if isinstance(userid, list):
+        cprint("  multiple matches found:", fg('red'))
+        printUsersShort(userid)
+    elif userid == -1:
+        cprint("  username not found", fg('red'))
+    else:
+        try:
+            relations = mastodon.account_unfollow(userid)
+            if not relations['following']:
+                cprint("  user " + str(userid) + " is now unfollowed", fg('blue'))
+        except:
+            cprint("  ... well, it *looked* like it was working ...", fg('red'))
+
+
+@command
+def mute(mastodon, rest):
+    """Mutes a user by username or id."""
+    userid = get_userid(mastodon, rest)
+    if isinstance(userid, list):
+        cprint("  multiple matches found:", fg('red'))
+        printUsersShort(userid)
+    elif userid == -1:
+        cprint("  username not found", fg('red'))
+    else:
+        try:
+            relations = mastodon.account_mute(userid)
+            if relations['muting']:
+                cprint("  user " + str(userid) + " is now muted", fg('blue'))
+        except:
+            cprint("  ... well, it *looked* like it was working ...", fg('red'))
+
+
+@command
+def unmute(mastodon, rest):
+    """Unmutes a user by username or id."""
+    userid = get_userid(mastodon, rest)
+    if isinstance(userid, list):
+        cprint("  multiple matches found:", fg('red'))
+        printUsersShort(userid)
+    elif userid == -1:
+        cprint("  username not found", fg('red'))
+    else:
+        try:
+            relations = mastodon.account_unmute(userid)
+            if not relations['muting']:
+                cprint("  user " + str(userid) + " is now unmuted", fg('blue'))
+        except:
+            cprint("  ... well, it *looked* like it was working ...", fg('red'))
 
 
 #####################################
