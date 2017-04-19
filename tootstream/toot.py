@@ -213,6 +213,10 @@ def parse_or_input_profile(profile, instance=None, email=None, password=None):
     return instance, client_id, client_secret, token
 
 
+def cprint(text, style, end="\n"):
+    print(stylize(text, style), end=end)
+
+
 def print_profiles():
     active = get_active_profile()
     inactiveprofiles = get_known_profiles()
@@ -226,10 +230,6 @@ def print_profiles():
     cprint("  *"+active, fg('red'), end="")
     cprint("  "+inactives, fg('blue'))
     return
-
-
-def cprint(text, style, end="\n"):
-    print(stylize(text, style), end=end)
 
 
 def printHistoryToot(toot):
@@ -296,6 +296,23 @@ def printUser(user):
     cprint(user['display_name'], fg('cyan') + bg('red'))
     print(user['url'])
     cprint(re.sub('<[^<]+?>', '', user['note']), fg('red') + bg('green'))
+
+
+def printUsersShort(users):
+    for user in users:
+        if not user: continue
+        locked = ""
+        # lock glyphs: masto web uses FontAwesome's U+F023 (nonstandard)
+        # lock emoji: U+1F512
+        if user['locked']: locked = " \U0001f512"
+        userstr = "@"+str(user['acct'])+locked
+        userid = "(id:"+str(user['id'])+")"
+        userdisp = "'"+str(user['display_name'])+"'"
+        userurl = str(user['url'])
+        cprint("  "+userstr, fg('green'), end=" ")
+        cprint(" "+userid, fg('red'), end=" ")
+        cprint(" "+userdisp, fg('cyan'))
+        cprint("      "+userurl, fg('blue'))
 
 
 #####################################
@@ -744,6 +761,65 @@ def profile(rest):
     # no subcommand; print usage
     cprint(usage, fg('red'))
     return
+
+
+@command
+def followers(mastodon, rest):
+    """Lists users who follow you."""
+    user = mastodon.account_verify_credentials()
+    users = mastodon.account_followers(user['id'])
+    if not users:
+        cprint("  You don't have any followers", fg('red'))
+    else:
+        cprint("  Your followers:", fg('magenta'))
+        printUsersShort(users)
+
+
+@command
+def following(mastodon, rest):
+    """Lists users you follow."""
+    user = mastodon.account_verify_credentials()
+    users = mastodon.account_following(user['id'])
+    if not users:
+        cprint("  You're safe!  There's nobody following you", fg('red'))
+    else:
+        cprint("  People following you:", fg('magenta'))
+        printUsersShort(users)
+
+
+@command
+def blocks(mastodon, rest):
+    """Lists users you have blocked."""
+    users = mastodon.blocks()
+    if not users:
+        cprint("  You haven't blocked anyone (... yet)", fg('red'))
+    else:
+        cprint("  You have blocked:", fg('magenta'))
+        printUsersShort(users)
+
+
+@command
+def mutes(mastodon, rest):
+    """Lists users you have muted."""
+    users = mastodon.mutes()
+    if not users:
+        cprint("  You haven't muted anyone (... yet)", fg('red'))
+    else:
+        cprint("  You have muted:", fg('magenta'))
+        printUsersShort(users)
+
+
+@command
+def requests(mastodon, rest):
+    """Lists your incoming follow requests."""
+    users = mastodon.follow_requests()
+    if not users:
+        cprint("  You have no incoming requests", fg('red'))
+    else:
+        cprint("  These users want to follow you:", fg('magenta'))
+        printUsersShort(users)
+        cprint("  run 'accept <id>' to accept", fg('magenta'))
+        cprint("   or 'reject <id>' to reject", fg('magenta'))
 
 
 #####################################
