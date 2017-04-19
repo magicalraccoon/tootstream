@@ -126,7 +126,7 @@ def get_userid(mastodon, rest):
         return users[0]['id']
 
 
-def parse_config(filename):
+def parse_config():
     filename = get_configfile()
     (dirpath, basename) = os.path.split(filename)
     if not (dirpath == "" or os.path.exists(dirpath)):
@@ -473,25 +473,6 @@ def thread(rest):
     if rest is None:
         return
     dicts = mastodon.status_context(rest)
-        display_name = "  " + toot['account']['display_name']
-        username = " @" + toot['account']['username'] + " "
-        reblogs_count = "  ♺:" + str(toot['reblogs_count'])
-        favourites_count = " ♥:" + str(toot['favourites_count']) + " "
-        toot_id = str(IDS.to_local(toot['id']))
-
-        # Prints individual toot/tooter info
-        cprint(display_name, fg('green'), end="")
-        cprint(username + toot['created_at'], fg('yellow'))
-        cprint(reblogs_count + favourites_count, fg('cyan'), end="")
-        cprint(toot_id, fg('red') + attr('bold'))
-
-        # Shows boosted toots as well
-        if toot['reblog']:
-            username = "  Boosted @" + toot['reblog']['account']['acct'] +": "
-            cprint(username, fg('blue'), end="")
-            content = get_content(toot['reblog'])
-        else:
-            content = get_content(toot)
 
     # No history
     if ((len(dicts['ancestors']) == 0) and (len(dicts['descendants']) == 0)):
@@ -968,7 +949,6 @@ def reject(mastodon, rest):
                 cprint("  user " + str(userid) + "'s request is rejected", fg('blue'))
         except:
             cprint("  ... well, it *looked* like it was working ...", fg('red'))
->>>>>>> 38144bc
 
 
 #####################################
