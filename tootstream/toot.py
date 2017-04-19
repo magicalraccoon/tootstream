@@ -520,6 +520,19 @@ def mutes(mastodon, rest):
         printUsersShort(users)
 
 
+@command
+def requests(mastodon, rest):
+    """Lists your incoming follow requests."""
+    users = mastodon.follow_requests()
+    if not users:
+        cprint("  You have no incoming requests", fg('red'))
+    else:
+        cprint("  These users want to follow you:", fg('magenta'))
+        printUsersShort(users)
+        cprint("  run 'accept <id>' to accept", fg('magenta'))
+        cprint("   or 'reject <id>' to reject", fg('magenta'))
+
+
 #####################################
 ######### END COMMAND BLOCK #########
 #####################################
