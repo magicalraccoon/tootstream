@@ -31,7 +31,7 @@ class IdDict:
     def to_global(self, local_id):
         """Returns the global ID for a local ID, or None if ID is invalid.
         Also prints an error message"""
-        local_id = int(local_id) 
+        local_id = int(local_id)
         try:
             return self._map[local_id]
         except:
@@ -41,6 +41,7 @@ class IdDict:
 IDS = IdDict();
 
 toot_parser = TootParser(indent='  ')
+random.seed('\U0001f34d')
 
 def get_content(toot):
     html = toot['content']
@@ -106,6 +107,32 @@ def cprint(text, style, end="\n"):
     print(stylize(text, style), end=end)
 
 
+def stylize_rl(text, styles, reset=True):
+    """conveniently styles your text as and resets ANSI codes at its end. readline-safe."""
+    # problem: stylize doesn't add the escapes we need for readline.
+    # see: https://github.com/dslackw/colored/issues/5
+    # solution: localized tweak.
+    terminator = attr("reset") if reset else ""
+    return "\x01{}\x02{}\x01{}\x02".format("".join(styles), text, terminator)
+
+
+def stylePrompt(username, style=[], prefix='[', suffix=']: '):
+    # [prefix]@username[suffix]
+    #         <=style1>
+    # use stylize_rl() instead of stylize() for prompts. same arguments.
+    return ''.join(( prefix, stylize_rl("@"+username, style), suffix ))
+
+
+#def stylePromptAlt(username, profile, style1=[], style2=None, prefix='[', suffix=']: '):
+#    # [prefix]@username (profile)[suffix]
+#    #         <==style1 style2==>
+#    if not style2: style2 = style1
+#    # use stylize_rl() instead of stylize() for prompts. same arguments.
+#    return ''.join(( prefix, stylize_rl("@"+username, style1), " ",
+#                     stylize_rl("("+profile+")", style2), suffix ))
+
+
+_pineapple = '\U0001f34d'  # can never have too many
 #####################################
 ######## BEGIN COMMAND BLOCK ########
 #####################################
@@ -213,14 +240,13 @@ def home(mastodon, rest):
         toot_id = str(IDS.to_local(toot['id']))
 
         # Prints individual toot/tooter info
-        random.seed(display_name)
         cprint(display_name, fg(random.choice(COLORS)), end="")
         cprint(username, fg('green'), end="")
         cprint(toot['created_at'], attr('dim'))
 
         cprint(reblogs_count, fg('cyan'), end="")
         cprint(favourites_count, fg('yellow'), end="")
-        
+
         cprint("id:" + toot_id, fg('red'))
 
         # Shows boosted toots as well
@@ -434,9 +460,9 @@ def main(instance, email, password, config):
     print("\n")
 
     user = mastodon.account_verify_credentials()
-    prompt = "[@" + str(user['username']) + "]: "
 
     while True:
+        prompt = stylePrompt(user['username'], fg(random.choice(COLORS)))
         command = input(prompt).split(' ', 1)
         rest = ""
         try:
