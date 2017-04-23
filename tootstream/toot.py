@@ -5,13 +5,16 @@ import sys
 import re
 import configparser
 import random
-import readline
+#Do we still need readline?
+#import readline
 from toot_parser import TootParser
 from mastodon import Mastodon
 from collections import OrderedDict
 from colored import fg, bg, attr, stylize
 
-COLORS = ['red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white']
+#Looks best with black background.
+#TODO: Set color list in config file
+COLORS = list(range(19,231))
 
 class IdDict:
     """Represents a mapping of local (tootstream) ID's to global
@@ -31,7 +34,7 @@ class IdDict:
     def to_global(self, local_id):
         """Returns the global ID for a local ID, or None if ID is invalid.
         Also prints an error message"""
-        local_id = int(local_id) 
+        local_id = int(local_id)
         try:
             return self._map[local_id]
         except:
@@ -220,7 +223,6 @@ def home(mastodon, rest):
 
         cprint(reblogs_count, fg('cyan'), end="")
         cprint(favourites_count, fg('yellow'), end="")
-        
         cprint("id:" + toot_id, fg('red'))
 
         # Shows boosted toots as well
@@ -235,7 +237,7 @@ def home(mastodon, rest):
 
 @command
 def public(mastodon, rest):
-    """Displays the Public (federated) timeline."""
+    """Displays the Federated timeline."""
     for toot in reversed(mastodon.timeline_public()):
         display_name = "  " + toot['account']['display_name']
         username = " @" + toot['account']['username'] + " "
@@ -244,10 +246,15 @@ def public(mastodon, rest):
         toot_id = str(IDS.to_local(toot['id']))
 
         # Prints individual toot/tooter info
-        cprint(display_name, fg('green'), end="")
-        cprint(username + toot['created_at'], fg('yellow'))
-        cprint(reblogs_count + favourites_count, fg('cyan'), end="")
-        cprint(toot_id, fg('red') + attr('bold'))
+        random.seed(display_name)
+        cprint(display_name, fg(random.choice(COLORS)), end="")
+        cprint(username, fg('green'), end="")
+        cprint(toot['created_at'], attr('dim'))
+
+        cprint(reblogs_count, fg('cyan'), end="")
+        cprint(favourites_count, fg('yellow'), end="")
+
+        cprint("id:" + toot_id, fg('red'))
 
         # Shows boosted toots as well
         if toot['reblog']:
@@ -271,10 +278,15 @@ def local(mastodon, rest):
         toot_id = str(IDS.to_local(toot['id']))
 
         # Prints individual toot/tooter info
-        cprint(display_name, fg('green'), end="")
-        cprint(username + toot['created_at'], fg('yellow'))
-        cprint(reblogs_count + favourites_count, fg('cyan'), end="")
-        cprint(toot_id, fg('red') + attr('bold'))
+        random.seed(display_name)
+        cprint(display_name, fg(random.choice(COLORS)), end="")
+        cprint(username, fg('green'), end="")
+        cprint(toot['created_at'], attr('dim'))
+
+        cprint(reblogs_count, fg('cyan'), end="")
+        cprint(favourites_count, fg('yellow'), end="")
+
+        cprint("id:" + toot_id, fg('red'))
 
         # Shows boosted toots as well
         if toot['reblog']:
@@ -293,11 +305,14 @@ def note(mastodon, rest):
     for note in reversed(mastodon.notifications()):
         display_name = "  " + note['account']['display_name']
         username = " @" + note['account']['username']
+        random.seed(display_name)
 
         # Mentions
         if note['type'] == 'mention':
-            cprint(display_name + username, fg('magenta'))
-            cprint(get_content(note['status']), fg('magenta'))
+            cprint(display_name + username, (fg(random.choice(COLORS)), attr('bold')), end="")
+            cprint(" mentioned you:", attr('bold'))
+
+            cprint(get_content(note['status']), (fg('white'), attr('bold')))
 
         # Favorites
         elif note['type'] == 'favourite':
@@ -305,13 +320,20 @@ def note(mastodon, rest):
             favourites_count = " ♥:" + str(note['status']['favourites_count'])
             time = " " + note['status']['created_at']
             content = get_content(note['status'])
-            cprint(display_name + username + " favorited your status:", fg('green'))
-            cprint(reblogs_count + favourites_count + time + '\n' + content, fg('green'))
+
+            cprint(display_name + username, fg(random.choice(COLORS)), end="")
+            cprint(" favorited your status:", fg("yellow"))
+
+            cprint(reblogs_count, fg('cyan'), end="")
+            cprint(favourites_count, fg('yellow'))
+
+            print(content)
 
         # Boosts
         elif note['type'] == 'reblog':
-            cprint(display_name + username + " boosted your status:", fg('yellow'))
-            cprint(get_content(note['status']), fg('yellow'))
+            cprint(display_name + username, fg(random.choice(COLORS)), end="")
+            cprint(" boosted your status:", fg('blue'))
+            cprint(get_content(note['status']), attr('dim'))
 
         # Follows
         elif note['type'] == 'follow':
