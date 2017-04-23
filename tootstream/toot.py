@@ -322,12 +322,12 @@ def note(mastodon, rest):
             content = get_content(note['status'])
 
             cprint(display_name + username, fg(random.choice(COLORS)), end="")
-            cprint(" favorited your status:", fg("yellow"))
+            cprint(" favorited your status:", fg('yellow'))
 
             cprint(reblogs_count, fg('cyan'), end="")
             cprint(favourites_count, fg('yellow'))
 
-            print(content)
+            cprint(content, attr('dim'))
 
         # Boosts
         elif note['type'] == 'reblog':
@@ -340,7 +340,7 @@ def note(mastodon, rest):
             username = re.sub('<[^<]+?>', '', username)
             display_name = note['account']['display_name']
             print("  ", end="")
-            cprint(display_name + username + " followed you!", fg('red') + bg('green'))
+            cprint(display_name + username + " followed you!", fg('red') + attr('bold'))
 
         # blank line
         print('')
