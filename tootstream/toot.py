@@ -105,6 +105,65 @@ def login(mastodon, instance, email, password):
 def cprint(text, style, end="\n"):
     print(stylize(text, style), end=end)
 
+def printHistoryToot(toot):
+    """Prints toot nicely with hardcoded colors"""
+    display_name = "  " + toot['account']['display_name']
+    username = " @" + toot['account']['username'] + " "
+    reblogs_count = "  ♺:" + str(toot['reblogs_count'])
+    favourites_count = " ♥:" + str(toot['favourites_count']) + " "
+    toot_id = str(IDS.to_local(toot['id']))
+
+    # Prints individual toot/tooter info
+    cprint(display_name, fg('green'), end="",)
+    cprint(username + toot['created_at'], fg('yellow'))
+    cprint(reblogs_count + favourites_count, fg('cyan'), end="")
+    cprint(toot_id, fg('red'))
+    content = get_content(toot)
+    print(content + "\n")
+
+def printTimelineToot(toot, mastodon):
+    display_name = "  " + toot['account']['display_name'] + " "
+    username = "@" + toot['account']['acct'] + " "
+    reblogs_count = "  ♺:" + str(toot['reblogs_count'])
+    favourites_count = " ♥:" + str(toot['favourites_count']) + " "
+    toot_id = str(IDS.to_local(toot['id']))
+
+    random.seed(display_name)
+
+    # Prints individual toot/tooter info
+    random.seed(display_name)
+    cprint(display_name, fg(random.choice(COLORS)), end="")
+    cprint(username, fg('green'), end="")
+    cprint(toot['created_at'], attr('dim'))
+
+    cprint(reblogs_count, fg('cyan'), end="")
+    cprint(favourites_count, fg('yellow'), end="")
+
+    cprint("id:" + toot_id, fg('red'))
+    content = get_content(toot)
+
+    # Shows boosted toots as well
+    if toot['reblog']:
+        username = "  Boosted @" + toot['reblog']['account']['acct'] +": "
+        cprint(username, fg('blue'), end="")
+        content = get_content(toot['reblog'])
+        cprint(content + "\n", fg('white'))
+
+    # Show context of toot being replied to
+    elif toot['in_reply_to_id']:
+        repliedToot = mastodon.status(toot['in_reply_to_id'])
+        username = "  Replied @" + repliedToot['account']['acct'] +": "
+        cprint(username, fg('blue'), end="")
+        repliedTootContent = get_content(repliedToot)
+        cprint(repliedTootContent + "\n", fg('blue'))
+        cprint(content + "\n", fg('white'))
+
+    else:
+        cprint(content + "\n", fg('white'))
+
+
+
+
 
 #####################################
 ######## BEGIN COMMAND BLOCK ########
@@ -206,58 +265,53 @@ def unfav(mastodon, rest):
 def home(mastodon, rest):
     """Displays the Home timeline."""
     for toot in reversed(mastodon.timeline_home()):
-        display_name = "  " + toot['account']['display_name'] + " "
-        username = "@" + toot['account']['acct'] + " "
-        reblogs_count = "  ♺:" + str(toot['reblogs_count'])
-        favourites_count = " ♥:" + str(toot['favourites_count']) + " "
-        toot_id = str(IDS.to_local(toot['id']))
-
-        # Prints individual toot/tooter info
-        random.seed(display_name)
-        cprint(display_name, fg(random.choice(COLORS)), end="")
-        cprint(username, fg('green'), end="")
-        cprint(toot['created_at'], attr('dim'))
-
-        cprint(reblogs_count, fg('cyan'), end="")
-        cprint(favourites_count, fg('yellow'), end="")
-        
-        cprint("id:" + toot_id, fg('red'))
-
-        # Shows boosted toots as well
-        if toot['reblog']:
-            username = "  Boosted @" + toot['reblog']['account']['acct'] +": "
-            cprint(username, fg('blue'), end="")
-            content = get_content(toot['reblog'])
-        else:
-            content = get_content(toot)
-
-        print(content + "\n")
+        printTimelineToot(toot, mastodon)
 
 @command
 def public(mastodon, rest):
     """Displays the Public timeline."""
     for toot in reversed(mastodon.timeline_public()):
-        display_name = "  " + toot['account']['display_name']
-        username = " @" + toot['account']['username'] + " "
-        reblogs_count = "  ♺:" + str(toot['reblogs_count'])
-        favourites_count = " ♥:" + str(toot['favourites_count']) + " "
-        toot_id = str(IDS.to_local(toot['id']))
+        printTimelineToot(toot, mastodon)
 
-        # Prints individual toot/tooter info
-        cprint(display_name, fg('green'), end="")
-        cprint(username + toot['created_at'], fg('yellow'))
-        cprint(reblogs_count + favourites_count, fg('cyan'), end="")
-        cprint(toot_id, fg('red') + attr('bold'))
+@command
+def thread(mastodon, rest):
+    """Displays the thread this toot is part of, ex: 'thread 7'"""
+    rest = IDS.to_global(rest)
+    if rest is None:
+        return
+    dicts = mastodon.status_context(rest)
 
-        # Shows boosted toots as well
-        if toot['reblog']:
-            username = "  Boosted @" + toot['reblog']['account']['acct'] +": "
-            cprint(username, fg('blue'), end="")
-            content = get_content(toot['reblog'])
-        else:
-            content = get_content(toot)
+    # No history
+    if ((len(dicts['ancestors']) == 0) and (len(dicts['descendants']) == 0)):
+        cprint("  No history to show.", fg('blue'))
+        return
 
-        print(content + "\n")
+    # Print older toots
+    if (len(dicts['ancestors']) > 0):
+        cprint("  =========   " + "↓↓↓↓↓↓ Older Toots Begin ↓↓↓↓↓↓" + "   ========", fg('red'))
+        for oldToot in dicts['ancestors']:
+            printHistoryToot(oldToot)
+        cprint("  =========   " + "↑↑↑↑↑↑ Older Toots End ↑↑↑↑↑↑" + "   ========", fg('red'))
+
+    # Print current toot
+    currentToot = mastodon.status(rest)
+    display_name = "  " + currentToot['account']['display_name']
+    username = " @" + currentToot['account']['username'] + " "
+    reblogs_count = "  ♺:" + str(currentToot['reblogs_count'])
+    favourites_count = " ♥:" + str(currentToot['favourites_count']) + " "
+    toot_id = str(IDS.to_local(currentToot['id']))
+    cprint(display_name, fg('blue'), end="")
+    cprint(username + currentToot['created_at'], fg('blue'))
+    cprint(reblogs_count + favourites_count, fg('blue'), end="")
+    cprint(toot_id, fg('blue'))
+    cprint(get_content(currentToot), fg('blue'), end="\n")
+   
+    # Print newer toots
+    if (len(dicts['descendants']) > 0):
+        cprint("  =========   " + "↓↓↓↓↓↓ Newer Toots Begin ↓↓↓↓↓↓" + "   ========", 'green')
+        for newToot in dicts['descendants']:
+            printHistoryToot(newToot)
+        cprint("  =========   " + "↑↑↑↑↑↑ Newer Toots End ↑↑↑↑↑↑" + "   ========", 'green')
 
 
 @command
@@ -269,8 +323,8 @@ def note(mastodon, rest):
 
         # Mentions
         if note['type'] == 'mention':
-            cprint(display_name + username, fg('magenta'))
-            cprint(get_content(note['status']), fg('magenta'))
+            cprint(display_name + username + " mentioned you =================", fg('magenta'))
+            printTimelineToot(note['status'], mastodon)
 
         # Favorites
         elif note['type'] == 'favourite':
