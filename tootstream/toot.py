@@ -5,13 +5,16 @@ import sys
 import re
 import configparser
 import random
-import readline
+#Do we still need readline?
+#import readline
 from toot_parser import TootParser
 from mastodon import Mastodon
 from collections import OrderedDict
 from colored import fg, bg, attr, stylize
 
-COLORS = ['red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white']
+#Looks best with black background.
+#TODO: Set color list in config file
+COLORS = list(range(19,231))
 RESERVED = ( "theme" )
 KEYCFGFILE = __name__ + 'cfgfile'
 KEYPROFILE = __name__ + 'profile'
@@ -355,6 +358,38 @@ def home(rest):
 
         cprint(reblogs_count, fg('cyan'), end="")
         cprint(favourites_count, fg('yellow'), end="")
+        cprint("id:" + toot_id, fg('red'))
+
+        # Shows boosted toots as well
+        if toot['reblog']:
+            username = "  Boosted @" + toot['reblog']['account']['acct'] +": "
+            cprint(username, fg('blue'), end="")
+            content = get_content(toot['reblog'])
+        else:
+            content = get_content(toot)
+
+        print(content + "\n")
+
+
+@command
+def fed(rest):
+    """Displays the Federated timeline."""
+    mastodon = get_active_mastodon()
+    for toot in reversed(mastodon.timeline_public()):
+        display_name = "  " + toot['account']['display_name']
+        username = " @" + toot['account']['username'] + " "
+        reblogs_count = "  ♺:" + str(toot['reblogs_count'])
+        favourites_count = " ♥:" + str(toot['favourites_count']) + " "
+        toot_id = str(IDS.to_local(toot['id']))
+
+        # Prints individual toot/tooter info
+        random.seed(display_name)
+        cprint(display_name, fg(random.choice(COLORS)), end="")
+        cprint(username, fg('green'), end="")
+        cprint(toot['created_at'], attr('dim'))
+
+        cprint(reblogs_count, fg('cyan'), end="")
+        cprint(favourites_count, fg('yellow'), end="")
 
         cprint("id:" + toot_id, fg('red'))
 
@@ -370,10 +405,10 @@ def home(rest):
 
 
 @command
-def public(rest):
-    """Displays the Public timeline."""
+def local(rest):
+    """Displays the Local (instance) timeline."""
     mastodon = get_active_mastodon()
-    for toot in reversed(mastodon.timeline_public()):
+    for toot in reversed(mastodon.timeline_local()):
         display_name = "  " + toot['account']['display_name']
         username = " @" + toot['account']['username'] + " "
         reblogs_count = "  ♺:" + str(toot['reblogs_count'])
@@ -381,10 +416,15 @@ def public(rest):
         toot_id = str(IDS.to_local(toot['id']))
 
         # Prints individual toot/tooter info
-        cprint(display_name, fg('green'), end="")
-        cprint(username + toot['created_at'], fg('yellow'))
-        cprint(reblogs_count + favourites_count, fg('cyan'), end="")
-        cprint(toot_id, fg('red') + attr('bold'))
+        random.seed(display_name)
+        cprint(display_name, fg(random.choice(COLORS)), end="")
+        cprint(username, fg('green'), end="")
+        cprint(toot['created_at'], attr('dim'))
+
+        cprint(reblogs_count, fg('cyan'), end="")
+        cprint(favourites_count, fg('yellow'), end="")
+
+        cprint("id:" + toot_id, fg('red'))
 
         # Shows boosted toots as well
         if toot['reblog']:
@@ -404,11 +444,14 @@ def note(rest):
     for note in reversed(mastodon.notifications()):
         display_name = "  " + note['account']['display_name']
         username = " @" + note['account']['username']
+        random.seed(display_name)
 
         # Mentions
         if note['type'] == 'mention':
-            cprint(display_name + username, fg('magenta'))
-            cprint(get_content(note['status']), fg('magenta'))
+            cprint(display_name + username, (fg(random.choice(COLORS)), attr('bold')), end="")
+            cprint(" mentioned you:", attr('bold'))
+
+            cprint(get_content(note['status']), (fg('white'), attr('bold')))
 
         # Favorites
         elif note['type'] == 'favourite':
@@ -416,27 +459,34 @@ def note(rest):
             favourites_count = " ♥:" + str(note['status']['favourites_count'])
             time = " " + note['status']['created_at']
             content = get_content(note['status'])
-            cprint(display_name + username + " favorited your status:", fg('green'))
-            cprint(reblogs_count + favourites_count + time + '\n' + content, fg('green'))
+
+            cprint(display_name + username, fg(random.choice(COLORS)), end="")
+            cprint(" favorited your status:", fg('yellow'))
+
+            cprint(reblogs_count, fg('cyan'), end="")
+            cprint(favourites_count, fg('yellow'))
+
+            cprint(content, attr('dim'))
 
         # Boosts
         elif note['type'] == 'reblog':
-            cprint(display_name + username + " boosted your status:", fg('yellow'))
-            cprint(get_content(note['status']), fg('yellow'))
+            cprint(display_name + username, fg(random.choice(COLORS)), end="")
+            cprint(" boosted your status:", fg('blue'))
+            cprint(get_content(note['status']), attr('dim'))
 
         # Follows
         elif note['type'] == 'follow':
             username = re.sub('<[^<]+?>', '', username)
             display_name = note['account']['display_name']
             print("  ", end="")
-            cprint(display_name + username + " followed you!", fg('red') + bg('green'))
+            cprint(display_name + username + " followed you!", fg('red') + attr('bold'))
 
         # blank line
         print('')
 
 
 @command
-def quit(rest):
+def exit(rest):
     """Ends the program."""
     sys.exit("Goodbye!")
 
