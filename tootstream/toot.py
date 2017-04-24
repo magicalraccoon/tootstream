@@ -308,10 +308,10 @@ def thread(mastodon, rest):
    
     # Print newer toots
     if (len(dicts['descendants']) > 0):
-        cprint("  =========   " + "↓↓↓↓↓↓ Newer Toots Begin ↓↓↓↓↓↓" + "   ========", 'green')
+        cprint("  =========   " + "↓↓↓↓↓↓ Newer Toots Begin ↓↓↓↓↓↓" + "   ========", fg('green'))
         for newToot in dicts['descendants']:
             printHistoryToot(newToot)
-        cprint("  =========   " + "↑↑↑↑↑↑ Newer Toots End ↑↑↑↑↑↑" + "   ========", 'green')
+        cprint("  =========   " + "↑↑↑↑↑↑ Newer Toots End ↑↑↑↑↑↑" + "   ========", fg('green'))
 
 
 @command
