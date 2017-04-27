@@ -246,10 +246,10 @@ def home(mastodon, rest):
         cprint(username, fg('green'), end="")
         cprint(toot['created_at'], attr('dim'))
 
-        cprint(vis + reblogs_count, fg('cyan'), end="")
+        cprint(reblogs_count, fg('cyan'), end="")
         cprint(favourites_count, fg('yellow'), end="")
-        
-        cprint("id:" + toot_id + toot_acted, fg('red'))
+        cprint("id:" + toot_id, fg('red'), end="")
+        cprint(vis + toot_acted, fg('blue'))
 
         # Shows boosted toots as well
         if toot['reblog']:
@@ -280,8 +280,9 @@ def public(mastodon, rest):
         # Prints individual toot/tooter info
         cprint(display_name, fg('green'), end="")
         cprint(username + toot['created_at'], fg('yellow'))
-        cprint(vis + reblogs_count + favourites_count, fg('cyan'), end=" ")
-        cprint(toot_id + toot_acted, fg('red') + attr('bold'))
+        cprint(reblogs_count + favourites_count, fg('cyan'), end=" ")
+        cprint(toot_id, fg('red') + attr('bold'))
+        cprint(vis + toot_acted, fg('blue'))
 
         # Shows boosted toots as well
         if toot['reblog']:
@@ -317,7 +318,7 @@ def note(mastodon, rest):
             time = " " + note['status']['created_at']
             content = get_content(note['status'])
             cprint(display_name + username + " favorited your status:", fg('green'))
-            cprint(vis + reblogs_count + favourites_count + time + '\n' + content, fg('green'))
+            cprint(reblogs_count + favourites_count + vis + time + '\n' + content, fg('green'))
 
         # Boosts
         elif note['type'] == 'reblog':
