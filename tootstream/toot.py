@@ -12,6 +12,25 @@ from collections import OrderedDict
 from colored import fg, bg, attr, stylize
 
 COLORS = ['red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white']
+GLYPHS =     { 'lock':          '\U0001f512', # lock (masto web uses U+F023 from FontAwesome)
+               'fave':          '♥',
+               'boost':         '♺',
+               'pineapple':     '\U0001f34d', # pineapple
+               'toots':         '\U0001f4ea', # mailbox (for toot counts)
+               # next 4 keys match possible values for toot['visibility']
+               'public':        '\U0001f30e', # globe
+               'unlisted':      '\U0001f47b', # ghost '\U0001f47b' ... mute '\U0001f507' ??
+               'private':       '\U0001f512', # lock
+               'direct':        '\U0001f4e7', # envelopes: '\U0001f4e7' '\U0001f4e9' '\U0001f48c' '\U00002709'
+               # next 5 keys match keys in relationship{}
+               'followed_by':   '\U0001f43e', # pawprints '\U0001f43e'
+               'following':     '\U0001f463', # footprints '\U0001f463'
+               'blocking':      '\U0000274c', # thumbsdown '\U0001f44e', big X '\U0000274c', stopsign '\U0001f6d1'
+               'muting':        '\U0001f6ab', # prohibited '\U0001f6ab', mute-spkr '\U0001f507', mute-bell '\U0001f515'
+               'requested':     '\U00002753', # hourglass '\U0000231b', question '\U00002753'
+               # catchall
+               'unknown':       '\U0001f34d' }
+
 
 class IdDict:
     """Represents a mapping of local (tootstream) ID's to global
@@ -207,7 +226,9 @@ def home(mastodon, rest):
     """Displays the Home timeline."""
     for toot in reversed(mastodon.timeline_home()):
         display_name = "  " + toot['account']['display_name'] + " "
-        username = "@" + toot['account']['acct'] + " "
+        username = ''.join(( "@", toot['account']['acct'], " ",
+                             (GLYPHS['locked']+" " if toot['account']['locked'] else "") ))
+        vis = ''.join(( "  vis:", GLYPHS[toot['visibility']], " " ))
         reblogs_count = "  ♺:" + str(toot['reblogs_count'])
         favourites_count = " ♥:" + str(toot['favourites_count']) + " "
         toot_id = str(IDS.to_local(toot['id']))
@@ -218,14 +239,16 @@ def home(mastodon, rest):
         cprint(username, fg('green'), end="")
         cprint(toot['created_at'], attr('dim'))
 
-        cprint(reblogs_count, fg('cyan'), end="")
+        cprint(vis + reblogs_count, fg('cyan'), end="")
         cprint(favourites_count, fg('yellow'), end="")
         
         cprint("id:" + toot_id, fg('red'))
 
         # Shows boosted toots as well
         if toot['reblog']:
-            username = "  Boosted @" + toot['reblog']['account']['acct'] +": "
+            username = ''.join(( "  Boosted @", toot['reblog']['account']['acct'],
+                                 (" "+GLYPHS['locked'] if toot['account']['locked'] else ""),
+                                 ": " ))
             cprint(username, fg('blue'), end="")
             content = get_content(toot['reblog'])
         else:
@@ -238,7 +261,9 @@ def public(mastodon, rest):
     """Displays the Public timeline."""
     for toot in reversed(mastodon.timeline_public()):
         display_name = "  " + toot['account']['display_name']
-        username = " @" + toot['account']['username'] + " "
+        username = ''.join(( " @", toot['account']['username'], " ",
+                             (GLYPHS['locked']+" " if toot['account']['locked'] else "") ))
+        vis = ''.join(( "  vis:", GLYPHS[toot['visibility']], " " ))
         reblogs_count = "  ♺:" + str(toot['reblogs_count'])
         favourites_count = " ♥:" + str(toot['favourites_count']) + " "
         toot_id = str(IDS.to_local(toot['id']))
@@ -246,12 +271,14 @@ def public(mastodon, rest):
         # Prints individual toot/tooter info
         cprint(display_name, fg('green'), end="")
         cprint(username + toot['created_at'], fg('yellow'))
-        cprint(reblogs_count + favourites_count, fg('cyan'), end="")
+        cprint(vis + reblogs_count + favourites_count, fg('cyan'), end=" ")
         cprint(toot_id, fg('red') + attr('bold'))
 
         # Shows boosted toots as well
         if toot['reblog']:
-            username = "  Boosted @" + toot['reblog']['account']['acct'] +": "
+            username = ''.join(( "  Boosted @", toot['reblog']['account']['acct'],
+                                 (" "+GLYPHS['locked'] if toot['reblog']['account']['locked'] else ""),
+                                 ": " ))
             cprint(username, fg('blue'), end="")
             content = get_content(toot['reblog'])
         else:
@@ -265,7 +292,8 @@ def note(mastodon, rest):
     """Displays the Notifications timeline."""
     for note in reversed(mastodon.notifications()):
         display_name = "  " + note['account']['display_name']
-        username = " @" + note['account']['username']
+        username = ''.join(( " @", note['account']['acct'],
+                             (" "+GLYPHS['locked'] if note['account']['locked'] else "") ))
 
         # Mentions
         if note['type'] == 'mention':
@@ -274,12 +302,13 @@ def note(mastodon, rest):
 
         # Favorites
         elif note['type'] == 'favourite':
+            vis = ''.join(( "  vis:", GLYPHS[note['status']['visibility']], " " ))
             reblogs_count = "  " + "♺:" + str(note['status']['reblogs_count'])
             favourites_count = " ♥:" + str(note['status']['favourites_count'])
             time = " " + note['status']['created_at']
             content = get_content(note['status'])
             cprint(display_name + username + " favorited your status:", fg('green'))
-            cprint(reblogs_count + favourites_count + time + '\n' + content, fg('green'))
+            cprint(vis + reblogs_count + favourites_count + time + '\n' + content, fg('green'))
 
         # Boosts
         elif note['type'] == 'reblog':
@@ -288,8 +317,6 @@ def note(mastodon, rest):
 
         # Follows
         elif note['type'] == 'follow':
-            username = re.sub('<[^<]+?>', '', username)
-            display_name = note['account']['display_name']
             print("  ", end="")
             cprint(display_name + username + " followed you!", fg('red') + bg('green'))
 
@@ -308,7 +335,13 @@ def info(mastodon, rest):
     """Prints your user info."""
     user = mastodon.account_verify_credentials()
 
-    print("@" + str(user['username']))
+    counts = stylize( ''.join(( " ", GLYPHS['toots'], ":", str(user['statuses_count']),
+                                " ", GLYPHS['following'], ":", str(user['following_count']),
+                                " ", GLYPHS['followed_by'], ":", str(user['followers_count']) )),
+                      fg('blue'))
+    print( ''.join(( "@", str(user['acct']),
+                     (" "+GLYPHS['locked'] if user['locked'] else ""),
+                     " ", counts )) )
     cprint(user['display_name'], fg('cyan') + bg('red'))
     print(user['url'])
     cprint(re.sub('<[^<]+?>', '', user['note']), fg('red') + bg('green'))
