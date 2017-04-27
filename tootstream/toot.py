@@ -12,11 +12,13 @@ from collections import OrderedDict
 from colored import fg, bg, attr, stylize
 
 COLORS = ['red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white']
-GLYPHS =     { 'lock':          '\U0001f512', # lock (masto web uses U+F023 from FontAwesome)
+GLYPHS =     { # general icons, keys don't specifically match any Mastodon dict keys
                'fave':          '♥',
                'boost':         '♺',
                'pineapple':     '\U0001f34d', # pineapple
                'toots':         '\U0001f4ea', # mailbox (for toot counts)
+               # next key matches key in user dict
+               'locked':        '\U0001f512', # lock (masto web uses U+F023 from FontAwesome)
                # next 2 keys match keys in toot dict indicating user has faved/boosted
                'favourited':    '\U00002b50', # star '\U0001f31f' '\U00002b50'
                'reblogged':     '\U0001f1e7', # regional-B '\U0001f1e7'? reuse ♺?
