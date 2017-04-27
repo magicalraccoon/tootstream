@@ -2,10 +2,6 @@
 A command line interface for interacting with Mastodon instances written in python.
 
 tootstream currently does not support 2FA.
-
-![Tootstream displaying the Federated timeline](https://i.imgur.com/HBhhjuV.png)
-Tootstream displaying the Federated timeline
-
 ## Using tootstream
 1: Clone this repo and enter the project directory through a virtual environment
 ```
