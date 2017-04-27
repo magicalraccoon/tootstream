@@ -17,6 +17,9 @@ GLYPHS =     { 'lock':          '\U0001f512', # lock (masto web uses U+F023 from
                'boost':         '♺',
                'pineapple':     '\U0001f34d', # pineapple
                'toots':         '\U0001f4ea', # mailbox (for toot counts)
+               # next 2 keys match keys in toot dict indicating user has faved/boosted
+               'favourited':    '\U00002b50', # star '\U0001f31f' '\U00002b50'
+               'reblogged':     '\U0001f1e7', # regional-B '\U0001f1e7'? reuse ♺?
                # next 4 keys match possible values for toot['visibility']
                'public':        '\U0001f30e', # globe
                'unlisted':      '\U0001f47b', # ghost '\U0001f47b' ... mute '\U0001f507' ??
@@ -232,6 +235,8 @@ def home(mastodon, rest):
         reblogs_count = "  ♺:" + str(toot['reblogs_count'])
         favourites_count = " ♥:" + str(toot['favourites_count']) + " "
         toot_id = str(IDS.to_local(toot['id']))
+        toot_acted = " "+' '.join(( (GLYPHS['favourited'] if toot['favourited'] else ""),
+                                    (GLYPHS['reblogged'] if toot['reblogged'] else "") ))
 
         # Prints individual toot/tooter info
         random.seed(display_name)
@@ -242,7 +247,7 @@ def home(mastodon, rest):
         cprint(vis + reblogs_count, fg('cyan'), end="")
         cprint(favourites_count, fg('yellow'), end="")
         
-        cprint("id:" + toot_id, fg('red'))
+        cprint("id:" + toot_id + toot_acted, fg('red'))
 
         # Shows boosted toots as well
         if toot['reblog']:
@@ -267,12 +272,14 @@ def public(mastodon, rest):
         reblogs_count = "  ♺:" + str(toot['reblogs_count'])
         favourites_count = " ♥:" + str(toot['favourites_count']) + " "
         toot_id = str(IDS.to_local(toot['id']))
+        toot_acted = " "+' '.join(( (GLYPHS['favourited'] if toot['favourited'] else ""),
+                                    (GLYPHS['reblogged'] if toot['reblogged'] else "") ))
 
         # Prints individual toot/tooter info
         cprint(display_name, fg('green'), end="")
         cprint(username + toot['created_at'], fg('yellow'))
         cprint(vis + reblogs_count + favourites_count, fg('cyan'), end=" ")
-        cprint(toot_id, fg('red') + attr('bold'))
+        cprint(toot_id + toot_acted, fg('red') + attr('bold'))
 
         # Shows boosted toots as well
         if toot['reblog']:
