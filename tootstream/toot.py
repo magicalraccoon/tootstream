@@ -460,9 +460,9 @@ def main(instance, email, password, config):
     print("\n")
 
     user = mastodon.account_verify_credentials()
+    prompt = stylePrompt(user['username'], fg(random.choice(COLORS)))
 
     while True:
-        prompt = stylePrompt(user['username'], fg(random.choice(COLORS)))
         command = input(prompt).split(' ', 1)
         rest = ""
         try:
