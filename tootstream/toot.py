@@ -409,7 +409,7 @@ def note(mastodon, rest):
 
 
 @command
-def exit(mastodon, rest):
+def quit(mastodon, rest):
     """Ends the program."""
     sys.exit("Goodbye!")
 
