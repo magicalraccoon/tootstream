@@ -53,6 +53,29 @@ def get_content(toot):
     toot_parser.close()
     return toot_parser.get_text()
 
+
+def get_userid(mastodon, rest):
+    # we got some user input.  we need a userid (int).
+    # returns userid as int, -1 on error, or list of users if ambiguous.
+    if not rest:
+        return -1
+
+    # maybe it's already an int
+    try:
+        return int(rest)
+    except ValueError:
+        pass
+
+    # not an int
+    users = mastodon.account_search(rest)
+    if not users:
+        return -1
+    elif len(users) > 1:
+        return users
+    else:
+        return users[0]['id']
+
+
 def parse_config(filename):
     (dirpath, basename) = os.path.split(filename)
     if not (dirpath == "" or os.path.exists(dirpath)):
@@ -106,8 +129,26 @@ def login(mastodon, instance, email, password):
 
     return mastodon.log_in(email, password)
 
+
 def cprint(text, style, end="\n"):
     print(stylize(text, style), end=end)
+
+
+def printUsersShort(users):
+    for user in users:
+        if not user: continue
+        locked = ""
+        # lock glyphs: masto web uses FontAwesome's U+F023 (nonstandard)
+        # lock emoji: U+1F512
+        if user['locked']: locked = " \U0001f512"
+        userstr = "@"+str(user['acct'])+locked
+        userid = "(id:"+str(user['id'])+")"
+        userdisp = "'"+str(user['display_name'])+"'"
+        userurl = str(user['url'])
+        cprint("  "+userstr, fg('green'), end=" ")
+        cprint(" "+userid, fg('red'), end=" ")
+        cprint(" "+userdisp, fg('cyan'))
+        cprint("      "+userurl, fg('blue'))
 
 
 #####################################
@@ -377,26 +418,215 @@ def delete(mastodon, rest):
 
 @command
 def block(mastodon, rest):
-    """Blocks a user by username."""
-    # TODO: Find out how to get global usernames
+    """Blocks a user by username or id."""
+    userid = get_userid(mastodon, rest)
+    if isinstance(userid, list):
+        cprint("  multiple matches found:", fg('red'))
+        printUsersShort(userid)
+    elif userid == -1:
+        cprint("  username not found", fg('red'))
+    else:
+        try:
+            relations = mastodon.account_block(userid)
+            if relations['blocking']:
+                cprint("  user " + str(userid) + " is now blocked", fg('blue'))
+        except:
+            cprint("  ... well, it *looked* like it was working ...", fg('red'))
 
 
 @command
 def unblock(mastodon, rest):
-    """Unblocks a user by username."""
-    # TODO: Find out how to get global usernames
+    """Unblocks a user by username or id."""
+    userid = get_userid(mastodon, rest)
+    if isinstance(userid, list):
+        cprint("  multiple matches found:", fg('red'))
+        printUsersShort(userid)
+    elif userid == -1:
+        cprint("  username not found", fg('red'))
+    else:
+        try:
+            relations = mastodon.account_unblock(userid)
+            if not relations['blocking']:
+                cprint("  user " + str(userid) + " is now unblocked", fg('blue'))
+        except:
+            cprint("  ... well, it *looked* like it was working ...", fg('red'))
 
 
 @command
 def follow(mastodon, rest):
-    """Follows an account by username."""
-    # TODO: Find out how to get global usernames
+    """Follows an account by username or id."""
+    userid = get_userid(mastodon, rest)
+    if isinstance(userid, list):
+        cprint("  multiple matches found:", fg('red'))
+        printUsersShort(userid)
+    elif userid == -1:
+        cprint("  username not found", fg('red'))
+    else:
+        try:
+            relations = mastodon.account_follow(userid)
+            if relations['following']:
+                cprint("  user " + str(userid) + " is now followed", fg('blue'))
+        except:
+            cprint("  ... well, it *looked* like it was working ...", fg('red'))
 
 
 @command
 def unfollow(mastodon, rest):
-    """Unfollows an account by username."""
-    # TODO: Find out how to get global usernames
+    """Unfollows an account by username or id."""
+    userid = get_userid(mastodon, rest)
+    if isinstance(userid, list):
+        cprint("  multiple matches found:", fg('red'))
+        printUsersShort(userid)
+    elif userid == -1:
+        cprint("  username not found", fg('red'))
+    else:
+        try:
+            relations = mastodon.account_unfollow(userid)
+            if not relations['following']:
+                cprint("  user " + str(userid) + " is now unfollowed", fg('blue'))
+        except:
+            cprint("  ... well, it *looked* like it was working ...", fg('red'))
+
+
+@command
+def mute(mastodon, rest):
+    """Mutes a user by username or id."""
+    userid = get_userid(mastodon, rest)
+    if isinstance(userid, list):
+        cprint("  multiple matches found:", fg('red'))
+        printUsersShort(userid)
+    elif userid == -1:
+        cprint("  username not found", fg('red'))
+    else:
+        try:
+            relations = mastodon.account_mute(userid)
+            if relations['muting']:
+                cprint("  user " + str(userid) + " is now muted", fg('blue'))
+        except:
+            cprint("  ... well, it *looked* like it was working ...", fg('red'))
+
+
+@command
+def unmute(mastodon, rest):
+    """Unmutes a user by username or id."""
+    userid = get_userid(mastodon, rest)
+    if isinstance(userid, list):
+        cprint("  multiple matches found:", fg('red'))
+        printUsersShort(userid)
+    elif userid == -1:
+        cprint("  username not found", fg('red'))
+    else:
+        try:
+            relations = mastodon.account_unmute(userid)
+            if not relations['muting']:
+                cprint("  user " + str(userid) + " is now unmuted", fg('blue'))
+        except:
+            cprint("  ... well, it *looked* like it was working ...", fg('red'))
+
+
+@command
+def accept(mastodon, rest):
+    """Accepts a user's follow request by username or id."""
+    userid = get_userid(mastodon, rest)
+    if isinstance(userid, list):
+        cprint("  multiple matches found:", fg('red'))
+        printUsersShort(userid)
+    elif userid == -1:
+        cprint("  username not found", fg('red'))
+    else:
+        try:
+            user = mastodon.follow_request_authorize(userid)
+            # a more thorough check would be to call
+            # mastodon.account_relationships(user['id'])
+            # and check the returned data
+            # here we're lazy and assume we're good if the
+            # api return matches the request
+            if user['id'] == userid:
+                cprint("  user " + str(userid) + "'s request is accepted", fg('blue'))
+        except:
+            cprint("  ... well, it *looked* like it was working ...", fg('red'))
+
+
+@command
+def reject(mastodon, rest):
+    """Rejects a user's follow request by username or id."""
+    userid = get_userid(mastodon, rest)
+    if isinstance(userid, list):
+        cprint("  multiple matches found:", fg('red'))
+        printUsersShort(userid)
+    elif userid == -1:
+        cprint("  username not found", fg('red'))
+    else:
+        try:
+            user = mastodon.follow_request_reject(userid)
+            # a more thorough check would be to call
+            # mastodon.account_relationships(user['id'])
+            # and check the returned data
+            # here we're lazy and assume we're good if the
+            # api return matches the request
+            if user['id'] == userid:
+                cprint("  user " + str(userid) + "'s request is rejected", fg('blue'))
+        except:
+            cprint("  ... well, it *looked* like it was working ...", fg('red'))
+
+
+@command
+def followers(mastodon, rest):
+    """Lists users who follow you."""
+    user = mastodon.account_verify_credentials()
+    users = mastodon.account_followers(user['id'])
+    if not users:
+        cprint("  You don't have any followers", fg('red'))
+    else:
+        cprint("  Your followers:", fg('magenta'))
+        printUsersShort(users)
+
+
+@command
+def following(mastodon, rest):
+    """Lists users you follow."""
+    user = mastodon.account_verify_credentials()
+    users = mastodon.account_following(user['id'])
+    if not users:
+        cprint("  You're safe!  There's nobody following you", fg('red'))
+    else:
+        cprint("  People following you:", fg('magenta'))
+        printUsersShort(users)
+
+
+@command
+def blocks(mastodon, rest):
+    """Lists users you have blocked."""
+    users = mastodon.blocks()
+    if not users:
+        cprint("  You haven't blocked anyone (... yet)", fg('red'))
+    else:
+        cprint("  You have blocked:", fg('magenta'))
+        printUsersShort(users)
+
+
+@command
+def mutes(mastodon, rest):
+    """Lists users you have muted."""
+    users = mastodon.mutes()
+    if not users:
+        cprint("  You haven't muted anyone (... yet)", fg('red'))
+    else:
+        cprint("  You have muted:", fg('magenta'))
+        printUsersShort(users)
+
+
+@command
+def requests(mastodon, rest):
+    """Lists your incoming follow requests."""
+    users = mastodon.follow_requests()
+    if not users:
+        cprint("  You have no incoming requests", fg('red'))
+    else:
+        cprint("  These users want to follow you:", fg('magenta'))
+        printUsersShort(users)
+        cprint("  run 'accept <id>' to accept", fg('magenta'))
+        cprint("   or 'reject <id>' to reject", fg('magenta'))
 
 
 #####################################
