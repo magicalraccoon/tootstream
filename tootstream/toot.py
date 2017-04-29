@@ -341,7 +341,7 @@ def search(mastodon, rest):
             cprint(display_name, fg('green'), end="",)
             cprint(username + toot['created_at'], fg('yellow'))
             cprint(reblogs_count + favourites_count, fg('cyan'), end="")
-            cprint(toot_id, fg('red'), attrs=['bold'])
+            cprint(toot_id, fg('red'))
 
             # Shows boosted toots as well
             if toot['reblog']:
