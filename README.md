@@ -43,6 +43,10 @@ $ python3 tootstream/toot.py
 
 Contributions welcome! Please read the [contributing guidelines](CONTRIBUTING.md) before getting started.
 
+## Code of Conduct
+
+This project is intended to be a safe, welcoming space for collaboration. All contributors are expected to adhere to the [Contributor Covenant](http://contributor-covenant.org) code of conduct. Thank you for being kind to each other!
+
 ## License
 
 [MIT](LICENSE.md)
