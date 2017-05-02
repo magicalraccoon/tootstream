@@ -3,8 +3,8 @@ A command line interface for interacting with Mastodon instances written in pyth
 
 tootstream currently does not support 2FA.
 
-#### tootstream displaying the Federated timeline:
-![Tootstream displaying the Federated timeline](https://i.imgur.com/HBhhjuV.png)		
+#### tootstream in action:
+[![Tootstream displaying the Federated timeline](https://asciinema.org/a/3m87j1s402ic2llfp517okpv2.png)](https://asciinema.org/a/3m87j1s402ic2llfp517okpv2?t=7&speed=2)
 
 ## Using tootstream
 1: Clone this repo and enter the project directory through a virtual environment
