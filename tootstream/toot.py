@@ -142,6 +142,7 @@ def printUser(user):
     cprint(re.sub('<[^<]+?>', '', user['note']), fg('red') + bg('green'))
 
 
+
 def printUsersShort(users):
     for user in users:
         if not user: continue
@@ -157,7 +158,6 @@ def printUsersShort(users):
         cprint(" "+userid, fg('red'), end=" ")
         cprint(" "+userdisp, fg('cyan'))
         cprint("      "+userurl, fg('blue'))
-
 
 #####################################
 ######## BEGIN COMMAND BLOCK ########
