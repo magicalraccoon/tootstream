@@ -1,6 +1,6 @@
 click==6.6
 dateutils==0.6.6
-Mastodon.py==1.0.2
+Mastodon.py==1.0.6
 python-dateutil==2.6.0
 pytz==2016.7
 requests==2.12.3
