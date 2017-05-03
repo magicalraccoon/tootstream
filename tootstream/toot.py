@@ -137,9 +137,9 @@ def cprint(text, style, end="\n"):
 def printUser(user):
     """Prints user data nicely with hardcoded colors."""
     print("@" + str(user['username']))
-    cprint(user['display_name'], fg('cyan') + bg('red'))
+    cprint(user['display_name'], fg('cyan'))
     print(user['url'])
-    cprint(re.sub('<[^<]+?>', '', user['note']), fg('red') + bg('green'))
+    cprint(re.sub('<[^<]+?>', '', user['note']), fg('red'))
 
 
 
@@ -444,7 +444,7 @@ def note(mastodon, rest):
             username = re.sub('<[^<]+?>', '', username)
             display_name = note['account']['display_name']
             print("  ", end="")
-            cprint(display_name + username + " followed you!", fg('yellow') + bg('blue'))
+            cprint(display_name + username + " followed you!", fg('yellow'))
 
         # blank line
         print('')
