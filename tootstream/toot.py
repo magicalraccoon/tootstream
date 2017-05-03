@@ -415,7 +415,7 @@ def note(mastodon, rest):
         # Mentions
         if note['type'] == 'mention':
             cprint(display_name + username, fg('magenta'))
-            cprint(get_content(note['status']), fg('magenta'))
+            cprint(get_content(note['status']), attr('bold'), fg('white'))
 
         # Favorites
         elif note['type'] == 'favourite':
@@ -437,14 +437,14 @@ def note(mastodon, rest):
         # Boosts
         elif note['type'] == 'reblog':
             cprint(display_name + username + " boosted your status:", fg('yellow'))
-            cprint(get_content(note['status']), fg('yellow'))
+            cprint(get_content(note['status']), attr('dim'))
 
         # Follows
         elif note['type'] == 'follow':
             username = re.sub('<[^<]+?>', '', username)
             display_name = note['account']['display_name']
             print("  ", end="")
-            cprint(display_name + username + " followed you!", fg('red') + bg('green'))
+            cprint(display_name + username + " followed you!", fg('yellow') + bg('blue'))
 
         # blank line
         print('')
