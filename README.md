@@ -22,16 +22,17 @@ $ source ./tootstream/bin/activate
 ```
 2: Install the project dependencies
 ```
-$ cd ..
 $ python3 setup.py install
 ```
+
 3: Close the environment with `$ deactivate`
 
 ## Usage
 
 1: Return to your virtual environment
-
-`$ source ./tootstream/bin/activate`
+```
+$ source ./tootstream/bin/activate
+```
 
 2: Run the script
 ```
