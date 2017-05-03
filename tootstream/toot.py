@@ -317,7 +317,7 @@ def fed(mastodon, rest):
         print(content + "\n")
 
 @command
-def public(mastodon, rest):
+def local(mastodon, rest):
     """Displays the Public timeline."""
     for toot in reversed(mastodon.timeline_public()):
         display_name = "  " + toot['account']['display_name']
