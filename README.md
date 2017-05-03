@@ -21,10 +21,8 @@ $ virtualenv -p python3 tootstream
 $ source ./tootstream/bin/activate
 ```
 2: Install the project dependencies
-```
-$ cd ..
-$ python3 setup.py install
-```
+`$ python3 setup.py install`
+
 3: Close the environment with `$ deactivate`
 
 ## Usage
