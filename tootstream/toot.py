@@ -182,8 +182,8 @@ def help(mastodon, rest):
 def toot(mastodon, rest):
     """Publish a toot. ex: 'toot Hello World' will publish 'Hello World'."""
     mastodon.toot(rest)
-    cprint("You tooted: ", fg('magenta') + attr('bold'), end="")
-    cprint(rest, fg('magenta') + bg('white') + attr('bold') + attr('underlined'))
+    cprint("You tooted: ", fg('white') + attr('bold'), end="")
+    cprint(rest, fg('magenta') + attr('bold') + attr('underlined'))
 
 
 @command
@@ -194,8 +194,8 @@ def boost(mastodon, rest):
         return
     mastodon.status_reblog(rest)
     boosted = mastodon.status(rest)
-    msg = "  Boosted: " + get_content(boosted)
-    cprint(msg, fg('green') + bg('red'))
+    msg = "  You boosted: ", fg('white') + get_content(boosted)
+    cprint(msg, fg('green'))
 
 
 @command
@@ -207,7 +207,7 @@ def unboost(mastodon, rest):
     mastodon.status_unreblog(rest)
     unboosted = mastodon.status(rest)
     msg = "  Removed boost: " + get_content(unboosted)
-    cprint(msg, fg('red') + bg('green'))
+    cprint(msg, fg('red'))
 
 
 @command
@@ -219,7 +219,7 @@ def fav(mastodon, rest):
     mastodon.status_favourite(rest)
     faved = mastodon.status(rest)
     msg = "  Favorited: " + get_content(faved)
-    cprint(msg, fg('red') + bg('yellow'))
+    cprint(msg, fg('red'))
 
 @command
 def rep(mastodon, rest):
@@ -241,7 +241,7 @@ def rep(mastodon, rest):
     reply_toot = mastodon.status_post('%s %s' % (mentions, reply_text),
                                       in_reply_to_id=int(parent_id))
     msg = "  Replied with: " + get_content(reply_toot)
-    cprint(msg, fg('red') + bg('yellow'))
+    cprint(msg, fg('red'))
 
 @command
 def unfav(mastodon, rest):
@@ -252,7 +252,7 @@ def unfav(mastodon, rest):
     mastodon.status_unfavourite(rest)
     unfaved = mastodon.status(rest)
     msg = "  Removed favorite: " + get_content(unfaved)
-    cprint(msg, fg('yellow') + bg('red'))
+    cprint(msg, fg('yellow'))
 
 
 @command
