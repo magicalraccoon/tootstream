@@ -160,30 +160,74 @@ def printUsersShort(users):
         cprint("      "+userurl, fg('blue'))
 
 #####################################
-######## BEGIN COMMAND BLOCK ########
+######## DECORATORS          ########
 #####################################
 commands = OrderedDict()
 
 
 def command(func):
+    """Adds the function to the command list."""
     commands[func.__name__] = func
     return func
 
 
+#####################################
+######## BEGIN COMMAND BLOCK ########
+#####################################
+__friendly_cmd_error__ = 'Unable to comply.  Command not found: "{}"'
+__friendly_help_header__ = """
+Tootstream Help:
+===============
+  usage: {} {}
+
+{}
+"""
+
+
 @command
 def help(mastodon, rest):
-    """List all commands."""
+    """List all commands or show detailed help."""
+    # argument case
+    if rest and rest != '':
+        try:
+            args = rest.split()
+            cmd_func = commands[args[0]]
+        except:
+            print(__friendly_cmd_error__.format(rest))
+            return
+
+        try:
+            cmd_args = cmd_func.__argstr__
+        except:
+            cmd_args = ''
+        # print a friendly header and the detailed help
+        print(__friendly_help_header__.format( cmd_func.__name__,
+                                               cmd_args,
+                                               cmd_func.__doc__ ))
+        return
+
+    # no argument, show full list
     print("Commands:")
     for command, cmd_func in commands.items():
-        print("\t{}\t{}".format(command, cmd_func.__doc__))
+        # get only the docstring's first line for the column view
+        (cmd_doc, *_) = cmd_func.__doc__.partition('\n')
+        try:
+            cmd_args = cmd_func.__argstr__
+        except:
+            cmd_args = ''
+        print("{:>15} {:<11}  {:<}".format(command, cmd_args, cmd_doc))
+help.__argstr__ = '<cmd>'
 
 
 @command
 def toot(mastodon, rest):
-    """Publish a toot. ex: 'toot Hello World' will publish 'Hello World'."""
+    """Publish a toot.
+
+    ex: 'toot Hello World' will publish 'Hello World'."""
     mastodon.toot(rest)
     cprint("You tooted: ", fg('white') + attr('bold'), end="")
     cprint(rest, fg('magenta') + attr('bold') + attr('underlined'))
+toot.__argstr__ = '<text>'
 
 
 @command
@@ -196,6 +240,7 @@ def boost(mastodon, rest):
     boosted = mastodon.status(rest)
     msg = "  You boosted: ", fg('white') + get_content(boosted)
     cprint(msg, fg('green'))
+boost.__argstr__ = '<id>'
 
 
 @command
@@ -208,6 +253,7 @@ def unboost(mastodon, rest):
     unboosted = mastodon.status(rest)
     msg = "  Removed boost: " + get_content(unboosted)
     cprint(msg, fg('red'))
+unboost.__argstr__ = '<id>'
 
 
 @command
@@ -220,6 +266,7 @@ def fav(mastodon, rest):
     faved = mastodon.status(rest)
     msg = "  Favorited: " + get_content(faved)
     cprint(msg, fg('red'))
+fav.__argstr__ = '<id>'
 
 @command
 def rep(mastodon, rest):
@@ -242,6 +289,7 @@ def rep(mastodon, rest):
                                       in_reply_to_id=int(parent_id))
     msg = "  Replied with: " + get_content(reply_toot)
     cprint(msg, fg('red'))
+rep.__argstr__ = '<id> <text>'
 
 @command
 def unfav(mastodon, rest):
@@ -253,6 +301,7 @@ def unfav(mastodon, rest):
     unfaved = mastodon.status(rest)
     msg = "  Removed favorite: " + get_content(unfaved)
     cprint(msg, fg('yellow'))
+unfav.__argstr__ = '<id>'
 
 
 @command
@@ -284,6 +333,7 @@ def home(mastodon, rest):
             content = get_content(toot)
 
         print(content + "\n")
+home.__argstr__ = ''
 
 @command
 def fed(mastodon, rest):
@@ -315,6 +365,7 @@ def fed(mastodon, rest):
             content = get_content(toot)
 
         print(content + "\n")
+fed.__argstr__ = ''
 
 @command
 def local(mastodon, rest):
@@ -347,11 +398,16 @@ def local(mastodon, rest):
             content = get_content(toot)
 
         print(content + "\n")
+local.__argstr__ = ''
 
 
 @command
 def search(mastodon, rest):
-    """Search for a #tag or @user."""
+    """Search for a #tag or @user.
+
+    ex:  search #tagname
+         search @user
+         search @user@instance.example.com"""
     usage = str( "  usage: search #tagname\n" +
                  "         search @username" )
     try:
@@ -399,6 +455,7 @@ def search(mastodon, rest):
         cprint("  Invalid format.\n"+usage, fg('red'))
 
     return
+search.__argstr__ = '<query>'
 
 
 
@@ -448,12 +505,14 @@ def note(mastodon, rest):
 
         # blank line
         print('')
+note.__argstr__ = ''
 
 
 @command
 def quit(mastodon, rest):
     """Ends the program."""
     sys.exit("Goodbye!")
+quit.__argstr__ = ''
 
 
 @command
@@ -461,6 +520,7 @@ def info(mastodon, rest):
     """Prints your user info."""
     user = mastodon.account_verify_credentials()
     printUser(user)
+info.__argstr__ = ''
 
 
 @command
@@ -471,11 +531,16 @@ def delete(mastodon, rest):
         return
     mastodon.status_delete(rest)
     print("Poof! It's gone.")
+delete.__argstr__ = '<id>'
 
 
 @command
 def block(mastodon, rest):
-    """Blocks a user by username or id."""
+    """Blocks a user by username or id.
+
+    ex: block 23
+        block @user
+        block @user@instance.example.com"""
     userid = get_userid(mastodon, rest)
     if isinstance(userid, list):
         cprint("  multiple matches found:", fg('red'))
@@ -489,11 +554,16 @@ def block(mastodon, rest):
                 cprint("  user " + str(userid) + " is now blocked", fg('blue'))
         except:
             cprint("  ... well, it *looked* like it was working ...", fg('red'))
+block.__argstr__ = '<user>'
 
 
 @command
 def unblock(mastodon, rest):
-    """Unblocks a user by username or id."""
+    """Unblocks a user by username or id.
+
+    ex: unblock 23
+        unblock @user
+        unblock @user@instance.example.com"""
     userid = get_userid(mastodon, rest)
     if isinstance(userid, list):
         cprint("  multiple matches found:", fg('red'))
@@ -507,11 +577,16 @@ def unblock(mastodon, rest):
                 cprint("  user " + str(userid) + " is now unblocked", fg('blue'))
         except:
             cprint("  ... well, it *looked* like it was working ...", fg('red'))
+unblock.__argstr__ = '<user>'
 
 
 @command
 def follow(mastodon, rest):
-    """Follows an account by username or id."""
+    """Follows an account by username or id.
+
+    ex: follow 23
+        follow @user
+        follow @user@instance.example.com"""
     userid = get_userid(mastodon, rest)
     if isinstance(userid, list):
         cprint("  multiple matches found:", fg('red'))
@@ -525,11 +600,16 @@ def follow(mastodon, rest):
                 cprint("  user " + str(userid) + " is now followed", fg('blue'))
         except:
             cprint("  ... well, it *looked* like it was working ...", fg('red'))
+follow.__argstr__ = '<user>'
 
 
 @command
 def unfollow(mastodon, rest):
-    """Unfollows an account by username or id."""
+    """Unfollows an account by username or id.
+
+    ex: unfollow 23
+        unfollow @user
+        unfollow @user@instance.example.com"""
     userid = get_userid(mastodon, rest)
     if isinstance(userid, list):
         cprint("  multiple matches found:", fg('red'))
@@ -543,11 +623,16 @@ def unfollow(mastodon, rest):
                 cprint("  user " + str(userid) + " is now unfollowed", fg('blue'))
         except:
             cprint("  ... well, it *looked* like it was working ...", fg('red'))
+unfollow.__argstr__ = '<user>'
 
 
 @command
 def mute(mastodon, rest):
-    """Mutes a user by username or id."""
+    """Mutes a user by username or id.
+
+    ex: mute 23
+        mute @user
+        mute @user@instance.example.com"""
     userid = get_userid(mastodon, rest)
     if isinstance(userid, list):
         cprint("  multiple matches found:", fg('red'))
@@ -561,11 +646,16 @@ def mute(mastodon, rest):
                 cprint("  user " + str(userid) + " is now muted", fg('blue'))
         except:
             cprint("  ... well, it *looked* like it was working ...", fg('red'))
+mute.__argstr__ = '<user>'
 
 
 @command
 def unmute(mastodon, rest):
-    """Unmutes a user by username or id."""
+    """Unmutes a user by username or id.
+
+    ex: unmute 23
+        unmute @user
+        unmute @user@instance.example.com"""
     userid = get_userid(mastodon, rest)
     if isinstance(userid, list):
         cprint("  multiple matches found:", fg('red'))
@@ -579,11 +669,16 @@ def unmute(mastodon, rest):
                 cprint("  user " + str(userid) + " is now unmuted", fg('blue'))
         except:
             cprint("  ... well, it *looked* like it was working ...", fg('red'))
+unmute.__argstr__ = '<user>'
 
 
 @command
 def accept(mastodon, rest):
-    """Accepts a user's follow request by username or id."""
+    """Accepts a user's follow request by username or id.
+
+    ex: accept 23
+        accept @user
+        accept @user@instance.example.com"""
     userid = get_userid(mastodon, rest)
     if isinstance(userid, list):
         cprint("  multiple matches found:", fg('red'))
@@ -602,11 +697,16 @@ def accept(mastodon, rest):
                 cprint("  user " + str(userid) + "'s request is accepted", fg('blue'))
         except:
             cprint("  ... well, it *looked* like it was working ...", fg('red'))
+accept.__argstr__ = '<user>'
 
 
 @command
 def reject(mastodon, rest):
-    """Rejects a user's follow request by username or id."""
+    """Rejects a user's follow request by username or id.
+
+    ex: reject 23
+        reject @user
+        reject @user@instance.example.com"""
     userid = get_userid(mastodon, rest)
     if isinstance(userid, list):
         cprint("  multiple matches found:", fg('red'))
@@ -625,6 +725,7 @@ def reject(mastodon, rest):
                 cprint("  user " + str(userid) + "'s request is rejected", fg('blue'))
         except:
             cprint("  ... well, it *looked* like it was working ...", fg('red'))
+reject.__argstr__ = '<user>'
 
 
 @command
@@ -637,6 +738,7 @@ def followers(mastodon, rest):
     else:
         cprint("  Your followers:", fg('magenta'))
         printUsersShort(users)
+followers.__argstr__ = ''
 
 
 @command
@@ -649,6 +751,7 @@ def following(mastodon, rest):
     else:
         cprint("  People following you:", fg('magenta'))
         printUsersShort(users)
+following.__argstr__ = ''
 
 
 @command
@@ -660,6 +763,7 @@ def blocks(mastodon, rest):
     else:
         cprint("  You have blocked:", fg('magenta'))
         printUsersShort(users)
+blocks.__argstr__ = ''
 
 
 @command
@@ -671,11 +775,15 @@ def mutes(mastodon, rest):
     else:
         cprint("  You have muted:", fg('magenta'))
         printUsersShort(users)
+mutes.__argstr__ = ''
 
 
 @command
 def requests(mastodon, rest):
-    """Lists your incoming follow requests."""
+    """Lists your incoming follow requests.
+
+    Run 'accept id' to accept a request
+     or 'reject id' to reject."""
     users = mastodon.follow_requests()
     if not users:
         cprint("  You have no incoming requests", fg('red'))
@@ -684,6 +792,7 @@ def requests(mastodon, rest):
         printUsersShort(users)
         cprint("  run 'accept <id>' to accept", fg('magenta'))
         cprint("   or 'reject <id>' to reject", fg('magenta'))
+requests.__argstr__ = ''
 
 
 #####################################
