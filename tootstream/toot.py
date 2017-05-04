@@ -46,6 +46,9 @@ IDS = IdDict();
 
 toot_parser = TootParser(indent='  ')
 
+#####################################
+######## UTILITY FUNCTIONS   ########
+#####################################
 def get_content(toot):
     html = toot['content']
     toot_parser.reset()
@@ -76,36 +79,60 @@ def get_userid(mastodon, rest):
         return users[0]['id']
 
 
+#####################################
+######## CONFIG FUNCTIONS    ########
+#####################################
 def parse_config(filename):
-    (dirpath, basename) = os.path.split(filename)
-    if not (dirpath == "" or os.path.exists(dirpath)):
-        os.makedirs(dirpath)
+    """
+    Reads configuration from the specified file.
+    On success, returns a ConfigParser object containing
+    data from the file.  If the file does not exist,
+    returns an empty ConfigParser object.
 
+    Exits the program with error if the specified file
+    cannot be parsed to prevent damaging unknown files.
+    """
     if not os.path.isfile(filename):
-        return {}
+        cprint("...No configuration found, generating...", fg('cyan'))
+        config = configparser.ConfigParser()
+        return config
 
     config = configparser.ConfigParser()
-
-    parsed = config.read(filename)
-    if len(parsed) == 0:
-        return {}
+    try:
+        config.read(filename)
+    except configparser.Error:
+        cprint("This does not look like a valid configuration: {}".format(filename), fg('red'))
+        sys.exit(1)
 
     return config
 
-def save_config(filename, instance, client_id, client_secret, token):
+
+def save_config(filename, config):
+    """
+    Writes a ConfigParser object to the specified file.
+    If the file does not exist, this will try to create
+    it with mode 600 (user-rw-only).
+
+    Errors while writing are reported to the user but
+    will not exit the program.
+    """
     (dirpath, basename) = os.path.split(filename)
     if not (dirpath == "" or os.path.exists(dirpath)):
         os.makedirs(dirpath)
-    config = configparser.ConfigParser()
-    config['default'] = {
-        'instance': instance,
-        'client_id': client_id,
-        'client_secret': client_secret,
-        'token': token
-    }
 
-    with open(filename, 'w') as configfile:
-        config.write(configfile)
+    # create as user-rw-only if possible
+    if not os.path.exists(filename):
+        try:
+            os.open(filename, flags=os.O_CREAT|os.O_APPEND, mode=0o600)
+        except Exception as e:
+            cprint("Unable to create file {}: {}".format(filename, e), fg('red'))
+
+    try:
+        with open(filename, 'w') as configfile:
+            config.write(configfile)
+    except os.error:
+        cprint("Unable to write configuration to {}".format(filename), fg('red'))
+    return
 
 
 def register_app(instance):
@@ -130,6 +157,9 @@ def login(mastodon, instance, email, password):
     return mastodon.log_in(email, password)
 
 
+#####################################
+######## OUTPUT FUNCTIONS    ########
+#####################################
 def cprint(text, style, end="\n"):
     print(stylize(text, style), end=end)
 
@@ -713,6 +743,10 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
                help='Location of alternate configuration file to load' )
 def main(instance, email, password, config):
     configpath = os.path.expanduser(config)
+    if os.path.isfile(configpath) and not os.access(configpath, os.W_OK):
+        # warn the user before they're asked for input
+        cprint("Config file does not appear to be writable: {}".format(configpath), fg('red'))
+
     config = parse_config(configpath)
 
     if 'default' not in config:
@@ -761,7 +795,16 @@ def main(instance, email, password, config):
         access_token=token,
         api_base_url="https://" + instance)
 
-    save_config(configpath, instance, client_id, client_secret, token)
+    # update config before writing
+    if "token" not in config['default']:
+        config['default'] = {
+                'instance': instance,
+                'client_id': client_id,
+                'client_secret': client_secret,
+                'token': token
+        }
+
+    save_config(configpath, config)
 
     say_error = lambda a, b: cprint("Invalid command. Use 'help' for a list of commands.",
             fg('white') + bg('red'))
