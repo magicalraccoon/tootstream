@@ -45,6 +45,7 @@ class IdDict:
 IDS = IdDict();
 
 toot_parser = TootParser(indent='  ')
+random.seed('\U0001f34d')
 
 #####################################
 ######## UTILITY FUNCTIONS   ########
@@ -164,6 +165,31 @@ def cprint(text, style, end="\n"):
     print(stylize(text, style), end=end)
 
 
+def stylize_rl(text, styles, reset=True):
+    """conveniently styles your text as and resets ANSI codes at its end. readline-safe."""
+    # problem: stylize doesn't add the escapes we need for readline.
+    # see: https://github.com/dslackw/colored/issues/5
+    # solution: localized tweak.
+    terminator = "\x01{}\x02".format(attr("reset")) if reset else ""
+    return "\x01{}\x02{}{}".format("".join(styles), text, terminator)
+
+
+def stylePrompt(username, style=[], prefix='[', suffix=']: '):
+    # [prefix]@username[suffix]
+    #         <=style1>
+    # use stylize_rl() instead of stylize() for prompts. same arguments.
+    return ''.join(( prefix, stylize_rl("@"+username, style), suffix ))
+
+
+#def stylePromptAlt(username, profile, style1=[], style2=None, prefix='[', suffix=']: '):
+#    # [prefix]@username (profile)[suffix]
+#    #         <==style1 style2==>
+#    if not style2: style2 = style1
+#    # use stylize_rl() instead of stylize() for prompts. same arguments.
+#    return ''.join(( prefix, stylize_rl("@"+username, style1), " ",
+#                     stylize_rl("("+profile+")", style2), suffix ))
+
+
 def printUser(user):
     """Prints user data nicely with hardcoded colors."""
     print("@" + str(user['username']))
@@ -188,6 +214,7 @@ def printUsersShort(users):
         cprint(" "+userid, fg('red'), end=" ")
         cprint(" "+userdisp, fg('cyan'))
         cprint("      "+userurl, fg('blue'))
+
 
 #####################################
 ######## DECORATORS          ########
@@ -358,7 +385,6 @@ def home(mastodon, rest):
         toot_id = str(IDS.to_local(toot['id']))
 
         # Prints individual toot/tooter info
-        random.seed(display_name)
         cprint(display_name, fg(random.choice(COLORS)), end="")
         cprint(username, fg('green'), end="")
         cprint(toot['created_at'], attr('dim'))
@@ -927,7 +953,7 @@ def main(instance, email, password, config):
     print("\n")
 
     user = mastodon.account_verify_credentials()
-    prompt = "[@" + str(user['username']) + "]: "
+    prompt = stylePrompt(user['username'], fg(random.choice(COLORS)))
 
     while True:
         command = input(prompt).split(' ', 1)
