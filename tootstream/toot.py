@@ -231,6 +231,41 @@ toot.__argstr__ = '<text>'
 
 
 @command
+def rep(mastodon, rest):
+    """Reply to a toot by ID."""
+    command = rest.split(' ', 1)
+    parent_id = IDS.to_global(command[0])
+    if parent_id is None:
+        return
+    try:
+        reply_text = command[1]
+    except IndexError:
+        reply_text = ''
+    parent_toot = mastodon.status(parent_id)
+    mentions = [i['acct'] for i in parent_toot['mentions']]
+    mentions.append(parent_toot['account']['acct'])
+    mentions = ["@%s" % i for i in list(set(mentions))] # Remove dups
+    mentions = ' '.join(mentions)
+    # TODO: Ensure that content warning visibility carries over to reply
+    reply_toot = mastodon.status_post('%s %s' % (mentions, reply_text),
+                                      in_reply_to_id=int(parent_id))
+    msg = "  Replied with: " + get_content(reply_toot)
+    cprint(msg, fg('red'))
+rep.__argstr__ = '<id> <text>'
+
+
+@command
+def delete(mastodon, rest):
+    """Deletes your toot by ID"""
+    rest = IDS.to_global(rest)
+    if rest is None:
+        return
+    mastodon.status_delete(rest)
+    print("Poof! It's gone.")
+delete.__argstr__ = '<id>'
+
+
+@command
 def boost(mastodon, rest):
     """Boosts a toot by ID."""
     rest = IDS.to_global(rest)
@@ -268,28 +303,6 @@ def fav(mastodon, rest):
     cprint(msg, fg('red'))
 fav.__argstr__ = '<id>'
 
-@command
-def rep(mastodon, rest):
-    """Reply to a toot by ID."""
-    command = rest.split(' ', 1)
-    parent_id = IDS.to_global(command[0])
-    if parent_id is None:
-        return
-    try:
-        reply_text = command[1]
-    except IndexError:
-        reply_text = ''
-    parent_toot = mastodon.status(parent_id)
-    mentions = [i['acct'] for i in parent_toot['mentions']]
-    mentions.append(parent_toot['account']['acct'])
-    mentions = ["@%s" % i for i in list(set(mentions))] # Remove dups
-    mentions = ' '.join(mentions)
-    # TODO: Ensure that content warning visibility carries over to reply
-    reply_toot = mastodon.status_post('%s %s' % (mentions, reply_text),
-                                      in_reply_to_id=int(parent_id))
-    msg = "  Replied with: " + get_content(reply_toot)
-    cprint(msg, fg('red'))
-rep.__argstr__ = '<id> <text>'
 
 @command
 def unfav(mastodon, rest):
@@ -335,6 +348,7 @@ def home(mastodon, rest):
         print(content + "\n")
 home.__argstr__ = ''
 
+
 @command
 def fed(mastodon, rest):
     """Displays the Federated timeline."""
@@ -366,6 +380,7 @@ def fed(mastodon, rest):
 
         print(content + "\n")
 fed.__argstr__ = ''
+
 
 @command
 def local(mastodon, rest):
@@ -399,64 +414,6 @@ def local(mastodon, rest):
 
         print(content + "\n")
 local.__argstr__ = ''
-
-
-@command
-def search(mastodon, rest):
-    """Search for a #tag or @user.
-
-    ex:  search #tagname
-         search @user
-         search @user@instance.example.com"""
-    usage = str( "  usage: search #tagname\n" +
-                 "         search @username" )
-    try:
-        indicator = rest[:1]
-        query = rest[1:]
-    except:
-        cprint(usage, fg('red'))
-        return
-
-    # @ user search
-    if indicator == "@" and not query == "":
-        users = mastodon.account_search(query)
-
-        for user in users:
-            printUser(user)
-    # end @
-
-    # # hashtag search
-    elif indicator == "#" and not query == "":
-        for toot in reversed(mastodon.timeline_hashtag(query)):
-            display_name = "  " + toot['account']['display_name']
-            username = " @" + toot['account']['username'] + " "
-            reblogs_count = "  ♺:" + str(toot['reblogs_count'])
-            favourites_count = " ♥:" + str(toot['favourites_count']) + " "
-            toot_id = str(IDS.to_local(toot['id']))
-
-            # Prints individual toot/tooter info
-            cprint(display_name, fg('green'), end="",)
-            cprint(username + toot['created_at'], fg('yellow'))
-            cprint(reblogs_count + favourites_count, fg('cyan'), end="")
-            cprint(toot_id, fg('red'))
-
-            # Shows boosted toots as well
-            if toot['reblog']:
-                username = "  Boosted @" + toot['reblog']['account']['acct'] +": "
-                cprint(username, fg('blue'), end='')
-                content = get_content(toot['reblog'])
-            else:
-                content = get_content(toot)
-
-            print(content + "\n")
-    # end #
-
-    else:
-        cprint("  Invalid format.\n"+usage, fg('red'))
-
-    return
-search.__argstr__ = '<query>'
-
 
 
 @command
@@ -506,32 +463,6 @@ def note(mastodon, rest):
         # blank line
         print('')
 note.__argstr__ = ''
-
-
-@command
-def quit(mastodon, rest):
-    """Ends the program."""
-    sys.exit("Goodbye!")
-quit.__argstr__ = ''
-
-
-@command
-def info(mastodon, rest):
-    """Prints your user info."""
-    user = mastodon.account_verify_credentials()
-    printUser(user)
-info.__argstr__ = ''
-
-
-@command
-def delete(mastodon, rest):
-    """Deletes your toot by ID"""
-    rest = IDS.to_global(rest)
-    if rest is None:
-        return
-    mastodon.status_delete(rest)
-    print("Poof! It's gone.")
-delete.__argstr__ = '<id>'
 
 
 @command
@@ -673,59 +604,68 @@ unmute.__argstr__ = '<user>'
 
 
 @command
-def accept(mastodon, rest):
-    """Accepts a user's follow request by username or id.
+def search(mastodon, rest):
+    """Search for a #tag or @user.
 
-    ex: accept 23
-        accept @user
-        accept @user@instance.example.com"""
-    userid = get_userid(mastodon, rest)
-    if isinstance(userid, list):
-        cprint("  multiple matches found:", fg('red'))
-        printUsersShort(userid)
-    elif userid == -1:
-        cprint("  username not found", fg('red'))
+    ex:  search #tagname
+         search @user
+         search @user@instance.example.com"""
+    usage = str( "  usage: search #tagname\n" +
+                 "         search @username" )
+    try:
+        indicator = rest[:1]
+        query = rest[1:]
+    except:
+        cprint(usage, fg('red'))
+        return
+
+    # @ user search
+    if indicator == "@" and not query == "":
+        users = mastodon.account_search(query)
+
+        for user in users:
+            printUser(user)
+    # end @
+
+    # # hashtag search
+    elif indicator == "#" and not query == "":
+        for toot in reversed(mastodon.timeline_hashtag(query)):
+            display_name = "  " + toot['account']['display_name']
+            username = " @" + toot['account']['username'] + " "
+            reblogs_count = "  ♺:" + str(toot['reblogs_count'])
+            favourites_count = " ♥:" + str(toot['favourites_count']) + " "
+            toot_id = str(IDS.to_local(toot['id']))
+
+            # Prints individual toot/tooter info
+            cprint(display_name, fg('green'), end="",)
+            cprint(username + toot['created_at'], fg('yellow'))
+            cprint(reblogs_count + favourites_count, fg('cyan'), end="")
+            cprint(toot_id, fg('red'))
+
+            # Shows boosted toots as well
+            if toot['reblog']:
+                username = "  Boosted @" + toot['reblog']['account']['acct'] +": "
+                cprint(username, fg('blue'), end='')
+                content = get_content(toot['reblog'])
+            else:
+                content = get_content(toot)
+
+            print(content + "\n")
+    # end #
+
     else:
-        try:
-            user = mastodon.follow_request_authorize(userid)
-            # a more thorough check would be to call
-            # mastodon.account_relationships(user['id'])
-            # and check the returned data
-            # here we're lazy and assume we're good if the
-            # api return matches the request
-            if user['id'] == userid:
-                cprint("  user " + str(userid) + "'s request is accepted", fg('blue'))
-        except:
-            cprint("  ... well, it *looked* like it was working ...", fg('red'))
-accept.__argstr__ = '<user>'
+        cprint("  Invalid format.\n"+usage, fg('red'))
+
+    return
+search.__argstr__ = '<query>'
 
 
 @command
-def reject(mastodon, rest):
-    """Rejects a user's follow request by username or id.
-
-    ex: reject 23
-        reject @user
-        reject @user@instance.example.com"""
-    userid = get_userid(mastodon, rest)
-    if isinstance(userid, list):
-        cprint("  multiple matches found:", fg('red'))
-        printUsersShort(userid)
-    elif userid == -1:
-        cprint("  username not found", fg('red'))
-    else:
-        try:
-            user = mastodon.follow_request_reject(userid)
-            # a more thorough check would be to call
-            # mastodon.account_relationships(user['id'])
-            # and check the returned data
-            # here we're lazy and assume we're good if the
-            # api return matches the request
-            if user['id'] == userid:
-                cprint("  user " + str(userid) + "'s request is rejected", fg('blue'))
-        except:
-            cprint("  ... well, it *looked* like it was working ...", fg('red'))
-reject.__argstr__ = '<user>'
+def info(mastodon, rest):
+    """Prints your user info."""
+    user = mastodon.account_verify_credentials()
+    printUser(user)
+info.__argstr__ = ''
 
 
 @command
@@ -793,6 +733,69 @@ def requests(mastodon, rest):
         cprint("  run 'accept <id>' to accept", fg('magenta'))
         cprint("   or 'reject <id>' to reject", fg('magenta'))
 requests.__argstr__ = ''
+
+
+@command
+def accept(mastodon, rest):
+    """Accepts a user's follow request by username or id.
+
+    ex: accept 23
+        accept @user
+        accept @user@instance.example.com"""
+    userid = get_userid(mastodon, rest)
+    if isinstance(userid, list):
+        cprint("  multiple matches found:", fg('red'))
+        printUsersShort(userid)
+    elif userid == -1:
+        cprint("  username not found", fg('red'))
+    else:
+        try:
+            user = mastodon.follow_request_authorize(userid)
+            # a more thorough check would be to call
+            # mastodon.account_relationships(user['id'])
+            # and check the returned data
+            # here we're lazy and assume we're good if the
+            # api return matches the request
+            if user['id'] == userid:
+                cprint("  user " + str(userid) + "'s request is accepted", fg('blue'))
+        except:
+            cprint("  ... well, it *looked* like it was working ...", fg('red'))
+accept.__argstr__ = '<user>'
+
+
+@command
+def reject(mastodon, rest):
+    """Rejects a user's follow request by username or id.
+
+    ex: reject 23
+        reject @user
+        reject @user@instance.example.com"""
+    userid = get_userid(mastodon, rest)
+    if isinstance(userid, list):
+        cprint("  multiple matches found:", fg('red'))
+        printUsersShort(userid)
+    elif userid == -1:
+        cprint("  username not found", fg('red'))
+    else:
+        try:
+            user = mastodon.follow_request_reject(userid)
+            # a more thorough check would be to call
+            # mastodon.account_relationships(user['id'])
+            # and check the returned data
+            # here we're lazy and assume we're good if the
+            # api return matches the request
+            if user['id'] == userid:
+                cprint("  user " + str(userid) + "'s request is rejected", fg('blue'))
+        except:
+            cprint("  ... well, it *looked* like it was working ...", fg('red'))
+reject.__argstr__ = '<user>'
+
+
+@command
+def quit(mastodon, rest):
+    """Ends the program."""
+    sys.exit("Goodbye!")
+quit.__argstr__ = ''
 
 
 #####################################
