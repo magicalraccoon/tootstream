@@ -47,6 +47,9 @@ IDS = IdDict();
 toot_parser = TootParser(indent='  ')
 random.seed('\U0001f34d')
 
+#####################################
+######## UTILITY FUNCTIONS   ########
+#####################################
 def get_content(toot):
     html = toot['content']
     toot_parser.reset()
@@ -54,36 +57,83 @@ def get_content(toot):
     toot_parser.close()
     return toot_parser.get_text()
 
-def parse_config(filename):
-    (dirpath, basename) = os.path.split(filename)
-    if not (dirpath == "" or os.path.exists(dirpath)):
-        os.makedirs(dirpath)
 
+def get_userid(mastodon, rest):
+    # we got some user input.  we need a userid (int).
+    # returns userid as int, -1 on error, or list of users if ambiguous.
+    if not rest:
+        return -1
+
+    # maybe it's already an int
+    try:
+        return int(rest)
+    except ValueError:
+        pass
+
+    # not an int
+    users = mastodon.account_search(rest)
+    if not users:
+        return -1
+    elif len(users) > 1:
+        return users
+    else:
+        return users[0]['id']
+
+
+#####################################
+######## CONFIG FUNCTIONS    ########
+#####################################
+def parse_config(filename):
+    """
+    Reads configuration from the specified file.
+    On success, returns a ConfigParser object containing
+    data from the file.  If the file does not exist,
+    returns an empty ConfigParser object.
+
+    Exits the program with error if the specified file
+    cannot be parsed to prevent damaging unknown files.
+    """
     if not os.path.isfile(filename):
-        return {}
+        cprint("...No configuration found, generating...", fg('cyan'))
+        config = configparser.ConfigParser()
+        return config
 
     config = configparser.ConfigParser()
-
-    parsed = config.read(filename)
-    if len(parsed) == 0:
-        return {}
+    try:
+        config.read(filename)
+    except configparser.Error:
+        cprint("This does not look like a valid configuration: {}".format(filename), fg('red'))
+        sys.exit(1)
 
     return config
 
-def save_config(filename, instance, client_id, client_secret, token):
+
+def save_config(filename, config):
+    """
+    Writes a ConfigParser object to the specified file.
+    If the file does not exist, this will try to create
+    it with mode 600 (user-rw-only).
+
+    Errors while writing are reported to the user but
+    will not exit the program.
+    """
     (dirpath, basename) = os.path.split(filename)
     if not (dirpath == "" or os.path.exists(dirpath)):
         os.makedirs(dirpath)
-    config = configparser.ConfigParser()
-    config['default'] = {
-        'instance': instance,
-        'client_id': client_id,
-        'client_secret': client_secret,
-        'token': token
-    }
 
-    with open(filename, 'w') as configfile:
-        config.write(configfile)
+    # create as user-rw-only if possible
+    if not os.path.exists(filename):
+        try:
+            os.open(filename, flags=os.O_CREAT|os.O_APPEND, mode=0o600)
+        except Exception as e:
+            cprint("Unable to create file {}: {}".format(filename, e), fg('red'))
+
+    try:
+        with open(filename, 'w') as configfile:
+            config.write(configfile)
+    except os.error:
+        cprint("Unable to write configuration to {}".format(filename), fg('red'))
+    return
 
 
 def register_app(instance):
@@ -107,6 +157,10 @@ def login(mastodon, instance, email, password):
 
     return mastodon.log_in(email, password)
 
+
+#####################################
+######## OUTPUT FUNCTIONS    ########
+#####################################
 def cprint(text, style, end="\n"):
     print(stylize(text, style), end=end)
 
@@ -116,8 +170,8 @@ def stylize_rl(text, styles, reset=True):
     # problem: stylize doesn't add the escapes we need for readline.
     # see: https://github.com/dslackw/colored/issues/5
     # solution: localized tweak.
-    terminator = attr("reset") if reset else ""
-    return "\x01{}\x02{}\x01{}\x02".format("".join(styles), text, terminator)
+    terminator = "\x01{}\x02".format(attr("reset")) if reset else ""
+    return "\x01{}\x02{}{}".format("".join(styles), text, terminator)
 
 
 def stylePrompt(username, style=[], prefix='[', suffix=']: '):
@@ -136,68 +190,102 @@ def stylePrompt(username, style=[], prefix='[', suffix=']: '):
 #                     stylize_rl("("+profile+")", style2), suffix ))
 
 
-_pineapple = '\U0001f34d'  # can never have too many
+def printUser(user):
+    """Prints user data nicely with hardcoded colors."""
+    print("@" + str(user['username']))
+    cprint(user['display_name'], fg('cyan'))
+    print(user['url'])
+    cprint(re.sub('<[^<]+?>', '', user['note']), fg('red'))
+
+
+
+def printUsersShort(users):
+    for user in users:
+        if not user: continue
+        locked = ""
+        # lock glyphs: masto web uses FontAwesome's U+F023 (nonstandard)
+        # lock emoji: U+1F512
+        if user['locked']: locked = " \U0001f512"
+        userstr = "@"+str(user['acct'])+locked
+        userid = "(id:"+str(user['id'])+")"
+        userdisp = "'"+str(user['display_name'])+"'"
+        userurl = str(user['url'])
+        cprint("  "+userstr, fg('green'), end=" ")
+        cprint(" "+userid, fg('red'), end=" ")
+        cprint(" "+userdisp, fg('cyan'))
+        cprint("      "+userurl, fg('blue'))
+
+
 #####################################
-######## BEGIN COMMAND BLOCK ########
+######## DECORATORS          ########
 #####################################
 commands = OrderedDict()
 
 
 def command(func):
+    """Adds the function to the command list."""
     commands[func.__name__] = func
     return func
 
 
+#####################################
+######## BEGIN COMMAND BLOCK ########
+#####################################
+__friendly_cmd_error__ = 'Unable to comply.  Command not found: "{}"'
+__friendly_help_header__ = """
+Tootstream Help:
+===============
+  usage: {} {}
+
+{}
+"""
+
+
 @command
 def help(mastodon, rest):
-    """List all commands."""
+    """List all commands or show detailed help."""
+    # argument case
+    if rest and rest != '':
+        try:
+            args = rest.split()
+            cmd_func = commands[args[0]]
+        except:
+            print(__friendly_cmd_error__.format(rest))
+            return
+
+        try:
+            cmd_args = cmd_func.__argstr__
+        except:
+            cmd_args = ''
+        # print a friendly header and the detailed help
+        print(__friendly_help_header__.format( cmd_func.__name__,
+                                               cmd_args,
+                                               cmd_func.__doc__ ))
+        return
+
+    # no argument, show full list
     print("Commands:")
     for command, cmd_func in commands.items():
-        print("\t{}\t{}".format(command, cmd_func.__doc__))
+        # get only the docstring's first line for the column view
+        (cmd_doc, *_) = cmd_func.__doc__.partition('\n')
+        try:
+            cmd_args = cmd_func.__argstr__
+        except:
+            cmd_args = ''
+        print("{:>15} {:<11}  {:<}".format(command, cmd_args, cmd_doc))
+help.__argstr__ = '<cmd>'
 
 
 @command
 def toot(mastodon, rest):
-    """Publish a toot. ex: 'toot Hello World' will publish 'Hello World'."""
+    """Publish a toot.
+
+    ex: 'toot Hello World' will publish 'Hello World'."""
     mastodon.toot(rest)
-    cprint("You tooted: ", fg('magenta') + attr('bold'), end="")
-    cprint(rest, fg('magenta') + bg('white') + attr('bold') + attr('underlined'))
+    cprint("You tooted: ", fg('white') + attr('bold'), end="")
+    cprint(rest, fg('magenta') + attr('bold') + attr('underlined'))
+toot.__argstr__ = '<text>'
 
-
-@command
-def boost(mastodon, rest):
-    """Boosts a toot by ID."""
-    rest = IDS.to_global(rest)
-    if rest is None:
-        return
-    mastodon.status_reblog(rest)
-    boosted = mastodon.status(rest)
-    msg = "  Boosted: " + get_content(boosted)
-    cprint(msg, fg('green') + bg('red'))
-
-
-@command
-def unboost(mastodon, rest):
-    """Removes a boosted tweet by ID."""
-    rest = IDS.to_global(rest)
-    if rest is None:
-        return
-    mastodon.status_unreblog(rest)
-    unboosted = mastodon.status(rest)
-    msg = "  Removed boost: " + get_content(unboosted)
-    cprint(msg, fg('red') + bg('green'))
-
-
-@command
-def fav(mastodon, rest):
-    """Favorites a toot by ID."""
-    rest = IDS.to_global(rest)
-    if rest is None:
-        return
-    mastodon.status_favourite(rest)
-    faved = mastodon.status(rest)
-    msg = "  Favorited: " + get_content(faved)
-    cprint(msg, fg('red') + bg('yellow'))
 
 @command
 def rep(mastodon, rest):
@@ -219,7 +307,59 @@ def rep(mastodon, rest):
     reply_toot = mastodon.status_post('%s %s' % (mentions, reply_text),
                                       in_reply_to_id=int(parent_id))
     msg = "  Replied with: " + get_content(reply_toot)
-    cprint(msg, fg('red') + bg('yellow'))
+    cprint(msg, fg('red'))
+rep.__argstr__ = '<id> <text>'
+
+
+@command
+def delete(mastodon, rest):
+    """Deletes your toot by ID"""
+    rest = IDS.to_global(rest)
+    if rest is None:
+        return
+    mastodon.status_delete(rest)
+    print("Poof! It's gone.")
+delete.__argstr__ = '<id>'
+
+
+@command
+def boost(mastodon, rest):
+    """Boosts a toot by ID."""
+    rest = IDS.to_global(rest)
+    if rest is None:
+        return
+    mastodon.status_reblog(rest)
+    boosted = mastodon.status(rest)
+    msg = "  You boosted: ", fg('white') + get_content(boosted)
+    cprint(msg, fg('green'))
+boost.__argstr__ = '<id>'
+
+
+@command
+def unboost(mastodon, rest):
+    """Removes a boosted tweet by ID."""
+    rest = IDS.to_global(rest)
+    if rest is None:
+        return
+    mastodon.status_unreblog(rest)
+    unboosted = mastodon.status(rest)
+    msg = "  Removed boost: " + get_content(unboosted)
+    cprint(msg, fg('red'))
+unboost.__argstr__ = '<id>'
+
+
+@command
+def fav(mastodon, rest):
+    """Favorites a toot by ID."""
+    rest = IDS.to_global(rest)
+    if rest is None:
+        return
+    mastodon.status_favourite(rest)
+    faved = mastodon.status(rest)
+    msg = "  Favorited: " + get_content(faved)
+    cprint(msg, fg('red'))
+fav.__argstr__ = '<id>'
+
 
 @command
 def unfav(mastodon, rest):
@@ -230,7 +370,8 @@ def unfav(mastodon, rest):
     mastodon.status_unfavourite(rest)
     unfaved = mastodon.status(rest)
     msg = "  Removed favorite: " + get_content(unfaved)
-    cprint(msg, fg('yellow') + bg('red'))
+    cprint(msg, fg('yellow'))
+unfav.__argstr__ = '<id>'
 
 
 @command
@@ -261,6 +402,8 @@ def home(mastodon, rest):
             content = get_content(toot)
 
         print(content + "\n")
+home.__argstr__ = ''
+
 
 @command
 def fed(mastodon, rest):
@@ -292,9 +435,11 @@ def fed(mastodon, rest):
             content = get_content(toot)
 
         print(content + "\n")
+fed.__argstr__ = ''
+
 
 @command
-def public(mastodon, rest):
+def local(mastodon, rest):
     """Displays the Public timeline."""
     for toot in reversed(mastodon.timeline_public()):
         display_name = "  " + toot['account']['display_name']
@@ -324,6 +469,7 @@ def public(mastodon, rest):
             content = get_content(toot)
 
         print(content + "\n")
+local.__argstr__ = ''
 
 
 @command
@@ -339,7 +485,7 @@ def note(mastodon, rest):
         # Mentions
         if note['type'] == 'mention':
             cprint(display_name + username, fg('magenta'))
-            cprint(get_content(note['status']), fg('magenta'))
+            cprint(get_content(note['status']), attr('bold'), fg('white'))
 
         # Favorites
         elif note['type'] == 'favourite':
@@ -361,68 +507,351 @@ def note(mastodon, rest):
         # Boosts
         elif note['type'] == 'reblog':
             cprint(display_name + username + " boosted your status:", fg('yellow'))
-            cprint(get_content(note['status']), fg('yellow'))
+            cprint(get_content(note['status']), attr('dim'))
 
         # Follows
         elif note['type'] == 'follow':
             username = re.sub('<[^<]+?>', '', username)
             display_name = note['account']['display_name']
             print("  ", end="")
-            cprint(display_name + username + " followed you!", fg('red') + bg('green'))
+            cprint(display_name + username + " followed you!", fg('yellow'))
 
         # blank line
         print('')
+note.__argstr__ = ''
 
 
 @command
-def quit(mastodon, rest):
-    """Ends the program."""
-    sys.exit("Goodbye!")
+def block(mastodon, rest):
+    """Blocks a user by username or id.
+
+    ex: block 23
+        block @user
+        block @user@instance.example.com"""
+    userid = get_userid(mastodon, rest)
+    if isinstance(userid, list):
+        cprint("  multiple matches found:", fg('red'))
+        printUsersShort(userid)
+    elif userid == -1:
+        cprint("  username not found", fg('red'))
+    else:
+        try:
+            relations = mastodon.account_block(userid)
+            if relations['blocking']:
+                cprint("  user " + str(userid) + " is now blocked", fg('blue'))
+        except:
+            cprint("  ... well, it *looked* like it was working ...", fg('red'))
+block.__argstr__ = '<user>'
+
+
+@command
+def unblock(mastodon, rest):
+    """Unblocks a user by username or id.
+
+    ex: unblock 23
+        unblock @user
+        unblock @user@instance.example.com"""
+    userid = get_userid(mastodon, rest)
+    if isinstance(userid, list):
+        cprint("  multiple matches found:", fg('red'))
+        printUsersShort(userid)
+    elif userid == -1:
+        cprint("  username not found", fg('red'))
+    else:
+        try:
+            relations = mastodon.account_unblock(userid)
+            if not relations['blocking']:
+                cprint("  user " + str(userid) + " is now unblocked", fg('blue'))
+        except:
+            cprint("  ... well, it *looked* like it was working ...", fg('red'))
+unblock.__argstr__ = '<user>'
+
+
+@command
+def follow(mastodon, rest):
+    """Follows an account by username or id.
+
+    ex: follow 23
+        follow @user
+        follow @user@instance.example.com"""
+    userid = get_userid(mastodon, rest)
+    if isinstance(userid, list):
+        cprint("  multiple matches found:", fg('red'))
+        printUsersShort(userid)
+    elif userid == -1:
+        cprint("  username not found", fg('red'))
+    else:
+        try:
+            relations = mastodon.account_follow(userid)
+            if relations['following']:
+                cprint("  user " + str(userid) + " is now followed", fg('blue'))
+        except:
+            cprint("  ... well, it *looked* like it was working ...", fg('red'))
+follow.__argstr__ = '<user>'
+
+
+@command
+def unfollow(mastodon, rest):
+    """Unfollows an account by username or id.
+
+    ex: unfollow 23
+        unfollow @user
+        unfollow @user@instance.example.com"""
+    userid = get_userid(mastodon, rest)
+    if isinstance(userid, list):
+        cprint("  multiple matches found:", fg('red'))
+        printUsersShort(userid)
+    elif userid == -1:
+        cprint("  username not found", fg('red'))
+    else:
+        try:
+            relations = mastodon.account_unfollow(userid)
+            if not relations['following']:
+                cprint("  user " + str(userid) + " is now unfollowed", fg('blue'))
+        except:
+            cprint("  ... well, it *looked* like it was working ...", fg('red'))
+unfollow.__argstr__ = '<user>'
+
+
+@command
+def mute(mastodon, rest):
+    """Mutes a user by username or id.
+
+    ex: mute 23
+        mute @user
+        mute @user@instance.example.com"""
+    userid = get_userid(mastodon, rest)
+    if isinstance(userid, list):
+        cprint("  multiple matches found:", fg('red'))
+        printUsersShort(userid)
+    elif userid == -1:
+        cprint("  username not found", fg('red'))
+    else:
+        try:
+            relations = mastodon.account_mute(userid)
+            if relations['muting']:
+                cprint("  user " + str(userid) + " is now muted", fg('blue'))
+        except:
+            cprint("  ... well, it *looked* like it was working ...", fg('red'))
+mute.__argstr__ = '<user>'
+
+
+@command
+def unmute(mastodon, rest):
+    """Unmutes a user by username or id.
+
+    ex: unmute 23
+        unmute @user
+        unmute @user@instance.example.com"""
+    userid = get_userid(mastodon, rest)
+    if isinstance(userid, list):
+        cprint("  multiple matches found:", fg('red'))
+        printUsersShort(userid)
+    elif userid == -1:
+        cprint("  username not found", fg('red'))
+    else:
+        try:
+            relations = mastodon.account_unmute(userid)
+            if not relations['muting']:
+                cprint("  user " + str(userid) + " is now unmuted", fg('blue'))
+        except:
+            cprint("  ... well, it *looked* like it was working ...", fg('red'))
+unmute.__argstr__ = '<user>'
+
+
+@command
+def search(mastodon, rest):
+    """Search for a #tag or @user.
+
+    ex:  search #tagname
+         search @user
+         search @user@instance.example.com"""
+    usage = str( "  usage: search #tagname\n" +
+                 "         search @username" )
+    try:
+        indicator = rest[:1]
+        query = rest[1:]
+    except:
+        cprint(usage, fg('red'))
+        return
+
+    # @ user search
+    if indicator == "@" and not query == "":
+        users = mastodon.account_search(query)
+
+        for user in users:
+            printUser(user)
+    # end @
+
+    # # hashtag search
+    elif indicator == "#" and not query == "":
+        for toot in reversed(mastodon.timeline_hashtag(query)):
+            display_name = "  " + toot['account']['display_name']
+            username = " @" + toot['account']['username'] + " "
+            reblogs_count = "  ♺:" + str(toot['reblogs_count'])
+            favourites_count = " ♥:" + str(toot['favourites_count']) + " "
+            toot_id = str(IDS.to_local(toot['id']))
+
+            # Prints individual toot/tooter info
+            cprint(display_name, fg('green'), end="",)
+            cprint(username + toot['created_at'], fg('yellow'))
+            cprint(reblogs_count + favourites_count, fg('cyan'), end="")
+            cprint(toot_id, fg('red'))
+
+            # Shows boosted toots as well
+            if toot['reblog']:
+                username = "  Boosted @" + toot['reblog']['account']['acct'] +": "
+                cprint(username, fg('blue'), end='')
+                content = get_content(toot['reblog'])
+            else:
+                content = get_content(toot)
+
+            print(content + "\n")
+    # end #
+
+    else:
+        cprint("  Invalid format.\n"+usage, fg('red'))
+
+    return
+search.__argstr__ = '<query>'
 
 
 @command
 def info(mastodon, rest):
     """Prints your user info."""
     user = mastodon.account_verify_credentials()
-
-    print("@" + str(user['username']))
-    cprint(user['display_name'], fg('cyan') + bg('red'))
-    print(user['url'])
-    cprint(re.sub('<[^<]+?>', '', user['note']), fg('red') + bg('green'))
+    printUser(user)
+info.__argstr__ = ''
 
 
 @command
-def delete(mastodon, rest):
-    """Deletes your toot by ID"""
-    rest = IDS.to_global(rest)
-    if rest is None:
-        return
-    mastodon.status_delete(rest)
-    print("Poof! It's gone.")
+def followers(mastodon, rest):
+    """Lists users who follow you."""
+    user = mastodon.account_verify_credentials()
+    users = mastodon.account_followers(user['id'])
+    if not users:
+        cprint("  You don't have any followers", fg('red'))
+    else:
+        cprint("  Your followers:", fg('magenta'))
+        printUsersShort(users)
+followers.__argstr__ = ''
 
 
 @command
-def block(mastodon, rest):
-    """Blocks a user by username."""
-    # TODO: Find out how to get global usernames
+def following(mastodon, rest):
+    """Lists users you follow."""
+    user = mastodon.account_verify_credentials()
+    users = mastodon.account_following(user['id'])
+    if not users:
+        cprint("  You're safe!  There's nobody following you", fg('red'))
+    else:
+        cprint("  People following you:", fg('magenta'))
+        printUsersShort(users)
+following.__argstr__ = ''
 
 
 @command
-def unblock(mastodon, rest):
-    """Unblocks a user by username."""
-    # TODO: Find out how to get global usernames
+def blocks(mastodon, rest):
+    """Lists users you have blocked."""
+    users = mastodon.blocks()
+    if not users:
+        cprint("  You haven't blocked anyone (... yet)", fg('red'))
+    else:
+        cprint("  You have blocked:", fg('magenta'))
+        printUsersShort(users)
+blocks.__argstr__ = ''
 
 
 @command
-def follow(mastodon, rest):
-    """Follows an account by username."""
-    # TODO: Find out how to get global usernames
+def mutes(mastodon, rest):
+    """Lists users you have muted."""
+    users = mastodon.mutes()
+    if not users:
+        cprint("  You haven't muted anyone (... yet)", fg('red'))
+    else:
+        cprint("  You have muted:", fg('magenta'))
+        printUsersShort(users)
+mutes.__argstr__ = ''
 
 
 @command
-def unfollow(mastodon, rest):
-    """Unfollows an account by username."""
-    # TODO: Find out how to get global usernames
+def requests(mastodon, rest):
+    """Lists your incoming follow requests.
+
+    Run 'accept id' to accept a request
+     or 'reject id' to reject."""
+    users = mastodon.follow_requests()
+    if not users:
+        cprint("  You have no incoming requests", fg('red'))
+    else:
+        cprint("  These users want to follow you:", fg('magenta'))
+        printUsersShort(users)
+        cprint("  run 'accept <id>' to accept", fg('magenta'))
+        cprint("   or 'reject <id>' to reject", fg('magenta'))
+requests.__argstr__ = ''
+
+
+@command
+def accept(mastodon, rest):
+    """Accepts a user's follow request by username or id.
+
+    ex: accept 23
+        accept @user
+        accept @user@instance.example.com"""
+    userid = get_userid(mastodon, rest)
+    if isinstance(userid, list):
+        cprint("  multiple matches found:", fg('red'))
+        printUsersShort(userid)
+    elif userid == -1:
+        cprint("  username not found", fg('red'))
+    else:
+        try:
+            user = mastodon.follow_request_authorize(userid)
+            # a more thorough check would be to call
+            # mastodon.account_relationships(user['id'])
+            # and check the returned data
+            # here we're lazy and assume we're good if the
+            # api return matches the request
+            if user['id'] == userid:
+                cprint("  user " + str(userid) + "'s request is accepted", fg('blue'))
+        except:
+            cprint("  ... well, it *looked* like it was working ...", fg('red'))
+accept.__argstr__ = '<user>'
+
+
+@command
+def reject(mastodon, rest):
+    """Rejects a user's follow request by username or id.
+
+    ex: reject 23
+        reject @user
+        reject @user@instance.example.com"""
+    userid = get_userid(mastodon, rest)
+    if isinstance(userid, list):
+        cprint("  multiple matches found:", fg('red'))
+        printUsersShort(userid)
+    elif userid == -1:
+        cprint("  username not found", fg('red'))
+    else:
+        try:
+            user = mastodon.follow_request_reject(userid)
+            # a more thorough check would be to call
+            # mastodon.account_relationships(user['id'])
+            # and check the returned data
+            # here we're lazy and assume we're good if the
+            # api return matches the request
+            if user['id'] == userid:
+                cprint("  user " + str(userid) + "'s request is rejected", fg('blue'))
+        except:
+            cprint("  ... well, it *looked* like it was working ...", fg('red'))
+reject.__argstr__ = '<user>'
+
+
+@command
+def quit(mastodon, rest):
+    """Ends the program."""
+    sys.exit("Goodbye!")
+quit.__argstr__ = ''
 
 
 #####################################
@@ -452,6 +881,10 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
                help='Location of alternate configuration file to load' )
 def main(instance, email, password, config):
     configpath = os.path.expanduser(config)
+    if os.path.isfile(configpath) and not os.access(configpath, os.W_OK):
+        # warn the user before they're asked for input
+        cprint("Config file does not appear to be writable: {}".format(configpath), fg('red'))
+
     config = parse_config(configpath)
 
     if 'default' not in config:
@@ -500,7 +933,16 @@ def main(instance, email, password, config):
         access_token=token,
         api_base_url="https://" + instance)
 
-    save_config(configpath, instance, client_id, client_secret, token)
+    # update config before writing
+    if "token" not in config['default']:
+        config['default'] = {
+                'instance': instance,
+                'client_id': client_id,
+                'client_secret': client_secret,
+                'token': token
+        }
+
+    save_config(configpath, config)
 
     say_error = lambda a, b: cprint("Invalid command. Use 'help' for a list of commands.",
             fg('white') + bg('red'))
