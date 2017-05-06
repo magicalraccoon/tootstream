@@ -701,12 +701,15 @@ info.__argstr__ = ''
 @command
 def followers(mastodon, rest):
     """Lists users who follow you."""
+    # TODO: compare user['followers_count'] to len(users)
+    #       request more from server if first call doesn't get full list
+    # TODO: optional username/userid to show another user's followers?
     user = mastodon.account_verify_credentials()
     users = mastodon.account_followers(user['id'])
     if not users:
-        cprint("  You don't have any followers", fg('red'))
+        cprint("  Nobody follows you", fg('red'))
     else:
-        cprint("  Your followers:", fg('magenta'))
+        cprint("  People who follow you ({}):".format(len(users)), fg('magenta'))
         printUsersShort(users)
 followers.__argstr__ = ''
 
@@ -714,12 +717,15 @@ followers.__argstr__ = ''
 @command
 def following(mastodon, rest):
     """Lists users you follow."""
+    # TODO: compare user['following_count'] to len(users)
+    #       request more from server if first call doesn't get full list
+    # TODO: optional username/userid to show another user's following?
     user = mastodon.account_verify_credentials()
     users = mastodon.account_following(user['id'])
     if not users:
-        cprint("  You're safe!  There's nobody following you", fg('red'))
+        cprint("  You aren't following anyone", fg('red'))
     else:
-        cprint("  People following you:", fg('magenta'))
+        cprint("  People you follow ({}):".format(len(users)), fg('magenta'))
         printUsersShort(users)
 following.__argstr__ = ''
 
