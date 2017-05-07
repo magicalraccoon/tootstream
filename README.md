@@ -9,7 +9,7 @@ https://github.com/DTVD/rainbowstream).
 
 ## Demo
 
-[![tootstream displaying the Federated timeline](https://i.imgur.com/XxTg0P5.jpg)](https://asciinema.org/a/3m87j1s402ic2llfp517okpv2?t=7&speed=2)
+[![tootstream displaying the Federated timeline](https://i.imgur.com/LqjUXpt.jpg)](https://asciinema.org/a/3m87j1s402ic2llfp517okpv2?t=7&speed=2)
 
 ## Install
 
