@@ -460,6 +460,7 @@ def note(mastodon, rest):
         if note['type'] == 'mention':
             cprint(display_name + username, fg('magenta'))
             cprint(get_content(note['status']), attr('bold'), fg('white'))
+            print()
 
         # Favorites
         elif note['type'] == 'favourite':
@@ -491,7 +492,7 @@ def note(mastodon, rest):
             cprint(display_name + username + " followed you!", fg('yellow'))
 
         # blank line
-        print('')
+        print()
 note.__argstr__ = ''
 
 
