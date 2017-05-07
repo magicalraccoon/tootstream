@@ -7,7 +7,7 @@ import configparser
 import random
 import readline
 from toot_parser import TootParser
-from mastodon import Mastodon
+from mastodon import Mastodon, StreamListener
 from collections import OrderedDict
 from colored import fg, bg, attr, stylize
 
@@ -45,9 +45,15 @@ class IdDict:
             cprint('Invalid ID.', fg('red'))
             return None
 
+class TootListener(StreamListener):
+    def on_update(self, status):
+        printToot(status)
+
 IDS = IdDict();
 
 toot_parser = TootParser(indent='  ')
+
+toot_listener = TootListener()
 
 #####################################
 ######## UTILITY FUNCTIONS   ########
@@ -477,6 +483,24 @@ def local(mastodon, rest):
     for toot in reversed(mastodon.timeline_public()):
         printToot(toot)
 local.__argstr__ = ''
+
+
+@command
+def stream(mastodon, rest):
+    """Only 'home' and 'fed' are supported.
+
+Use ctrl+C to end streaming"""
+    print("Use ctrl+C to end streaming")
+    try:
+        if rest == "home" or rest == "":
+            mastodon.user_stream(toot_listener)
+        elif rest == "fed" or rest == "public":
+            mastodon.public_stream(toot_listener)
+        else:
+            print("Only 'home' and 'fed' are supported")
+    except KeyboardInterrupt:
+        pass
+stream.__argstr__ = '<timeline>'
 
 
 @command
