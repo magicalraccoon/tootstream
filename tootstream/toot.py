@@ -189,6 +189,33 @@ def printUsersShort(users):
         cprint(" "+userdisp, fg('cyan'))
         cprint("      "+userurl, fg('blue'))
 
+def printToot(toot):
+    display_name = "  " + toot['account']['display_name'] + " "
+    username = "@" + toot['account']['acct'] + " "
+    reblogs_count = "  ♺:" + str(toot['reblogs_count'])
+    favourites_count = " ♥:" + str(toot['favourites_count']) + " "
+    toot_id = str(IDS.to_local(toot['id']))
+
+    # Prints individual toot/tooter info
+    random.seed(display_name)
+    cprint(display_name, fg(random.choice(COLORS)), end="")
+    cprint(username, fg('green'), end="")
+    cprint(toot['created_at'], attr('dim'))
+
+    cprint(reblogs_count, fg('cyan'), end="")
+    cprint(favourites_count, fg('yellow'), end="")
+    cprint("id:" + toot_id, fg('red'))
+
+    # Shows boosted toots as well
+    if toot['reblog']:
+        username = "  Boosted @" + toot['reblog']['account']['acct'] +": "
+        cprint(username, fg('blue'), end="")
+        content = get_content(toot['reblog'])
+    else:
+        content = get_content(toot)
+
+    print(content + "\n")
+
 #####################################
 ######## DECORATORS          ########
 #####################################
@@ -351,31 +378,7 @@ unfav.__argstr__ = '<id>'
 def home(mastodon, rest):
     """Displays the Home timeline."""
     for toot in reversed(mastodon.timeline_home()):
-        display_name = "  " + toot['account']['display_name'] + " "
-        username = "@" + toot['account']['acct'] + " "
-        reblogs_count = "  ♺:" + str(toot['reblogs_count'])
-        favourites_count = " ♥:" + str(toot['favourites_count']) + " "
-        toot_id = str(IDS.to_local(toot['id']))
-
-        # Prints individual toot/tooter info
-        random.seed(display_name)
-        cprint(display_name, fg(random.choice(COLORS)), end="")
-        cprint(username, fg('green'), end="")
-        cprint(toot['created_at'], attr('dim'))
-
-        cprint(reblogs_count, fg('cyan'), end="")
-        cprint(favourites_count, fg('yellow'), end="")
-        cprint("id:" + toot_id, fg('red'))
-
-        # Shows boosted toots as well
-        if toot['reblog']:
-            username = "  Boosted @" + toot['reblog']['account']['acct'] +": "
-            cprint(username, fg('blue'), end="")
-            content = get_content(toot['reblog'])
-        else:
-            content = get_content(toot)
-
-        print(content + "\n")
+        printToot(toot)
 home.__argstr__ = ''
 
 
@@ -383,32 +386,7 @@ home.__argstr__ = ''
 def fed(mastodon, rest):
     """Displays the Federated timeline."""
     for toot in reversed(mastodon.timeline_public()):
-        display_name = "  " + toot['account']['display_name']
-        username = " @" + toot['account']['username'] + " "
-        reblogs_count = "  ♺:" + str(toot['reblogs_count'])
-        favourites_count = " ♥:" + str(toot['favourites_count']) + " "
-        toot_id = str(IDS.to_local(toot['id']))
-
-        # Prints individual toot/tooter info
-        random.seed(display_name)
-        cprint(display_name, fg(random.choice(COLORS)), end="")
-        cprint(username, fg('green'), end="")
-        cprint(toot['created_at'], attr('dim'))
-
-        cprint(reblogs_count, fg('cyan'), end="")
-        cprint(favourites_count, fg('yellow'), end="")
-
-        cprint("id:" + toot_id, fg('red'))
-
-        # Shows boosted toots as well
-        if toot['reblog']:
-            username = "  Boosted @" + toot['reblog']['account']['acct'] +": "
-            cprint(username, fg('blue'), end="")
-            content = get_content(toot['reblog'])
-        else:
-            content = get_content(toot)
-
-        print(content + "\n")
+        printToot(toot)
 fed.__argstr__ = ''
 
 
@@ -416,33 +394,7 @@ fed.__argstr__ = ''
 def local(mastodon, rest):
     """Displays the Public timeline."""
     for toot in reversed(mastodon.timeline_public()):
-        display_name = "  " + toot['account']['display_name']
-        username = " @" + toot['account']['username'] + " "
-        reblogs_count = "  ♺:" + str(toot['reblogs_count'])
-        favourites_count = " ♥:" + str(toot['favourites_count']) + " "
-        toot_id = str(IDS.to_local(toot['id']))
-
-        # Prints individual toot/tooter info
-        random.seed(display_name)
-        cprint(display_name, fg(random.choice(COLORS)), end="")
-        cprint(username, fg('green'), end="")
-        cprint(toot['created_at'], attr('dim'))
-
-        cprint(reblogs_count, fg('cyan'), end="")
-        cprint(favourites_count, fg('yellow'), end="")
-
-        cprint("id:" + toot_id, fg('red'))
-
-
-        # Shows boosted toots as well
-        if toot['reblog']:
-            username = "  Boosted @" + toot['reblog']['account']['acct'] +": "
-            cprint(username, fg('blue'), end="")
-            content = get_content(toot['reblog'])
-        else:
-            content = get_content(toot)
-
-        print(content + "\n")
+        printToot(toot)
 local.__argstr__ = ''
 
 
