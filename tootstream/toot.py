@@ -155,17 +155,13 @@ def register_app(instance):
                                 api_base_url="https://" + instance )
 
 
-def login(instance, client_id, client_secret, email, password):
+def login(instance, client_id, client_secret):
     """
     Login to a Mastodon instance.
 
     Returns a valid Mastodon token if success, likely
     raises a Mastodon exception otherwise.
     """
-    if (email == None):
-        email = input("  Email used to login: ")
-    if (password == None):
-        password = getpass.getpass("  Password: ")
 
     # temporary object to aquire the token
     mastodon = Mastodon(
@@ -173,15 +169,20 @@ def login(instance, client_id, client_secret, email, password):
         client_secret=client_secret,
         api_base_url="https://" + instance
     )
-    return mastodon.log_in(email, password)
+
+    print("Click the link to authorize login.")
+    print(mastodon.auth_request_url())
+    print()
+    code = input("Enter the code you received >")
+
+    return mastodon.log_in(code = code)
 
 
-def get_or_input_profile(config, profile, instance=None, email=None, password=None):
+def get_or_input_profile(config, profile, instance=None):
     """
     Validate an existing profile or get user input
-    to generate a new one.  If email/password is
-    necessary, the user will be prompted 3 times
-    before giving up.
+    to generate a new one.  If the user is not logged in,
+    the user will be prompted 3 times before giving up.
 
     On success, returns valid credentials: instance,
     client_id, client_secret, token.
@@ -229,12 +230,12 @@ def get_or_input_profile(config, profile, instance=None, email=None, password=No
     if "token" in config[profile]:
         token = config[profile]['token']
 
-    if (token == None or email != None or password != None):
+    if (token == None):
         for i in [1, 2, 3]:
             try:
-                token = login(instance, client_id, client_secret, email, password)
+                token = login(instance, client_id, client_secret)
             except Exception as e:
-                cprint("{}: did you type it right?".format(type(e).__name__), fg('red'))
+                cprint("Error authorizing app. Did you enter the code correctly?", fg('red'))
             if token: break
 
         if not token:
@@ -909,17 +910,13 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.option( '--instance', '-i', metavar='<string>',
                help='Hostname of the instance to connect' )
-@click.option( '--email', '-e', metavar='<string>',
-               help='Email to login' )
-@click.option( '--password', '-p', metavar='<PASSWD>',
-               help='Password to login (UNSAFE)' )
 @click.option( '--config', '-c', metavar='<file>',
                type=click.Path(exists=False, readable=True),
                default='~/.config/tootstream/tootstream.conf',
                help='Location of alternate configuration file to load' )
 @click.option( '--profile', '-P', metavar='<profile>', default='default',
                help='Name of profile for saved credentials (default)' )
-def main(instance, email, password, config, profile):
+def main(instance, config, profile):
     configpath = os.path.expanduser(config)
     if os.path.isfile(configpath) and not os.access(configpath, os.W_OK):
         # warn the user before they're asked for input
@@ -938,7 +935,7 @@ def main(instance, email, password, config, profile):
         config.add_section(profile)
 
     instance, client_id, client_secret, token = \
-                            get_or_input_profile(config, profile, instance, email, password)
+                            get_or_input_profile(config, profile, instance)
 
     if not token:
         cprint("Could not log you in.  Please try again later.", fg('red'))
