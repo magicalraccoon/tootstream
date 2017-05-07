@@ -2,7 +2,7 @@
 
 A command line interface for interacting with Mastodon instances written in python.
 
-(tootstream currently does NOT support Two-Factor-Authentication)
+OAuth and 2FA are supported.
 
 Inspired by [Rainbowstream](
 https://github.com/DTVD/rainbowstream).
