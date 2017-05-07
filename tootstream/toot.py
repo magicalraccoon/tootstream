@@ -16,6 +16,9 @@ from colored import fg, bg, attr, stylize
 #TODO: Set color list in config file
 COLORS = list(range(19,231))
 
+# reserved config sections (disallowed as profile names)
+RESERVED = ( "theme", "global" )
+
 
 class IdDict:
     """Represents a mapping of local (tootstream) ID's to global
@@ -136,25 +139,103 @@ def save_config(filename, config):
 
 
 def register_app(instance):
-    # filename = CONF_PATH + instance + CLIENT_FILE
-    # if not os.path.exists(CONF_PATH):
-        # os.makedirs(CONF_PATH)
-    # if os.path.isfile(filename):
-        # return
+    """
+    Registers this client with a Mastodon instance.
 
-    return Mastodon.create_app(
-        'tootstream',
-        api_base_url="https://" + instance
-    )
+    Returns valid credentials if success, likely
+    raises a Mastodon exception otherwise.
+    """
+    return Mastodon.create_app( 'tootstream',
+                                api_base_url="https://" + instance )
 
 
-def login(mastodon, instance, email, password):
+def login(instance, client_id, client_secret, email, password):
     """
     Login to a Mastodon instance.
-    Return a Mastodon client if login success, otherwise returns None.
-    """
 
+    Returns a valid Mastodon token if success, likely
+    raises a Mastodon exception otherwise.
+    """
+    if (email == None):
+        email = input("  Email used to login: ")
+    if (password == None):
+        password = getpass.getpass("  Password: ")
+
+    # temporary object to aquire the token
+    mastodon = Mastodon(
+        client_id=client_id,
+        client_secret=client_secret,
+        api_base_url="https://" + instance
+    )
     return mastodon.log_in(email, password)
+
+
+def get_or_input_profile(config, profile, instance=None, email=None, password=None):
+    """
+    Validate an existing profile or get user input
+    to generate a new one.  If email/password is
+    necessary, the user will be prompted 3 times
+    before giving up.
+
+    On success, returns valid credentials: instance,
+    client_id, client_secret, token.
+    On failure, returns None, None, None, None.
+    """
+    # shortcut for preexisting profiles
+    if config.has_section(profile):
+        try:
+            return  config[profile]['instance'], \
+                    config[profile]['client_id'], \
+                    config[profile]['client_secret'], \
+                    config[profile]['token']
+        except:
+            pass
+    else:
+        config.add_section(profile)
+
+    # no existing profile or it's incomplete
+    if (instance != None):
+        # Nothing to do, just use value passed on the command line
+        pass
+    elif "instance" in config[profile]:
+        instance = config[profile]['instance']
+    else:
+        cprint("  Which instance would you like to connect to? eg: 'mastodon.social'", fg('blue'))
+        instance = input("  Instance: ")
+
+
+    client_id = None
+    if "client_id" in config[profile]:
+        client_id = config[profile]['client_id']
+
+    client_secret = None
+    if "client_secret" in config[profile]:
+        client_secret = config[profile]['client_secret']
+
+    if (client_id == None or client_secret == None):
+        try:
+            client_id, client_secret = register_app(instance)
+        except Exception as e:
+            cprint("{}: please try again later".format(type(e).__name__), fg('red'))
+            return None, None, None, None
+
+    token = None
+    if "token" in config[profile]:
+        token = config[profile]['token']
+
+    if (token == None or email != None or password != None):
+        for i in [1, 2, 3]:
+            try:
+                token = login(instance, client_id, client_secret, email, password)
+            except Exception as e:
+                cprint("{}: did you type it right?".format(type(e).__name__), fg('red'))
+            if token: break
+
+        if not token:
+            cprint("Giving up after 3 failed login attempts", fg('red'))
+            return None, None, None, None
+
+    return instance, client_id, client_secret, token
 
 
 #####################################
@@ -654,12 +735,15 @@ info.__argstr__ = ''
 @command
 def followers(mastodon, rest):
     """Lists users who follow you."""
+    # TODO: compare user['followers_count'] to len(users)
+    #       request more from server if first call doesn't get full list
+    # TODO: optional username/userid to show another user's followers?
     user = mastodon.account_verify_credentials()
     users = mastodon.account_followers(user['id'])
     if not users:
-        cprint("  You don't have any followers", fg('red'))
+        cprint("  Nobody follows you", fg('red'))
     else:
-        cprint("  Your followers:", fg('magenta'))
+        cprint("  People who follow you ({}):".format(len(users)), fg('magenta'))
         printUsersShort(users)
 followers.__argstr__ = ''
 
@@ -667,12 +751,15 @@ followers.__argstr__ = ''
 @command
 def following(mastodon, rest):
     """Lists users you follow."""
+    # TODO: compare user['following_count'] to len(users)
+    #       request more from server if first call doesn't get full list
+    # TODO: optional username/userid to show another user's following?
     user = mastodon.account_verify_credentials()
     users = mastodon.account_following(user['id'])
     if not users:
-        cprint("  You're safe!  There's nobody following you", fg('red'))
+        cprint("  You aren't following anyone", fg('red'))
     else:
-        cprint("  People following you:", fg('magenta'))
+        cprint("  People you follow ({}):".format(len(users)), fg('magenta'))
         printUsersShort(users)
 following.__argstr__ = ''
 
@@ -806,7 +893,9 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
                type=click.Path(exists=False, readable=True),
                default='~/.config/tootstream/tootstream.conf',
                help='Location of alternate configuration file to load' )
-def main(instance, email, password, config):
+@click.option( '--profile', '-P', metavar='<profile>', default='default',
+               help='Name of profile for saved credentials (default)' )
+def main(instance, email, password, config, profile):
     configpath = os.path.expanduser(config)
     if os.path.isfile(configpath) and not os.access(configpath, os.W_OK):
         # warn the user before they're asked for input
@@ -814,45 +903,22 @@ def main(instance, email, password, config):
 
     config = parse_config(configpath)
 
-    if 'default' not in config:
-        config['default'] = {}
+    # make sure profile name is legal
+    profile = re.sub(r'\s+', '', profile)  # disallow whitespace
+    profile = profile.lower()              # force to lowercase
+    if profile == '' or profile in RESERVED:
+        cprint("Invalid profile name: {}".format(profile), fg('red'))
+        sys.exit(1)
 
-    if (instance != None):
-        # Nothing to do, just use value passed on the command line
-        pass
-    elif "instance" in config['default']:
-        instance = config['default']['instance']
+    if not config.has_section(profile):
+        config.add_section(profile)
 
-    else: instance = input("Which instance would you like to connect to? eg: 'mastodon.social' ")
+    instance, client_id, client_secret, token = \
+                            get_or_input_profile(config, profile, instance, email, password)
 
-
-    client_id = None
-    if "client_id" in config['default']:
-        client_id = config['default']['client_id']
-
-    client_secret = None
-    if "client_secret" in config['default']:
-        client_secret = config['default']['client_secret']
-
-    if (client_id == None or client_secret == None):
-        client_id, client_secret = register_app(instance)
-
-    token = None
-    if "token" in config['default']:
-        token = config['default']['token']
-
-    if (token == None or email != None or password != None):
-        if (email == None):
-            email = input("Welcome to tootstream! Two-Factor-Authentication is currently not supported. Email used to login: ")
-        if (password == None):
-            password = getpass.getpass()
-
-        mastodon = Mastodon(
-            client_id=client_id,
-            client_secret=client_secret,
-            api_base_url="https://" + instance
-        )
-        token = login(mastodon, instance, email, password)
+    if not token:
+        cprint("Could not log you in.  Please try again later.", fg('red'))
+        sys.exit(1)
 
     mastodon = Mastodon(
         client_id=client_id,
@@ -861,8 +927,8 @@ def main(instance, email, password, config):
         api_base_url="https://" + instance)
 
     # update config before writing
-    if "token" not in config['default']:
-        config['default'] = {
+    if "token" not in config[profile]:
+        config[profile] = {
                 'instance': instance,
                 'client_id': client_id,
                 'client_secret': client_secret,
@@ -880,7 +946,7 @@ def main(instance, email, password, config):
     print("\n")
 
     user = mastodon.account_verify_credentials()
-    prompt = "[@" + str(user['username']) + "]: "
+    prompt = "[@{} ({})]: ".format(str(user['username']), profile)
 
     while True:
         command = input(prompt).split(' ', 1)
