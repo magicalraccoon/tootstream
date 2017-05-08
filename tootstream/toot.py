@@ -319,7 +319,7 @@ def format_toot_nameline(toot, dnamestyle):
     # name line: display name, user@instance, lock if locked, timestamp
     if not toot: return ''
     out = [ stylize(toot['account']['display_name'], dnamestyle),
-            stylize(toot['account']['acct']+(" "+GLYPH['locked'] if toot['account']['locked'] else ""), fg('green')),
+            stylize(format_username(toot['account']), fg('green')),
             stylize(toot['created_at'], attr('dim')) ]
     return ' '.join(out)
 
@@ -359,7 +359,7 @@ def printToot(toot):
     if toot['reblog']:
         header = stylize("  Boosted by ", fg('yellow'))
         name = " ".join(( toot['account']['display_name'],
-                          toot['account']['acct']+(" "+GLYPHS['locked'] if toot['account']['locked'] else "")+":" ))
+                          format_username(toot['account'])+":" ))
         out.append(header + stylize(name, fg('blue')))
         toot = toot['reblog']
 
