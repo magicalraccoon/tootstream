@@ -845,16 +845,14 @@ def accept(mastodon, rest):
         cprint("  username not found", fg('red'))
     else:
         try:
-            user = mastodon.follow_request_authorize(userid)
-            # a more thorough check would be to call
-            # mastodon.account_relationships(user['id'])
-            # and check the returned data
-            # here we're lazy and assume we're good if the
-            # api return matches the request
-            if user['id'] == userid:
-                cprint("  user " + str(userid) + "'s request is accepted", fg('blue'))
+            mastodon.follow_request_authorize(userid)
         except:
             cprint("  ... well, it *looked* like it was working ...", fg('red'))
+            return
+
+        # assume it worked if no exception
+        cprint("  user {}'s request is accepted".format(userid), fg('blue'))
+    return
 accept.__argstr__ = '<user>'
 
 
@@ -873,16 +871,14 @@ def reject(mastodon, rest):
         cprint("  username not found", fg('red'))
     else:
         try:
-            user = mastodon.follow_request_reject(userid)
-            # a more thorough check would be to call
-            # mastodon.account_relationships(user['id'])
-            # and check the returned data
-            # here we're lazy and assume we're good if the
-            # api return matches the request
-            if user['id'] == userid:
-                cprint("  user " + str(userid) + "'s request is rejected", fg('blue'))
+            mastodon.follow_request_reject(userid)
         except:
             cprint("  ... well, it *looked* like it was working ...", fg('red'))
+            return
+
+        # assume it worked if no exception
+        cprint("  user {}'s request is rejected".format(userid), fg('blue'))
+    return
 reject.__argstr__ = '<user>'
 
 
