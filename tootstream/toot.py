@@ -334,18 +334,11 @@ def format_toot_idline(toot):
             stylize("id:"+str(IDS.to_local(toot['id'])), fg('red')),
             stylize("vis:"+GLYPHS[toot['visibility']], fg('blue')) ]
 
-    # have seen some toots that lack these next keys,
-    # so try but ignore errors
-    try:
-        if toot['favourited']:
-            out.append(stylize(GLYPHS['favourited'], fg('magenta')))
-    except KeyError:
-        pass
-    try:
-        if toot['reblogged']:
-            out.append(stylize(GLYPHS['reblogged'], fg('magenta')))
-    except KeyError:
-        pass
+    # some toots lack these next keys, use get() to avoid KeyErrors
+    if toot.get('favourited'):
+        out.append(stylize(GLYPHS['favourited'], fg('magenta')))
+    if toot.get('reblogged'):
+        out.append(stylize(GLYPHS['reblogged'], fg('magenta')))
 
     return ' '.join(out)
 
