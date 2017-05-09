@@ -339,6 +339,10 @@ def format_toot_idline(toot):
         out.append(stylize(GLYPHS['favourited'], fg('magenta')))
     if toot.get('reblogged'):
         out.append(stylize(GLYPHS['reblogged'], fg('magenta')))
+    # app used to post. frequently empty
+    if toot.get('application') and toot.get('application').get('name'):
+        out.append( ''.join(( stylize("via ", fg('white')),
+                              stylize(toot['application']['name'], fg('blue')) )))
 
     return ' '.join(out)
 
