@@ -24,7 +24,7 @@ GLYPHS = {
     # next key matches key in user dict
     'locked':        '\U0001f512', # lock (masto web uses U+F023 from FontAwesome)
     # next 2 keys match keys in toot dict indicating user has already faved/boosted
-    'favourited':    '\U00002b50', # star '\U0001f31f' '\U00002b50'
+    'favourited':    '\U00002605', # star '\U0001f31f' '\U00002b50' '\U00002605'
     'reblogged':     '\U0001f1e7', # reginal-B '\U0001f1e7' (or reuse ♺?)
     # next 4 keys match possible values for toot['visibility']
     'public':        '\U0001f30e', # globe
@@ -334,15 +334,15 @@ def format_toot_idline(toot):
             stylize("id:"+str(IDS.to_local(toot['id'])), fg('red')),
             stylize("vis:"+GLYPHS[toot['visibility']], fg('blue')) ]
 
+    # app used to post. frequently empty
+    if toot.get('application') and toot.get('application').get('name'):
+        out.append( ''.join(( stylize("via ", fg('white')),
+                              stylize(toot['application']['name'], fg('blue')) )))
     # some toots lack these next keys, use get() to avoid KeyErrors
     if toot.get('favourited'):
         out.append(stylize(GLYPHS['favourited'], fg('magenta')))
     if toot.get('reblogged'):
         out.append(stylize(GLYPHS['reblogged'], fg('magenta')))
-    # app used to post. frequently empty
-    if toot.get('application') and toot.get('application').get('name'):
-        out.append( ''.join(( stylize("via ", fg('white')),
-                              stylize(toot['application']['name'], fg('blue')) )))
 
     return ' '.join(out)
 
