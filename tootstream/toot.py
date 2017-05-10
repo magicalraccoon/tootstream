@@ -887,6 +887,63 @@ reject.__argstr__ = '<user>'
 
 
 @command
+def faves(mastodon, rest):
+    """Displays posts you've favourited."""
+    for toot in reversed(mastodon.favourites()):
+        printToot(toot)
+faves.__argstr__ = ''
+
+
+@command
+def view(mastodon, rest):
+    """Displays toots from another user.
+
+     <user>:   a userID, @username, or @user@instance
+        <N>:   (optional) show N toots maximum
+
+    ex: view 23
+        view @user 10
+        view @user@instance.example.com"""
+    (userid, _, count) = rest.partition(' ')
+
+    # validate count argument
+    if not count:
+        count = None
+    else:
+        try:
+            count = int(count)
+        except ValueError:
+            cprint("  invalid count: {}".format(count), fg('red'))
+            return
+
+    # validate userid argument
+    userid = get_userid(mastodon, userid)
+    if isinstance(userid, list):
+        cprint("  multiple matches found:", fg('red'))
+        printUsersShort(userid)
+    elif userid == -1:
+        cprint("  username not found", fg('red'))
+    else:
+        for toot in reversed(mastodon.account_statuses(userid, limit=count)):
+            printToot(toot)
+
+    return
+view.__argstr__ = '<user> <N>'
+
+
+@command
+def me(mastodon, rest):
+    """Displays toots you've tooted.
+
+        <N>:   (optional) show N toots maximum"""
+    itme = mastodon.account_verify_credentials()
+    # no specific API for user's own timeline
+    # let view() do the work
+    view(mastodon, "{} {}".format(itme['id'], rest))
+me.__argstr__ = '<N>'
+
+
+@command
 def quit(mastodon, rest):
     """Ends the program."""
     sys.exit("Goodbye!")
