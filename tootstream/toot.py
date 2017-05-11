@@ -488,7 +488,7 @@ local.__argstr__ = ''
 
 @command
 def stream(mastodon, rest):
-    """Only 'home' and 'fed' are supported.
+    """Streams a timeline. Specify home, fed, local, or a #hashtagname.
 
 Use ctrl+C to end streaming"""
     print("Use ctrl+C to end streaming")
@@ -497,8 +497,20 @@ Use ctrl+C to end streaming"""
             mastodon.user_stream(toot_listener)
         elif rest == "fed" or rest == "public":
             mastodon.public_stream(toot_listener)
+        elif rest == "local":
+            # TODO: no corresponding Mastodon method yet, will probably be
+            #mastodon.local_stream(TootListener())
+            # for now use the stream helper directly
+            mastodon._Mastodon__stream('/api/v1/streaming/public/local', TootListener())
+        elif rest.startswith('#'):
+            tag = rest[1:]
+            # TODO: this should work but currently broken
+            #mastodon.hashtag_stream(tag, TootListener())
+            # for now use the stream helper directly
+            endpt = "/api/v1/streaming/hashtag?tag={}".format(tag)
+            mastodon._Mastodon__stream(endpt, TootListener())
         else:
-            print("Only 'home' and 'fed' are supported")
+            print("Only 'home', 'fed', 'local', and '#hashtag' streams are supported.")
     except KeyboardInterrupt:
         pass
 stream.__argstr__ = '<timeline>'
