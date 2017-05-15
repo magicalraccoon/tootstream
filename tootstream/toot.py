@@ -15,6 +15,30 @@ from colored import fg, bg, attr, stylize
 #Looks best with black background.
 #TODO: Set color list in config file
 COLORS = list(range(19,231))
+GLYPHS = {
+    # general icons, keys don't match any Mastodon dict keys
+    'fave':          '♥',
+    'boost':         '♺',
+    'pineapple':     '\U0001f34d', # pineapple
+    'toots':         '\U0001f4ea', # mailbox (for toot counts)
+    # next key matches key in user dict
+    'locked':        '\U0001f512', # lock (masto web uses U+F023 from FontAwesome)
+    # next 2 keys match keys in toot dict indicating user has already faved/boosted
+    'favourited':    '\U00002605', # star '\U0001f31f' '\U00002b50' '\U00002605'
+    'reblogged':     '\U0001f1e7', # reginal-B '\U0001f1e7' (or reuse ♺?)
+    # next 4 keys match possible values for toot['visibility']
+    'public':        '\U0001f30e', # globe
+    'unlisted':      '\U0001f47b', # ghost '\U0001f47b' ... mute '\U0001f507' ??
+    'private':       '\U0001f512', # lock
+    'direct':        '\U0001f4e7', # envelopes: '\U0001f4e7' '\U0001f4e9' '\U0001f48c' '\U00002709'
+    # next 5 keys match keys in relationship{}
+    'followed_by':   '\U0001f43e', # pawprints '\U0001f43e'
+    'following':     '\U0001f463', # footprints '\U0001f463'
+    'blocking':      '\U0000274c', # thumbsdown '\U0001f44e', big X '\U0000274c', stopsign '\U0001f6d1'
+    'muting':        '\U0001f6ab', # mute-spkr '\U0001f507', mute-bell '\U0001f515', prohibited '\U0001f6ab'
+    'requested':     '\U00002753', # hourglass '\U0000231b', question '\U00002753'
+    # catchall
+    'unknown':       '\U0001f34d' }
 
 # reserved config sections (disallowed as profile names)
 RESERVED = ( "theme", "global" )
@@ -252,57 +276,110 @@ def cprint(text, style, end="\n"):
     print(stylize(text, style), end=end)
 
 
+def format_username(user):
+    """Get a user's account name including lock indicator."""
+    return ''.join(( "@", user['acct'],
+                     (" {}".format(GLYPHS['locked']) if user['locked'] else "") ))
+
+
+def format_user_counts(user):
+    """Get a user's toot/following/follower counts."""
+    countfmt = "{} :{}"
+    return ' '.join(( countfmt.format(GLYPHS['toots'], user['statuses_count']),
+                      countfmt.format(GLYPHS['following'], user['following_count']),
+                      countfmt.format(GLYPHS['followed_by'], user['followers_count']) ))
+
+
 def printUser(user):
     """Prints user data nicely with hardcoded colors."""
-    print("@" + str(user['username']))
+    counts = stylize(format_user_counts(user), fg('blue'))
+
+    print(format_username(user) + " " + counts)
     cprint(user['display_name'], fg('cyan'))
     print(user['url'])
     cprint(re.sub('<[^<]+?>', '', user['note']), fg('red'))
 
 
-
 def printUsersShort(users):
     for user in users:
         if not user: continue
-        locked = ""
-        # lock glyphs: masto web uses FontAwesome's U+F023 (nonstandard)
-        # lock emoji: U+1F512
-        if user['locked']: locked = " \U0001f512"
-        userstr = "@"+str(user['acct'])+locked
         userid = "(id:"+str(user['id'])+")"
         userdisp = "'"+str(user['display_name'])+"'"
         userurl = str(user['url'])
-        cprint("  "+userstr, fg('green'), end=" ")
+        cprint("  "+format_username(user), fg('green'), end=" ")
         cprint(" "+userid, fg('red'), end=" ")
         cprint(" "+userdisp, fg('cyan'))
         cprint("      "+userurl, fg('blue'))
 
+
+def format_toot_nameline(toot, dnamestyle):
+    """Get the display, usernames and timestamp for a typical toot printout.
+
+    dnamestyle: a fg/bg/attr set applied to the display name with stylize()"""
+    # name line: display name, user@instance, lock if locked, timestamp
+    if not toot: return ''
+    out = [ stylize(toot['account']['display_name'], dnamestyle),
+            stylize(format_username(toot['account']), fg('green')),
+            stylize(toot['created_at'], attr('dim')) ]
+    return ' '.join(out)
+
+
+def format_toot_idline(toot):
+    """Get boost/faves counts, toot ID, visibility, and
+    already-faved/boosted indicators for a typical toot printout."""
+    # id-and-counts line: boosted count, faved count, tootid, visibility, favourited-already, boosted-already
+    if not toot: return ''
+    out = [ stylize(GLYPHS['boost']+":"+str(toot['reblogs_count']), fg('cyan')),
+            stylize(GLYPHS['fave']+":"+str(toot['favourites_count']), fg('yellow')),
+            stylize("id:"+str(IDS.to_local(toot['id'])), fg('red')),
+            stylize("vis:"+GLYPHS[toot['visibility']], fg('blue')) ]
+
+    # app used to post. frequently empty
+    if toot.get('application') and toot.get('application').get('name'):
+        out.append( ''.join(( stylize("via ", fg('white')),
+                              stylize(toot['application']['name'], fg('blue')) )))
+    # some toots lack these next keys, use get() to avoid KeyErrors
+    if toot.get('favourited'):
+        out.append(stylize(GLYPHS['favourited'], fg('magenta')))
+    if toot.get('reblogged'):
+        out.append(stylize(GLYPHS['reblogged'], fg('magenta')))
+
+    return ' '.join(out)
+
+
 def printToot(toot):
-    display_name = "  " + toot['account']['display_name'] + " "
-    username = "@" + toot['account']['acct'] + " "
-    reblogs_count = "  ♺:" + str(toot['reblogs_count'])
-    favourites_count = " ♥:" + str(toot['favourites_count']) + " "
-    toot_id = str(IDS.to_local(toot['id']))
+    if not toot: return
 
-    # Prints individual toot/tooter info
-    random.seed(display_name)
-    cprint(display_name, fg(random.choice(COLORS)), end="")
-    cprint(username, fg('green'), end="")
-    cprint(toot['created_at'], attr('dim'))
-
-    cprint(reblogs_count, fg('cyan'), end="")
-    cprint(favourites_count, fg('yellow'), end="")
-    cprint("id:" + toot_id, fg('red'))
-
-    # Shows boosted toots as well
+    out = []
+    # if it's a boost, only output header line from toot
+    # then get other data from toot['reblog']
     if toot['reblog']:
-        username = "  Boosted @" + toot['reblog']['account']['acct'] +": "
-        cprint(username, fg('blue'), end="")
-        content = get_content(toot['reblog'])
-    else:
-        content = get_content(toot)
+        header = stylize("  Boosted by ", fg('yellow'))
+        name = " ".join(( toot['account']['display_name'],
+                          format_username(toot['account'])+":" ))
+        out.append(header + stylize(name, fg('blue')))
+        toot = toot['reblog']
 
-    print(content + "\n")
+    # get the first two lines
+    random.seed(toot['account']['display_name'])
+    out += [ "  "+format_toot_nameline(toot, fg(random.choice(COLORS))),
+             "  "+format_toot_idline(toot) ]
+
+    if toot['spoiler_text'] != '':
+        # pass CW through get_content for wrapping/indenting
+        faketoot = { 'content': "[CW: "+toot['spoiler_text']+"]" }
+        out.append( stylize(get_content(faketoot), fg('red')))
+
+    out.append( get_content(toot) )
+
+    if toot['media_attachments']:
+        # simple version: output # of attachments. TODO: urls instead?
+        nsfw = ("NSFW " if toot['sensitive'] else "")
+        out.append( stylize("  "+nsfw+"media: "+str(len(toot['media_attachments'])), fg('magenta')))
+
+    print( '\n'.join(out) )
+    print()
+
 
 #####################################
 ######## DECORATORS          ########
@@ -509,7 +586,7 @@ def note(mastodon, rest):
     """Displays the Notifications timeline."""
     for note in reversed(mastodon.notifications()):
         display_name = "  " + note['account']['display_name']
-        username = " @" + note['account']['username']
+        username = format_username(note['account'])
 
         random.seed(display_name)
 
@@ -517,23 +594,20 @@ def note(mastodon, rest):
         # Mentions
         if note['type'] == 'mention':
             cprint(display_name + username, fg('magenta'))
+            print("  " + format_toot_idline(note['status']))
             cprint(get_content(note['status']), attr('bold'), fg('white'))
             print()
 
         # Favorites
         elif note['type'] == 'favourite':
-            reblogs_count = "  " + "♺:" + str(note['status']['reblogs_count'])
-            favourites_count = " ♥:" + str(note['status']['favourites_count'])
+            countsline = format_toot_idline(note['status'])
             time = " " + note['status']['created_at']
             content = get_content(note['status'])
 
 
             cprint(display_name + username, fg(random.choice(COLORS)), end="")
             cprint(" favorited your status:", fg('yellow'))
-
-            cprint(reblogs_count, fg('cyan'), end="")
-            cprint(favourites_count, fg('yellow'))
-
+            print("  "+countsline + stylize(time, attr('dim')))
             cprint(content, attr('dim'))
 
 
@@ -544,8 +618,6 @@ def note(mastodon, rest):
 
         # Follows
         elif note['type'] == 'follow':
-            username = re.sub('<[^<]+?>', '', username)
-            display_name = note['account']['display_name']
             print("  ", end="")
             cprint(display_name + username + " followed you!", fg('yellow'))
 
@@ -719,31 +791,11 @@ def search(mastodon, rest):
     # # hashtag search
     elif indicator == "#" and not query == "":
         for toot in reversed(mastodon.timeline_hashtag(query)):
-            display_name = "  " + toot['account']['display_name']
-            username = " @" + toot['account']['username'] + " "
-            reblogs_count = "  ♺:" + str(toot['reblogs_count'])
-            favourites_count = " ♥:" + str(toot['favourites_count']) + " "
-            toot_id = str(IDS.to_local(toot['id']))
-
-            # Prints individual toot/tooter info
-            cprint(display_name, fg('green'), end="",)
-            cprint(username + toot['created_at'], fg('yellow'))
-            cprint(reblogs_count + favourites_count, fg('cyan'), end="")
-            cprint(toot_id, fg('red'))
-
-            # Shows boosted toots as well
-            if toot['reblog']:
-                username = "  Boosted @" + toot['reblog']['account']['acct'] +": "
-                cprint(username, fg('blue'), end='')
-                content = get_content(toot['reblog'])
-            else:
-                content = get_content(toot)
-
-            print(content + "\n")
+            printToot(toot)
     # end #
 
     else:
-        cprint("  Invalid format.\n"+usage, fg('red'))
+        cprint("  Invalid format. (General search coming soon.)\n"+usage, fg('red'))
 
     return
 search.__argstr__ = '<query>'
