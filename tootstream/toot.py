@@ -442,10 +442,10 @@ help.__argstr__ = '<cmd>'
 
 
 @command
-def toot(mastodon, rest):
+def t(mastodon, rest):
     """Publish a toot.
 
-    ex: 'toot Hello World' will publish 'Hello World'."""
+    ex: 't Hello World' will publish 'Hello World'."""
     mastodon.toot(rest)
     cprint("You tooted: ", fg('white') + attr('bold'), end="")
     cprint(rest, fg('magenta') + attr('bold') + attr('underlined'))
@@ -477,7 +477,7 @@ rep.__argstr__ = '<id> <text>'
 
 
 @command
-def delete(mastodon, rest):
+def del(mastodon, rest):
     """Deletes your toot by ID"""
     rest = IDS.to_global(rest)
     if rest is None:
@@ -557,7 +557,7 @@ fed.__argstr__ = ''
 
 @command
 def local(mastodon, rest):
-    """Displays the Public timeline."""
+    """Displays the Local timeline."""
     for toot in reversed(mastodon.timeline_public()):
         printToot(toot)
 local.__argstr__ = ''
@@ -878,7 +878,7 @@ mutes.__argstr__ = ''
 
 
 @command
-def requests(mastodon, rest):
+def req(mastodon, rest):
     """Lists your incoming follow requests.
 
     Run 'accept id' to accept a request
@@ -947,7 +947,7 @@ reject.__argstr__ = '<user>'
 
 
 @command
-def quit(mastodon, rest):
+def exit(mastodon, rest):
     """Ends the program."""
     sys.exit("Goodbye!")
 quit.__argstr__ = ''
