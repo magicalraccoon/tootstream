@@ -112,6 +112,117 @@ def get_userid(mastodon, rest):
         return users[0]['id']
 
 
+def flaghandler_tootreply(mastodon, rest):
+    """Parse input for flags and prompt user.  On success, returns
+    a tuple of the input string (minus flags) and a dict of keyword
+    arguments for Mastodon.status_post().  On failure, returns
+    (None, None)."""
+
+    # initialize kwargs to default values
+    kwargs = { 'sensitive': False,
+               'media_ids': None,
+               'spoiler_text': None,
+               'visibility': '' }
+    flags = { 'm': False,
+              'c': False,
+              'C': False,
+              'v': False }
+
+    # token-grabbing loop
+    # recognize `toot -v -m -c` as well as `toot -vmc`
+    # but `toot -v Hello -c` will only get -v
+    while rest.startswith('-'):
+        # get the next token
+        (args, _, rest) = rest.partition(' ')
+        # traditional unix "ignore flags after this" syntax
+        if args == '--': break
+        if 'v' in args: flags['v'] = True
+        if 'c' in args: flags['c'] = True
+        if 'C' in args: flags['C'] = True
+        if 'm' in args: flags['m'] = True
+
+    # if any flag is true, print a general usage message
+    if True in flags.values():
+        print("Press Ctrl-C to abort and return to the main prompt.")
+
+    # visibility flag
+    if flags['v']:
+        vis = input("Set visibility [p/u/pr/d/None]: ")
+        vis = vis.lower()
+
+        # default case; pass on through
+        if vis == '' or vis.startswith('n'): pass
+        # other cases: allow abbreviations
+        elif vis.startswith('d'):  kwargs['visibility'] = 'direct'
+        elif vis.startswith('u'):  kwargs['visibility'] = 'unlisted'
+        elif vis.startswith('pr'): kwargs['visibility'] = 'private'
+        elif vis.startswith('p'):  kwargs['visibility'] = 'public'
+        # unrecognized: abort
+        else:
+            cprint("error: only 'public', 'unlisted', 'private', 'direct' are allowed", fg('red'))
+            return (None, None)
+    # end vis
+
+    # cw/spoiler flag
+    if flags['C'] and flags['c']:
+        cprint("error: only one of -C and -c allowed", fg('red'))
+        return (None, None)
+    elif flags['C']:
+        # unset
+        kwargs['spoiler_text'] = ''
+    elif flags['c']:
+        # prompt to set
+        cw = input("Set content warning [leave blank for none]: ")
+
+        # don't set if empty
+        if cw:
+            kwargs['spoiler_text'] = cw
+    # end cw
+
+    # media flag
+    media = []
+    if flags['m']:
+        print("You can attach up to 4 files. A blank line will end filename input.")
+        count = 0
+        while count < 4:
+            fname = input("add file {}: ".format(count+1))
+
+            # break on empty line
+            if not fname:
+                break
+
+            # expand paths and check file access
+            fname = os.path.expanduser(fname)
+            if os.path.isfile(fname) and os.access(fname, os.R_OK):
+                media.append(fname)
+                count += 1
+            else:
+                cprint("error: cannot find file {}".format(fname), fg('red'))
+
+        # upload, verify
+        if count:
+            print("Attaching files:")
+            c = 1
+            kwargs['media_ids'] = []
+            for m in media:
+                try:
+                    kwargs['media_ids'].append( mastodon.media_post(m) )
+                except Exception as e:
+                    cprint("{}: API error uploading file {}".format(type(e).__name__, m), fg('red'))
+                    return (None, None)
+                print("    {}: {}".format(c, m))
+                c += 1
+
+            # prompt for sensitivity
+            nsfw = input("Mark sensitive/NSFW [y/N]: ")
+            nsfw = nsfw.lower()
+            if nsfw.startswith('y'):
+                kwargs['sensitive'] = True
+    # end media
+
+    return (rest, kwargs)
+
+
 #####################################
 ######## CONFIG FUNCTIONS    ########
 #####################################
@@ -445,34 +556,91 @@ help.__argstr__ = '<cmd>'
 def toot(mastodon, rest):
     """Publish a toot.
 
-    ex: 'toot Hello World' will publish 'Hello World'."""
-    mastodon.toot(rest)
-    cprint("You tooted: ", fg('white') + attr('bold'), end="")
-    cprint(rest, fg('magenta') + attr('bold') + attr('underlined'))
+    Toot visibility defaults to your account's settings.  You can change
+    the defaults by logging into your instance in a browser and changing
+    Preferences > Post Privacy.
+
+    ex: 'toot Hello World'
+                  will publish 'Hello World'
+        'toot -v Hello World'
+                  prompt for visibility setting and publish 'Hello World'
+
+    Options:
+        -v     Prompt for visibility (public, unlisted, private, direct)
+        -c     Prompt for Content Warning / spoiler text
+        -m     Prompt for media files and NSFW
+    """
+    try:
+        (text, kwargs) = flaghandler_tootreply(mastodon, rest)
+    except KeyboardInterrupt:
+        # user abort, return to main prompt
+        print('')
+        return
+
+    #print("dbg: kwargs = {}, text = {}".format(repr(kwargs), text))
+    try:
+        resp = mastodon.status_post(text, **kwargs)
+        cprint("You tooted: ", fg('white') + attr('bold'), end="")
+        cprint(text, fg('magenta') + attr('bold') + attr('underlined'))
+    except Exception as e:
+        cprint("error while posting: {}".format(type(e).__name__), fg('red'))
 toot.__argstr__ = '<text>'
 
 
 @command
 def rep(mastodon, rest):
-    """Reply to a toot by ID."""
-    command = rest.split(' ', 1)
-    parent_id = IDS.to_global(command[0])
-    if parent_id is None:
+    """Reply to a toot by ID.
+
+    Reply visibility and content warnings default to the original toot's
+    settings.
+
+    ex: 'rep 13 Hello again'
+                  reply to toot 13 with 'Hello again'
+        'rep -vc 13 Hello again'
+                  same but prompt for visibilitiy and spoiler changes
+
+    Options:
+        -v     Prompt for visibility (public, unlisted, private, direct)
+        -c     Prompt for Content Warning / spoiler text
+        -C     No Content Warning (do not use original's CW)
+        -m     Prompt for media files and NSFW
+    """
+    try:
+        (text, kwargs) = flaghandler_tootreply(mastodon, rest)
+    except KeyboardInterrupt:
+        # user abort, return to main prompt
+        print('')
+        return
+
+    (parent_id, _, text) = text.partition(' ')
+    parent_id = IDS.to_global(parent_id)
+    if parent_id is None or not text:
         return
     try:
-        reply_text = command[1]
-    except IndexError:
-        reply_text = ''
-    parent_toot = mastodon.status(parent_id)
+        parent_toot = mastodon.status(parent_id)
+    except Exception as e:
+        cprint("error searching for original: {}".format(type(e).__name__), fg('red'))
+        return
+
+    # handle mentions
+    # TODO: reorder so parent author is first?
     mentions = [i['acct'] for i in parent_toot['mentions']]
     mentions.append(parent_toot['account']['acct'])
     mentions = ["@%s" % i for i in list(set(mentions))] # Remove dups
     mentions = ' '.join(mentions)
-    # TODO: Ensure that content warning visibility carries over to reply
-    reply_toot = mastodon.status_post('%s %s' % (mentions, reply_text),
-                                      in_reply_to_id=int(parent_id))
-    msg = "  Replied with: " + get_content(reply_toot)
-    cprint(msg, fg('red'))
+
+    # if user didn't set cw/spoiler, set it here
+    if kwargs['spoiler_text'] is None and parent_toot['spoiler_text'] != '':
+        kwargs['spoiler_text'] = parent_toot['spoiler_text']
+
+    try:
+        reply_toot = mastodon.status_post( '%s %s' % (mentions, text),
+                                           in_reply_to_id=int(parent_id),
+                                           **kwargs )
+        msg = "  Replied with: " + get_content(reply_toot)
+        cprint(msg, fg('red'))
+    except Exception as e:
+        cprint("error while posting: {}".format(type(e).__name__), fg('red'))
 rep.__argstr__ = '<id> <text>'
 
 
