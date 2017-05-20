@@ -1,4 +1,5 @@
 import os.path
+from os import environ
 import click
 import getpass
 import sys
@@ -6,6 +7,8 @@ import re
 import configparser
 import random
 import readline
+import tempfile
+from subprocess import call
 from toot_parser import TootParser
 from mastodon import Mastodon, StreamListener
 from collections import OrderedDict
@@ -43,6 +46,7 @@ GLYPHS = {
 # reserved config sections (disallowed as profile names)
 RESERVED = ( "theme", "global" )
 
+EDITOR = environ.get('EDITOR', 'vim')
 
 class IdDict:
     """Represents a mapping of local (tootstream) ID's to global
@@ -450,6 +454,23 @@ def toot(mastodon, rest):
     cprint("You tooted: ", fg('white') + attr('bold'), end="")
     cprint(rest, fg('magenta') + attr('bold') + attr('underlined'))
 toot.__argstr__ = '<text>'
+
+
+@command
+def tootedit(mastodon, rest):
+    """Brings up your favorite editor to edit a toot. """
+
+    #  Code from http://stackoverflow.com/a/6309753/535883
+    initial_message = b""  # or change to something else
+
+    with tempfile.NamedTemporaryFile(suffix=".tmp") as tf:
+        tf.write(initial_message)
+        tf.flush()
+        call([EDITOR, tf.name])
+
+        tf.seek(0)
+        edited_message = tf.read()
+    toot(mastodon, edited_message)
 
 
 @command
