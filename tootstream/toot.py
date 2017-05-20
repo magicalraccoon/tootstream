@@ -453,16 +453,28 @@ toot.__argstr__ = '<text>'
 
 @command
 def tootedit(mastodon, rest):
-    """Brings up your favorite editor to edit a toot. """
+    """Brings up your favorite editor to edit a toot.
+
+    ex: tootedit         # brings up the editor
+        tootedit <text>  # brings up the editor with the contents of <text>
+
+    (Note: If the contents of the editor are saved without modification
+     the post will not be sent.)
+
+    This uses the $EDITOR system variable to select the editor.
+    """
 
     edited_message = click.edit(rest)
     if(edited_message):
         toot(mastodon, edited_message)
+tootedit.__argstr__ = '<text>'
 
 
 @command
 def rep(mastodon, rest):
     """Reply to a toot by ID."""
+    import pdb
+    pdb.set_trace()
     command = rest.split(' ', 1)
     parent_id = IDS.to_global(command[0])
     if parent_id is None:
