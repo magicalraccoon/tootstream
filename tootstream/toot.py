@@ -462,6 +462,8 @@ def tootedit(mastodon, rest):
 
     #  Code from http://stackoverflow.com/a/6309753/535883
     initial_message = b""  # or change to something else
+    if (rest):
+        initial_message = bytes(rest, "utf-8")
 
     with tempfile.NamedTemporaryFile(suffix=".tmp") as tf:
         tf.write(initial_message)
@@ -470,7 +472,8 @@ def tootedit(mastodon, rest):
 
         tf.seek(0)
         edited_message = tf.read()
-    toot(mastodon, edited_message)
+    if (edited_message):
+        toot(mastodon, edited_message)
 
 
 @command
