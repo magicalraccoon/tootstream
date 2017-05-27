@@ -6,10 +6,12 @@ import re
 import configparser
 import random
 import readline
+import bisect
 from toot_parser import TootParser
 from mastodon import Mastodon, StreamListener
 from collections import OrderedDict
 from colored import fg, bg, attr, stylize
+
 
 
 #Looks best with black background.
@@ -111,6 +113,20 @@ def get_userid(mastodon, rest):
     else:
         return users[0]['id']
 
+
+#####################################
+########     COMPLETION      ########
+#####################################
+
+completion_list = []
+
+def complete(text, state):
+    """Return the state-th potential completion for the name-fragment, text"""
+    options = [name for name in completion_list if name.startswith(text)]
+    if state < len(options):
+        return options[state] + ' '
+    else:
+        return None
 
 #####################################
 ######## CONFIG FUNCTIONS    ########
@@ -386,12 +402,11 @@ def printToot(toot):
 #####################################
 commands = OrderedDict()
 
-
 def command(func):
     """Adds the function to the command list."""
     commands[func.__name__] = func
+    bisect.insort(completion_list, func.__name__)
     return func
-
 
 #####################################
 ######## BEGIN COMMAND BLOCK ########
@@ -702,6 +717,9 @@ def follow(mastodon, rest):
             relations = mastodon.account_follow(userid)
             if relations['following']:
                 cprint("  user " + str(userid) + " is now followed", fg('blue'))
+                username = '@' + mastodon.account(userid)['acct']
+                if username not in completion_list:
+                    bisect.insort(completion_list, username)
         except:
             cprint("  ... well, it *looked* like it was working ...", fg('red'))
 follow.__argstr__ = '<user>'
@@ -725,6 +743,9 @@ def unfollow(mastodon, rest):
             relations = mastodon.account_unfollow(userid)
             if not relations['following']:
                 cprint("  user " + str(userid) + " is now unfollowed", fg('blue'))
+            username = '@' + mastodon.account(userid)['acct']
+            if username in completion_list:
+                completion_list.remove(username)
         except:
             cprint("  ... well, it *looked* like it was working ...", fg('red'))
 unfollow.__argstr__ = '<user>'
@@ -1028,7 +1049,15 @@ def main(instance, config, profile):
 
     user = mastodon.account_verify_credentials()
     prompt = "[@{} ({})]: ".format(str(user['username']), profile)
-
+    
+    # Completion setup stuff
+    for i in mastodon.account_following(user['id']):
+        bisect.insort(completion_list, '@' + i['acct'])
+    readline.set_completer(complete)
+    readline.parse_and_bind("tab: complete")
+    readline.set_completer_delims(' ')
+    
+    
     while True:
         command = input(prompt).split(' ', 1)
         rest = ""
