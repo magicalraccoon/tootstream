@@ -594,6 +594,7 @@ def local(mastodon, rest):
     """Displays the Public timeline."""
     for toot in reversed(mastodon.timeline_public()):
         printToot(toot)
+        completion_add(toot)
 local.__argstr__ = ''
 
 
