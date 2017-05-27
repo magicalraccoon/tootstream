@@ -128,6 +128,21 @@ def complete(text, state):
     else:
         return None
 
+        completion_add(toot)
+        completion_add(toot)
+
+def completion_add(toot):
+    """Add usernames (original author, mentions, booster) co completion_list"""
+    if toot['reblog']:
+        username = '@' + toot['reblog']['account']['acct']
+        if username not in completion_list:
+            bisect.insort(completion_list, username)
+    username = '@' + toot['account']['acct']
+    if username not in completion_list:
+        bisect.insort(completion_list, username)
+    for user in ['@' + user['acct'] for user in toot['mentions']]:
+        if user not in completion_list:
+            bisect.insort(completion_list, username)
 
 #####################################
 ######## CONFIG FUNCTIONS    ########
@@ -561,6 +576,7 @@ def home(mastodon, rest):
     """Displays the Home timeline."""
     for toot in reversed(mastodon.timeline_home()):
         printToot(toot)
+        completion_add(toot)
         
 home.__argstr__ = ''
 
