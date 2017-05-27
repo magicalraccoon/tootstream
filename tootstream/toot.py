@@ -586,6 +586,7 @@ def fed(mastodon, rest):
     """Displays the Federated timeline."""
     for toot in reversed(mastodon.timeline_public()):
         printToot(toot)
+        completion_add(toot)
 fed.__argstr__ = ''
 
 
