@@ -128,9 +128,6 @@ def complete(text, state):
     else:
         return None
 
-        completion_add(toot)
-        completion_add(toot)
-
 def completion_add(toot):
     """Add usernames (original author, mentions, booster) co completion_list"""
     if toot['reblog']:
