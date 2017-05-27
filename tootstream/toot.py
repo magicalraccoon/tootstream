@@ -128,6 +128,7 @@ def complete(text, state):
     else:
         return None
 
+
 #####################################
 ######## CONFIG FUNCTIONS    ########
 #####################################
@@ -182,6 +183,7 @@ def save_config(filename, config):
     except os.error:
         cprint("Unable to write configuration to {}".format(filename), fg('red'))
     return
+
 
 
 def register_app(instance):
@@ -559,6 +561,7 @@ def home(mastodon, rest):
     """Displays the Home timeline."""
     for toot in reversed(mastodon.timeline_home()):
         printToot(toot)
+        
 home.__argstr__ = ''
 
 
@@ -1051,7 +1054,7 @@ def main(instance, config, profile):
     prompt = "[@{} ({})]: ".format(str(user['username']), profile)
     
     # Completion setup stuff
-    for i in mastodon.account_following(user['id']):
+    for i in mastodon.account_following(user['id'], limit=80):
         bisect.insort(completion_list, '@' + i['acct'])
     readline.set_completer(complete)
     readline.parse_and_bind("tab: complete")
