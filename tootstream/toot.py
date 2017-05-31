@@ -107,6 +107,22 @@ def get_userid(mastodon, rest):
     if not users:
         return -1
     elif len(users) > 1:
+        # Mastodon's search is fuzzier than we want; check for exact match
+
+        query = (rest[1:] if rest.startswith('@') else rest)
+        (quser, _, qinstance) = query.partition('@')
+        localinstance = mastodon.instance()
+
+        # on uptodate servers, exact match should be first in list
+        for user in users:
+            # match user@remoteinstance, localuser
+            if query == user['acct']:
+                return user['id']
+            # match user@localinstance
+            elif quser == user['acct'] and qinstance == localinstance['uri']:
+                return user['id']
+
+        # no exact match; return list
         return users
     else:
         return users[0]['id']
