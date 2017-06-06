@@ -381,6 +381,13 @@ def printToot(toot):
     print()
 
 
+def edittoot():
+    edited_message = click.edit()
+    if edited_message:
+        return edited_message
+    return ''
+
+
 #####################################
 ######## DECORATORS          ########
 #####################################
@@ -445,7 +452,10 @@ help.__argstr__ = '<cmd>'
 def toot(mastodon, rest):
     """Publish a toot.
 
-    ex: 'toot Hello World' will publish 'Hello World'."""
+    ex: 'toot Hello World' will publish 'Hello World'.
+    If no text is given then this will run the default editor."""
+    if rest == '':
+        rest = edittoot()
     mastodon.toot(rest)
     cprint("You tooted: ", fg('white') + attr('bold'), end="")
     cprint(rest, fg('magenta') + attr('bold') + attr('underlined'))
@@ -454,15 +464,18 @@ toot.__argstr__ = '<text>'
 
 @command
 def rep(mastodon, rest):
-    """Reply to a toot by ID."""
+    """Reply to a toot by ID.
+
+    ex: 'rep 42 Thank you!' will reply 'Thank you!' to message ID 42.
+    If no text is given then this will run the default editor."""
     command = rest.split(' ', 1)
     parent_id = IDS.to_global(command[0])
     if parent_id is None:
         return
-    try:
+    if len(command) < 2:
+        reply_text = edittoot()
+    else:
         reply_text = command[1]
-    except IndexError:
-        reply_text = ''
     parent_toot = mastodon.status(parent_id)
     mentions = [i['acct'] for i in parent_toot['mentions']]
     mentions.append(parent_toot['account']['acct'])
