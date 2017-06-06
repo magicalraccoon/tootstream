@@ -456,6 +456,12 @@ toot.__argstr__ = '<text>'
 def rep(mastodon, rest):
     """Reply to a toot by ID."""
     command = rest.split(' ', 1)
+
+    if command[0] == '':
+        msg = "  No message to reply to."
+        cprint(msg, fg('red'))
+        return
+
     parent_id = IDS.to_global(command[0])
     if parent_id is None:
         return
