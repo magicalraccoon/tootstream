@@ -2,6 +2,12 @@
 
 -----------------------------------------
 
+## Chat
+
+Discuss contributions to tootstream on [gitter](https://gitter.im/tootstream/Lobby?utm_source=share-link&utm_medium=link&utm_campaign=share-link)!
+
+-----------------------------------------
+
 ## What?
 
 Individuals making significant and valuable contributions are given
