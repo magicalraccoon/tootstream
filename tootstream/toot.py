@@ -579,8 +579,8 @@ fed.__argstr__ = ''
 
 @command
 def local(mastodon, rest):
-    """Displays the Public timeline."""
-    for toot in reversed(mastodon.timeline_public()):
+    """Displays the Local timeline."""
+    for toot in reversed(mastodon.timeline_local()):
         printToot(toot)
 local.__argstr__ = ''
 
