@@ -52,8 +52,8 @@ class IdDict:
 
     def to_local(self, global_id):
         """Returns the local ID for a global ID"""
-        global_id = int(global_id) # In case a string gets passed
         try:
+            global_id = int(global_id) # In case a string gets passed
             return self._map.index(global_id)
         except ValueError:
             self._map.append(global_id)
@@ -62,8 +62,8 @@ class IdDict:
     def to_global(self, local_id):
         """Returns the global ID for a local ID, or None if ID is invalid.
         Also prints an error message"""
-        local_id = int(local_id)
         try:
+            local_id = int(local_id)
             return self._map[local_id]
         except:
             cprint('Invalid ID.', fg('red'))
