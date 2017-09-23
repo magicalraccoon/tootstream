@@ -6,10 +6,12 @@ import re
 import configparser
 import random
 import readline
+import bisect
 from toot_parser import TootParser
 from mastodon import Mastodon, StreamListener
 from collections import OrderedDict
 from colored import fg, bg, attr, stylize
+
 
 
 #Looks best with black background.
@@ -129,6 +131,33 @@ def get_userid(mastodon, rest):
 
 
 #####################################
+########     COMPLETION      ########
+#####################################
+
+completion_list = []
+
+def complete(text, state):
+    """Return the state-th potential completion for the name-fragment, text"""
+    options = [name for name in completion_list if name.startswith(text)]
+    if state < len(options):
+        return options[state] + ' '
+    else:
+        return None
+
+def completion_add(toot):
+    """Add usernames (original author, mentions, booster) co completion_list"""
+    if toot['reblog']:
+        username = '@' + toot['reblog']['account']['acct']
+        if username not in completion_list:
+            bisect.insort(completion_list, username)
+    username = '@' + toot['account']['acct']
+    if username not in completion_list:
+        bisect.insort(completion_list, username)
+    for user in ['@' + user['acct'] for user in toot['mentions']]:
+        if user not in completion_list:
+            bisect.insort(completion_list, username)
+
+#####################################
 ######## CONFIG FUNCTIONS    ########
 #####################################
 def parse_config(filename):
@@ -182,6 +211,7 @@ def save_config(filename, config):
     except os.error:
         cprint("Unable to write configuration to {}".format(filename), fg('red'))
     return
+
 
 
 def register_app(instance):
@@ -402,12 +432,11 @@ def printToot(toot):
 #####################################
 commands = OrderedDict()
 
-
 def command(func):
     """Adds the function to the command list."""
     commands[func.__name__] = func
+    bisect.insort(completion_list, func.__name__)
     return func
-
 
 #####################################
 ######## BEGIN COMMAND BLOCK ########
@@ -566,6 +595,8 @@ def home(mastodon, rest):
     """Displays the Home timeline."""
     for toot in reversed(mastodon.timeline_home()):
         printToot(toot)
+        completion_add(toot)
+        
 home.__argstr__ = ''
 
 
@@ -574,6 +605,7 @@ def fed(mastodon, rest):
     """Displays the Federated timeline."""
     for toot in reversed(mastodon.timeline_public()):
         printToot(toot)
+        completion_add(toot)
 fed.__argstr__ = ''
 
 
@@ -582,6 +614,7 @@ def local(mastodon, rest):
     """Displays the Local timeline."""
     for toot in reversed(mastodon.timeline_local()):
         printToot(toot)
+        completion_add(toot)
 local.__argstr__ = ''
 
 
@@ -724,6 +757,9 @@ def follow(mastodon, rest):
             relations = mastodon.account_follow(userid)
             if relations['following']:
                 cprint("  user " + str(userid) + " is now followed", fg('blue'))
+                username = '@' + mastodon.account(userid)['acct']
+                if username not in completion_list:
+                    bisect.insort(completion_list, username)
         except:
             cprint("  ... well, it *looked* like it was working ...", fg('red'))
 follow.__argstr__ = '<user>'
@@ -747,6 +783,9 @@ def unfollow(mastodon, rest):
             relations = mastodon.account_unfollow(userid)
             if not relations['following']:
                 cprint("  user " + str(userid) + " is now unfollowed", fg('blue'))
+            username = '@' + mastodon.account(userid)['acct']
+            if username in completion_list:
+                completion_list.remove(username)
         except:
             cprint("  ... well, it *looked* like it was working ...", fg('red'))
 unfollow.__argstr__ = '<user>'
@@ -1107,7 +1146,15 @@ def main(instance, config, profile):
 
     user = mastodon.account_verify_credentials()
     prompt = "[@{} ({})]: ".format(str(user['username']), profile)
-
+    
+    # Completion setup stuff
+    for i in mastodon.account_following(user['id'], limit=80):
+        bisect.insort(completion_list, '@' + i['acct'])
+    readline.set_completer(complete)
+    readline.parse_and_bind("tab: complete")
+    readline.set_completer_delims(' ')
+    
+    
     while True:
         command = input(prompt).split(' ', 1)
         rest = ""
