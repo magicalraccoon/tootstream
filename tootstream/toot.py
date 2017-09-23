@@ -673,15 +673,16 @@ def note(mastodon, rest):
 
         # Mentions
         if note['type'] == 'mention':
+            time = " " + stylize(note['status']['created_at'], attr('dim'))
             cprint(display_name + username, fg('magenta'))
-            print("  " + format_toot_idline(note['status']))
+            print("  " + format_toot_idline(note['status']) + "  " + time)
             cprint(get_content(note['status']), attr('bold'), fg('white'))
             print()
 
         # Favorites
         elif note['type'] == 'favourite':
             countsline = format_toot_idline(note['status'])
-            time = " " + note['status']['created_at']
+            time = " " + stylize(note['status']['created_at'], attr('dim'))
             content = get_content(note['status'])
 
 
