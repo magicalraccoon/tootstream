@@ -17,26 +17,33 @@ https://github.com/DTVD/rainbowstream).
 ```
 $ git clone https://github.com/magicalraccoon/tootstream.git
 $ cd tootstream
-$ virtualenv -p python3 tootstream
-$ source ./tootstream/bin/activate
 ```
-2: Install the project dependencies
+
+2: Create a Virtual Environment
+
+```
+# Create a virtual environment
+$ virtualenv -p python3 /path/to/tootstream
+$ source /path/to/tootstream/bin/activate
+```
+
+3: Install the project 
 ```
 $ python3 setup.py install
 ```
 
-3: Close the environment with `$ deactivate`
+4: Close the environment with `$ deactivate`
 
 ## Usage
 
 1: Return to your virtual environment
 ```
-$ source ./tootstream/bin/activate
+$ source /path/to/tootstream/bin/activate
 ```
 
 2: Run the script
 ```
-$ python3 tootstream/toot.py
+$ tootstream
 ```
 3: Close the environment with: `$ deactivate`
 
