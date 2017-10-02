@@ -1,4 +1,3 @@
-
 from html.parser import HTMLParser
 from textwrap import TextWrapper
 

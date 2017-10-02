@@ -2,14 +2,11 @@ from setuptools import setup, find_packages
 setup(
     name="tootstream",
     version="0.1.0",
-    packages=find_packages(),
     install_requires=[line.strip() for line in open('requirements.txt')],
 
+    packages=find_packages('src'),
+    package_dir={'tootstream': 'src'}, include_package_data=True,
     package_data={
-        # If any package contains *.txt or *.rst files, include them:
-        '': ['*.txt', '*.rst'],
-        # And include any *.msg files found in the 'hello' package, too:
-        'hello': ['*.msg'],
     },
 
     # metadata for upload to PyPI
@@ -19,6 +16,10 @@ setup(
     license="MIT",
     keywords="mastodon, mastodon.social, toot, tootstream",
     url="http://www.github.com/magicalraccoon/tootstream",   # project home page, if any
+    entry_points={
+        'console_scripts':
+            ['tootstream=tootstream.toot:main']
+    }
 
     # could also include long_description, download_url, classifiers, etc.
 )
