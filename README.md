@@ -45,7 +45,7 @@ $ source /path/to/tootstream/bin/activate
 ```
 $ tootstream
 ```
-3: Close the environment with: `$ deactivate`
+3: Close the environment with `$ deactivate`
 
 ## Contributing
 
