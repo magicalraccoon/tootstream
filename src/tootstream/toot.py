@@ -7,7 +7,7 @@ import configparser
 import random
 import readline
 import bisect
-from toot_parser import TootParser
+from tootstream.toot_parser import TootParser
 from mastodon import Mastodon, StreamListener
 from collections import OrderedDict
 from colored import fg, bg, attr, stylize
