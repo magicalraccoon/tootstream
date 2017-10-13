@@ -24,12 +24,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - ``get_userid`` check API results list for exact match to user input
 - Many formatting changes (now using glyphs and content warning, timestamps on metions)
 - Refactored login and user prompts
+- Simplified the requirements to only include requirements for tootstream
 
 #### Fixed
 - Favorite / Boost/ Reply won't crash without ID
 - Local timeline actually shows local timeline
 - Accept / Reject Status fixed.
 - Configuration file more resilient
+- Empty toots could crash the program with later Mastodon.py
 
 ### Release
 ### [0.1.0] - 2017-05-02

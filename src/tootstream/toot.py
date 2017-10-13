@@ -13,7 +13,6 @@ from collections import OrderedDict
 from colored import fg, bg, attr, stylize
 
 
-
 #Looks best with black background.
 #TODO: Set color list in config file
 COLORS = list(range(19,231))
@@ -501,9 +500,14 @@ def toot(mastodon, rest):
     If no text is given then this will run the default editor."""
     if rest == '':
         rest = edittoot()
-    mastodon.toot(rest)
-    cprint("You tooted: ", fg('white') + attr('bold'), end="")
-    cprint(rest, fg('magenta') + attr('bold') + attr('underlined'))
+    try:
+        mastodon.toot(rest)
+        cprint("You tooted: ", fg('white') + attr('bold'), end="")
+        cprint(rest, fg('magenta') + attr('bold') + attr('underlined'))
+    except Exception as e:
+        cprint("Received error: ", fg('red') + attr('bold'), end="")
+        cprint(e, fg('magenta') + attr('bold') + attr('underlined'))
+
 toot.__argstr__ = '<text>'
 
 
@@ -533,10 +537,14 @@ def rep(mastodon, rest):
     mentions = ["@%s" % i for i in list(set(mentions))] # Remove dups
     mentions = ' '.join(mentions)
     # TODO: Ensure that content warning visibility carries over to reply
-    reply_toot = mastodon.status_post('%s %s' % (mentions, reply_text),
-                                      in_reply_to_id=int(parent_id))
-    msg = "  Replied with: " + get_content(reply_toot)
-    cprint(msg, fg('red'))
+    try:
+        reply_toot = mastodon.status_post('%s %s' % (mentions, reply_text),
+                                        in_reply_to_id=int(parent_id))
+        msg = "  Replied with: " + get_content(reply_toot)
+        cprint(msg, fg('red'))
+    except Exception as e:
+        cprint("Received error: ", fg('red') + attr('bold'), end="")
+        cprint(e, fg('magenta') + attr('bold') + attr('underlined'))
 rep.__argstr__ = '<id> <text>'
 
 
