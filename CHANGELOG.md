@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Local timeline actually shows local timeline
 - Accept / Reject Status fixed.
 - Configuration file more resilient
+- Empty toots could crash the program with later Mastodon.py
 
 ### Release
 ### [0.1.0] - 2017-05-02
