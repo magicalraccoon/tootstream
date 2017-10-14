@@ -11,7 +11,23 @@ https://github.com/DTVD/rainbowstream).
 
 [![tootstream displaying the Federated timeline](https://i.imgur.com/LqjUXpt.jpg)](https://asciinema.org/a/3m87j1s402ic2llfp517okpv2?t=7&speed=2)
 
-## Install
+## Install via pip
+
+1: Create a virtual environment
+```
+# Create a virtual environment
+$ virtualenv -p python3 /path/to/tootstream
+$ source /path/to/tootstream/bin/activate
+```
+
+2: Install via pip
+```
+$ pip install tootstream
+```
+
+3: See the *Usage* section for how to use Tootstream.
+
+## Install for development
 
 1: Clone this repo and enter the project directory through a virtual environment
 ```
