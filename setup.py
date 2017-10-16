@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 setup(
     name="tootstream",
-    version="0.2.0rc3",
+    version="0.2.0rc4",
     install_requires=[line.strip() for line in open('requirements.txt')],
 
     packages=find_packages('src'),
