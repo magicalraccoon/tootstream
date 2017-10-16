@@ -612,6 +612,22 @@ unfav.__argstr__ = '<id>'
 
 
 @command
+def thread(mastodon, rest):
+    """Shows the toot conversation for an ID.
+
+    ex: thread 23"""
+    rest = IDS.to_global(rest)
+    if rest is None:
+        return
+
+    conversation = mastodon.status_context(rest)
+    for toot in conversation['ancestors']:
+        printToot(toot)
+        completion_add(toot)
+thread.__argstr__ = '<id>'
+
+
+@command
 def home(mastodon, rest):
     """Displays the Home timeline."""
     for toot in reversed(mastodon.timeline_home()):
