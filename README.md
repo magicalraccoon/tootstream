@@ -15,7 +15,6 @@ https://github.com/DTVD/rainbowstream).
 
 1: Create a virtual environment
 ```
-# Create a virtual environment
 $ virtualenv -p python3 /path/to/tootstream
 $ source /path/to/tootstream/bin/activate
 ```
