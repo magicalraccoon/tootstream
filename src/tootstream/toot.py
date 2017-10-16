@@ -701,7 +701,6 @@ def note(mastodon, rest):
             cprint(display_name + username, fg('magenta'))
             print("  " + format_toot_idline(note['status']) + "  " + time)
             cprint(get_content(note['status']), attr('bold'), fg('white'))
-            print()
 
         # Favorites
         elif note['type'] == 'favourite':
@@ -727,7 +726,7 @@ def note(mastodon, rest):
             cprint(display_name + username + " followed you!", fg('yellow'))
 
         # blank line
-        print()
+        print(stylize("", attr('dim')))
 note.__argstr__ = ''
 
 
