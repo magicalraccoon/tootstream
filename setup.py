@@ -5,7 +5,7 @@ setup(
     install_requires=[line.strip() for line in open('requirements.txt')],
 
     packages=find_packages('src'),
-    package_dir={'tootstream': 'src/tootstream'}, include_package_data=True,
+    package_dir={'': 'src'}, include_package_data=True,
     package_data={
     },
 
