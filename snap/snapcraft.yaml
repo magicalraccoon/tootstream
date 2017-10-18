@@ -1,0 +1,19 @@
+name: tootstream
+version: master
+summary: A command line interface for interacting with Mastodon instances.
+description: |
+  A command line interface for interacting with Mastodon instances written in
+  python.
+
+grade: devel # must be 'stable' to release into candidate/stable channels
+confinement: strict
+
+apps:
+  tootstream:
+    command: env LC_ALL=C.UTF-8 python3 $SNAP/lib/python3.5/site-packages/tootstream/toot.py
+    plugs: [network]
+
+parts:
+  tootstream:
+    source: .
+    plugin: python
