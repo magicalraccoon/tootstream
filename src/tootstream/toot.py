@@ -164,7 +164,7 @@ def flaghandler_tootreply(mastodon, rest):
 
     # visibility flag
     if flags['v']:
-        vis = input("Set visibility [p/u/pr/d/None]: ")
+        vis = input("Set visibility [(p)ublic/(u)nlisted/(pr)ivate/(d)irect/None]: ")
         vis = vis.lower()
 
         # default case; pass on through
