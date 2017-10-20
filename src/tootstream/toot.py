@@ -620,10 +620,20 @@ def thread(mastodon, rest):
     if rest is None:
         return
 
-    conversation = mastodon.status_context(rest)
-    for toot in conversation['ancestors']:
-        printToot(toot)
-        completion_add(toot)
+    try:
+        current_toot = mastodon.status(rest)
+        conversation = mastodon.status_context(rest)
+        for toot in conversation['ancestors']:
+            printToot(toot)
+            completion_add(toot)
+        
+        printToot(current_toot)
+        completion_add(current_toot)
+    except Exception as e:
+        cprint("{}: please try again later".format(
+            type(e).__name__),
+            fg('red'))
+
 thread.__argstr__ = '<id>'
 
 
