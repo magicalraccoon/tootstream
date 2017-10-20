@@ -624,7 +624,6 @@ def toot(mastodon, rest):
         -c     Prompt for Content Warning / spoiler text
         -m     Prompt for media files and NSFW
     """
-    __import__('pdb').set_trace()
     # Fill in Content fields first.
     try:
         (text, kwargs) = flaghandler_tootreply(mastodon, rest)
@@ -657,6 +656,7 @@ def rep(mastodon, rest):
                   reply to toot 13 with 'Hello again'
         'rep -vc 13 Hello again'
                   same but prompt for visibilitiy and spoiler changes
+    If no text is given then this will run the default editor.
 
     Options:
         -v     Prompt for visibility (public, unlisted, private, direct)
@@ -664,7 +664,6 @@ def rep(mastodon, rest):
         -C     No Content Warning (do not use original's CW)
         -m     Prompt for media files and NSFW
 
-    If no text is given then this will run the default editor.
     """
 
     try:
