@@ -635,8 +635,11 @@ def toot(mastodon, rest):
     if text == '':
         text = edittoot()
     try:
+        __import__('pdb').set_trace()
         resp = mastodon.status_post(text, **kwargs)
-        cprint("You tooted: ", fg('white') + attr('bold'), end="")
+        cprint("You tooted: ", fg('white') + attr('bold'), end="\n")
+        if resp['sensitive']:
+            cprint('CW: ' + resp['spoiler_text'], fg('red'))
         cprint(text, fg('magenta') + attr('bold') + attr('underlined'))
     except Exception as e:
         cprint("Received error: ", fg('red') + attr('bold'), end="")
