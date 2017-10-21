@@ -635,7 +635,6 @@ def toot(mastodon, rest):
     if text == '':
         text = edittoot()
     try:
-        __import__('pdb').set_trace()
         resp = mastodon.status_post(text, **kwargs)
         cprint("You tooted: ", fg('white') + attr('bold'), end="\n")
         if resp['sensitive']:
