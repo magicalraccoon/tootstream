@@ -18,8 +18,9 @@ from colored import fg, bg, attr, stylize
 COLORS = list(range(19,231))
 GLYPHS = {
     # general icons, keys don't match any Mastodon dict keys
-    'fave':          '♥',
-    'boost':         '♺',
+    'fave':          '\U00002665', # Black Heart Suit
+    'boost':         '\U0000267a', # Recycling Symbol for generic materials
+    'mentions':      '\U0000270e', # Lower Right Pencil
     'pineapple':     '\U0001f34d', # pineapple
     'toots':         '\U0001f4ea', # mailbox (for toot counts)
     # next key matches key in user dict
@@ -504,7 +505,8 @@ def format_toot_idline(toot):
 
 
 def printToot(toot):
-    if not toot: return
+    if not toot:
+        return
 
     out = []
     # if it's a boost, only output header line from toot
@@ -792,7 +794,7 @@ def home(mastodon, rest):
     for toot in reversed(mastodon.timeline_home()):
         printToot(toot)
         completion_add(toot)
-        
+
 home.__argstr__ = ''
 
 
