@@ -806,6 +806,10 @@ def thread(mastodon, rest):
 
         printToot(current_toot)
         completion_add(current_toot)
+
+        for toot in conversation['descendants']:
+            printToot(toot)
+            completion_add(toot)
     except Exception as e:
         cprint("{}: please try again later".format(
             type(e).__name__),
