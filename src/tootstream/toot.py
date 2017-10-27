@@ -918,32 +918,25 @@ def note(mastodon, rest):
 note.__argstr__ = ''
 
 @command
-def note_clear(mastodon, rest):
-    """Clears all notifications"""
+def dismiss(mastodon, rest):
+    """Clears all notifications. Dismisses a single one when an ID is provided.
+
+    ex: dismiss or dismiss 17
+    """
     try:
-        mastodon.notifications_clear()
-        cprint(" All notifications were dismissed. ", fg('yellow'))
-    except Exception as e:
-        cprint(" Something went wrong: {}".format(e), fg('red'))
-
-note_clear.__argstr__ = ''
-
-@command
-def note_dismiss(mastodon, rest):
-    """Dismisses a single notification by id
-
-    ex: note_dismiss 23"""
-    rest = IDS.to_global(rest)
-    if rest is None:
-        return
-
-    try:
-        mastodon.notifications_dismiss(rest)
-        cprint(" The specified notification has been dismissed. ", fg('yellow'))
+        if rest == '':
+            mastodon.notifications_clear()
+            cprint(" All notifications were dismissed. ", fg('yellow'))
+        else:
+            rest = IDS.to_global(rest)
+            if rest is None:
+                return
+            mastodon.notifications_dismiss(rest)
+            cprint(" The specified notification has been dismissed. ", fg('yellow'))
     except Exception as e:
         cprint("Something went wrong: {}".format(e), fg('red'))
 
-note_dismiss.__argstr__ = '<id>'
+dismiss.__argstr__ = '[<id>]'
 
 @command
 def block(mastodon, rest):
