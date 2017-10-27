@@ -803,9 +803,13 @@ def thread(mastodon, rest):
         for toot in conversation['ancestors']:
             printToot(toot)
             completion_add(toot)
-        
+
         printToot(current_toot)
         completion_add(current_toot)
+
+        for toot in conversation['descendants']:
+            printToot(toot)
+            completion_add(toot)
     except Exception as e:
         cprint("{}: please try again later".format(
             type(e).__name__),
@@ -916,6 +920,34 @@ def note(mastodon, rest):
         # blank line
         print()
 note.__argstr__ = ''
+
+@command
+def note_clear(mastodon, rest):
+    """Clears all notifications"""
+    try:
+        mastodon.notifications_clear()
+        cprint(" All notifications were dismissed. ", fg('yellow'))
+    except Exception as e:
+        cprint(" Something went wrong: {}".format(e), fg('red'))
+
+note_clear.__argstr__ = ''
+
+@command
+def note_dismiss(mastodon, rest):
+    """Dismisses a single notification by id
+
+    ex: note_dismiss 23"""
+    rest = IDS.to_global(rest)
+    if rest is None:
+        return
+
+    try:
+        mastodon.notifications_dismiss(rest)
+        cprint(" The specified notification has been dismissed. ", fg('yellow'))
+    except Exception as e:
+        cprint("Something went wrong: {}".format(e), fg('red'))
+
+note_dismiss.__argstr__ = '<id>'
 
 
 @command
@@ -1371,15 +1403,15 @@ def main(instance, config, profile):
 
     user = mastodon.account_verify_credentials()
     prompt = "[@{} ({})]: ".format(str(user['username']), profile)
-    
+
     # Completion setup stuff
     for i in mastodon.account_following(user['id'], limit=80):
         bisect.insort(completion_list, '@' + i['acct'])
     readline.set_completer(complete)
     readline.parse_and_bind("tab: complete")
     readline.set_completer_delims(' ')
-    
-    
+
+
     while True:
         command = input(prompt).split(' ', 1)
         rest = ""
