@@ -878,9 +878,12 @@ def note(mastodon, rest):
     for note in reversed(mastodon.notifications()):
         display_name = "  " + note['account']['display_name']
         username = format_username(note['account'])
+        note_id = note['id']
 
         random.seed(display_name)
 
+        # Display Note ID
+        cprint(" note: " + note_id, fg('magenta'))
 
         # Mentions
         if note['type'] == 'mention':
@@ -895,8 +898,6 @@ def note(mastodon, rest):
             countsline = format_toot_idline(note['status'])
             time = " " + stylize(note['status']['created_at'], attr('dim'))
             content = get_content(note['status'])
-
-
             cprint(display_name + username, fg(random.choice(COLORS)), end="")
             cprint(" favorited your status:", fg('yellow'))
             print("  "+countsline + stylize(time, attr('dim')))
@@ -928,11 +929,10 @@ def dismiss(mastodon, rest):
             mastodon.notifications_clear()
             cprint(" All notifications were dismissed. ", fg('yellow'))
         else:
-            rest = IDS.to_global(rest)
             if rest is None:
                 return
             mastodon.notifications_dismiss(rest)
-            cprint(" The specified notification has been dismissed. ", fg('yellow'))
+            cprint(" Note " + rest + " was dismissed. ", fg('yellow'))
     except Exception as e:
         cprint("Something went wrong: {}".format(e), fg('red'))
 
