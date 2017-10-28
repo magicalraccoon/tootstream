@@ -920,9 +920,14 @@ note.__argstr__ = ''
 
 @command
 def dismiss(mastodon, rest):
-    """Clears all notifications. Dismisses a single one when an ID is provided.
+    """Dismisses notifications.
 
-    ex: dismiss or dismiss 17
+    ex: dismiss or dismiss 1234567
+
+    dismiss clears all notifications if no note ID is provided.
+    dismiss 1234567 will dismiss note ID 1234567.
+
+    The note ID is the id provided by the `note` command.
     """
     try:
         if rest == '':
@@ -936,7 +941,7 @@ def dismiss(mastodon, rest):
     except Exception as e:
         cprint("Something went wrong: {}".format(e), fg('red'))
 
-dismiss.__argstr__ = '[<id>]'
+dismiss.__argstr__ = '[<note_id>]'
 
 @command
 def block(mastodon, rest):
@@ -1398,7 +1403,6 @@ def main(instance, config, profile):
     readline.set_completer(complete)
     readline.parse_and_bind("tab: complete")
     readline.set_completer_delims(' ')
-
 
     while True:
         command = input(prompt).split(' ', 1)
