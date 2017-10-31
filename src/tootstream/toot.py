@@ -601,8 +601,8 @@ def help(mastodon, rest):
             cmd_args = cmd_func.__argstr__
         except:
             cmd_args = ''
-        print("{:>15} {:<11}  {:<}".format(command, cmd_args, cmd_doc))
-help.__argstr__ = '<cmd>'
+        print("{:>12} {:<15}  {:<}".format(command, cmd_args, cmd_doc))
+help.__argstr__ = '[<cmd>]'
 
 
 @command
@@ -646,7 +646,7 @@ def toot(mastodon, rest):
         cprint("Received error: ", fg('red') + attr('bold'), end="")
         cprint(e, fg('magenta') + attr('bold') + attr('underlined'))
 
-toot.__argstr__ = '<text>'
+toot.__argstr__ = '[<text>]'
 
 
 @command
@@ -722,7 +722,7 @@ def rep(mastodon, rest):
         cprint(msg, fg('red'))
     except Exception as e:
         cprint("error while posting: {}".format(type(e).__name__), fg('red'))
-rep.__argstr__ = '<id> <text>'
+rep.__argstr__ = '<id> [<text>]'
 
 
 @command
@@ -1274,7 +1274,7 @@ def view(mastodon, rest):
             printToot(toot)
 
     return
-view.__argstr__ = '<user> <N>'
+view.__argstr__ = '<user> [<N>]'
 
 
 @command
@@ -1286,7 +1286,7 @@ def me(mastodon, rest):
     # no specific API for user's own timeline
     # let view() do the work
     view(mastodon, "{} {}".format(itme['id'], rest))
-me.__argstr__ = '<N>'
+me.__argstr__ = '[<N>]'
 
 
 @command
