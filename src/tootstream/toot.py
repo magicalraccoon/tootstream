@@ -594,6 +594,7 @@ def help(mastodon, rest):
 
     # no argument, show full list
     print("Commands:")
+    section = ''
     for command, cmd_func in commands.items():
         # get only the docstring's first line for the column view
         (cmd_doc, *_) = cmd_func.__doc__.partition('\n')
@@ -601,8 +602,14 @@ def help(mastodon, rest):
             cmd_args = cmd_func.__argstr__
         except:
             cmd_args = ''
+
+        if cmd_func.__section__ != section:
+            section = cmd_func.__section__
+            print(" {section}:".format(section=section))
+
         print("{:>12} {:<15}  {:<}".format(command, cmd_args, cmd_doc))
 help.__argstr__ = '[<cmd>]'
+help.__section__ = 'Help'
 
 
 @command
@@ -647,6 +654,7 @@ def toot(mastodon, rest):
         cprint(e, fg('magenta') + attr('bold') + attr('underlined'))
 
 toot.__argstr__ = '[<text>]'
+toot.__section__ = 'Toots'
 
 
 @command
@@ -723,6 +731,7 @@ def rep(mastodon, rest):
     except Exception as e:
         cprint("error while posting: {}".format(type(e).__name__), fg('red'))
 rep.__argstr__ = '<id> [<text>]'
+rep.__section__ = 'Toots'
 
 
 @command
@@ -734,6 +743,7 @@ def delete(mastodon, rest):
     mastodon.status_delete(rest)
     print("Poof! It's gone.")
 delete.__argstr__ = '<id>'
+delete.__section__ = 'Toots'
 
 
 @command
@@ -747,6 +757,7 @@ def boost(mastodon, rest):
     msg = "  You boosted: ", fg('white') + get_content(boosted)
     cprint(msg, fg('green'))
 boost.__argstr__ = '<id>'
+boost.__section__ = 'Toots'
 
 
 @command
@@ -760,6 +771,7 @@ def unboost(mastodon, rest):
     msg = "  Removed boost: " + get_content(unboosted)
     cprint(msg, fg('red'))
 unboost.__argstr__ = '<id>'
+unboost.__section__ = 'Toots'
 
 
 @command
@@ -773,6 +785,7 @@ def fav(mastodon, rest):
     msg = "  Favorited: " + get_content(faved)
     cprint(msg, fg('red'))
 fav.__argstr__ = '<id>'
+fav.__section__ = 'Toots'
 
 
 @command
@@ -786,6 +799,7 @@ def unfav(mastodon, rest):
     msg = "  Removed favorite: " + get_content(unfaved)
     cprint(msg, fg('yellow'))
 unfav.__argstr__ = '<id>'
+unfav.__section__ = 'Toots'
 
 
 @command
@@ -813,6 +827,7 @@ def history(mastodon, rest):
             fg('red'))
 
 history.__argstr__ = '<id>'
+history.__section__ = 'Toots'
 
 
 @command
@@ -845,6 +860,7 @@ def thread(mastodon, rest):
             fg('red'))
 
 thread.__argstr__ = '<id>'
+thread.__section__ = 'Toots'
 
 
 @command
@@ -855,6 +871,7 @@ def home(mastodon, rest):
         completion_add(toot)
 
 home.__argstr__ = ''
+home.__section__ = 'Timeline'
 
 
 @command
@@ -864,6 +881,7 @@ def fed(mastodon, rest):
         printToot(toot)
         completion_add(toot)
 fed.__argstr__ = ''
+fed.__section__ = 'Timeline'
 
 
 @command
@@ -873,6 +891,7 @@ def local(mastodon, rest):
         printToot(toot)
         completion_add(toot)
 local.__argstr__ = ''
+local.__section__ = 'Timeline'
 
 
 @command
@@ -903,6 +922,7 @@ Use ctrl+C to end streaming"""
     except KeyboardInterrupt:
         pass
 stream.__argstr__ = '<timeline>'
+stream.__section__ = 'Timeline'
 
 
 @command
@@ -949,6 +969,7 @@ def note(mastodon, rest):
         # blank line
         print()
 note.__argstr__ = ''
+note.__section__ = 'Timeline'
 
 
 @command
@@ -972,6 +993,7 @@ def block(mastodon, rest):
         except:
             cprint("  ... well, it *looked* like it was working ...", fg('red'))
 block.__argstr__ = '<user>'
+block.__section__ = 'Users'
 
 
 @command
@@ -995,6 +1017,7 @@ def unblock(mastodon, rest):
         except:
             cprint("  ... well, it *looked* like it was working ...", fg('red'))
 unblock.__argstr__ = '<user>'
+unblock.__section__ = 'Users'
 
 
 @command
@@ -1021,6 +1044,7 @@ def follow(mastodon, rest):
         except:
             cprint("  ... well, it *looked* like it was working ...", fg('red'))
 follow.__argstr__ = '<user>'
+follow.__section__ = 'Users'
 
 
 @command
@@ -1047,6 +1071,7 @@ def unfollow(mastodon, rest):
         except:
             cprint("  ... well, it *looked* like it was working ...", fg('red'))
 unfollow.__argstr__ = '<user>'
+unfollow.__section__ = 'Users'
 
 
 @command
@@ -1070,6 +1095,7 @@ def mute(mastodon, rest):
         except:
             cprint("  ... well, it *looked* like it was working ...", fg('red'))
 mute.__argstr__ = '<user>'
+mute.__section__ = 'Users'
 
 
 @command
@@ -1093,6 +1119,7 @@ def unmute(mastodon, rest):
         except:
             cprint("  ... well, it *looked* like it was working ...", fg('red'))
 unmute.__argstr__ = '<user>'
+unmute.__section__ = 'Users'
 
 
 @command
@@ -1130,147 +1157,7 @@ def search(mastodon, rest):
 
     return
 search.__argstr__ = '<query>'
-
-
-@command
-def info(mastodon, rest):
-    """Prints your user info."""
-    user = mastodon.account_verify_credentials()
-    printUser(user)
-info.__argstr__ = ''
-
-
-@command
-def followers(mastodon, rest):
-    """Lists users who follow you."""
-    # TODO: compare user['followers_count'] to len(users)
-    #       request more from server if first call doesn't get full list
-    # TODO: optional username/userid to show another user's followers?
-    user = mastodon.account_verify_credentials()
-    users = mastodon.account_followers(user['id'])
-    if not users:
-        cprint("  Nobody follows you", fg('red'))
-    else:
-        cprint("  People who follow you ({}):".format(len(users)), fg('magenta'))
-        printUsersShort(users)
-followers.__argstr__ = ''
-
-
-@command
-def following(mastodon, rest):
-    """Lists users you follow."""
-    # TODO: compare user['following_count'] to len(users)
-    #       request more from server if first call doesn't get full list
-    # TODO: optional username/userid to show another user's following?
-    user = mastodon.account_verify_credentials()
-    users = mastodon.account_following(user['id'])
-    if not users:
-        cprint("  You aren't following anyone", fg('red'))
-    else:
-        cprint("  People you follow ({}):".format(len(users)), fg('magenta'))
-        printUsersShort(users)
-following.__argstr__ = ''
-
-
-@command
-def blocks(mastodon, rest):
-    """Lists users you have blocked."""
-    users = mastodon.blocks()
-    if not users:
-        cprint("  You haven't blocked anyone (... yet)", fg('red'))
-    else:
-        cprint("  You have blocked:", fg('magenta'))
-        printUsersShort(users)
-blocks.__argstr__ = ''
-
-
-@command
-def mutes(mastodon, rest):
-    """Lists users you have muted."""
-    users = mastodon.mutes()
-    if not users:
-        cprint("  You haven't muted anyone (... yet)", fg('red'))
-    else:
-        cprint("  You have muted:", fg('magenta'))
-        printUsersShort(users)
-mutes.__argstr__ = ''
-
-
-@command
-def requests(mastodon, rest):
-    """Lists your incoming follow requests.
-
-    Run 'accept id' to accept a request
-     or 'reject id' to reject."""
-    users = mastodon.follow_requests()
-    if not users:
-        cprint("  You have no incoming requests", fg('red'))
-    else:
-        cprint("  These users want to follow you:", fg('magenta'))
-        printUsersShort(users)
-        cprint("  run 'accept <id>' to accept", fg('magenta'))
-        cprint("   or 'reject <id>' to reject", fg('magenta'))
-requests.__argstr__ = ''
-
-
-@command
-def accept(mastodon, rest):
-    """Accepts a user's follow request by username or id.
-
-    ex: accept 23
-        accept @user
-        accept @user@instance.example.com"""
-    userid = get_userid(mastodon, rest)
-    if isinstance(userid, list):
-        cprint("  multiple matches found:", fg('red'))
-        printUsersShort(userid)
-    elif userid == -1:
-        cprint("  username not found", fg('red'))
-    else:
-        try:
-            mastodon.follow_request_authorize(userid)
-        except:
-            cprint("  ... well, it *looked* like it was working ...", fg('red'))
-            return
-
-        # assume it worked if no exception
-        cprint("  user {}'s request is accepted".format(userid), fg('blue'))
-    return
-accept.__argstr__ = '<user>'
-
-
-@command
-def reject(mastodon, rest):
-    """Rejects a user's follow request by username or id.
-
-    ex: reject 23
-        reject @user
-        reject @user@instance.example.com"""
-    userid = get_userid(mastodon, rest)
-    if isinstance(userid, list):
-        cprint("  multiple matches found:", fg('red'))
-        printUsersShort(userid)
-    elif userid == -1:
-        cprint("  username not found", fg('red'))
-    else:
-        try:
-            mastodon.follow_request_reject(userid)
-        except:
-            cprint("  ... well, it *looked* like it was working ...", fg('red'))
-            return
-
-        # assume it worked if no exception
-        cprint("  user {}'s request is rejected".format(userid), fg('blue'))
-    return
-reject.__argstr__ = '<user>'
-
-
-@command
-def faves(mastodon, rest):
-    """Displays posts you've favourited."""
-    for toot in reversed(mastodon.favourites()):
-        printToot(toot)
-faves.__argstr__ = ''
+search.__section__ = 'Discover'
 
 
 @command
@@ -1308,6 +1195,157 @@ def view(mastodon, rest):
 
     return
 view.__argstr__ = '<user> [<N>]'
+view.__section__ = 'Discover'
+
+
+@command
+def info(mastodon, rest):
+    """Prints your user info."""
+    user = mastodon.account_verify_credentials()
+    printUser(user)
+info.__argstr__ = ''
+info.__section__ = 'Profile'
+
+
+@command
+def followers(mastodon, rest):
+    """Lists users who follow you."""
+    # TODO: compare user['followers_count'] to len(users)
+    #       request more from server if first call doesn't get full list
+    # TODO: optional username/userid to show another user's followers?
+    user = mastodon.account_verify_credentials()
+    users = mastodon.account_followers(user['id'])
+    if not users:
+        cprint("  Nobody follows you", fg('red'))
+    else:
+        cprint("  People who follow you ({}):".format(len(users)), fg('magenta'))
+        printUsersShort(users)
+followers.__argstr__ = ''
+followers.__section__ = 'Profile'
+
+
+@command
+def following(mastodon, rest):
+    """Lists users you follow."""
+    # TODO: compare user['following_count'] to len(users)
+    #       request more from server if first call doesn't get full list
+    # TODO: optional username/userid to show another user's following?
+    user = mastodon.account_verify_credentials()
+    users = mastodon.account_following(user['id'])
+    if not users:
+        cprint("  You aren't following anyone", fg('red'))
+    else:
+        cprint("  People you follow ({}):".format(len(users)), fg('magenta'))
+        printUsersShort(users)
+following.__argstr__ = ''
+following.__section__ = 'Profile'
+
+
+@command
+def blocks(mastodon, rest):
+    """Lists users you have blocked."""
+    users = mastodon.blocks()
+    if not users:
+        cprint("  You haven't blocked anyone (... yet)", fg('red'))
+    else:
+        cprint("  You have blocked:", fg('magenta'))
+        printUsersShort(users)
+blocks.__argstr__ = ''
+blocks.__section__ = 'Profile'
+
+
+@command
+def mutes(mastodon, rest):
+    """Lists users you have muted."""
+    users = mastodon.mutes()
+    if not users:
+        cprint("  You haven't muted anyone (... yet)", fg('red'))
+    else:
+        cprint("  You have muted:", fg('magenta'))
+        printUsersShort(users)
+mutes.__argstr__ = ''
+mutes.__section__ = 'Profile'
+
+
+@command
+def requests(mastodon, rest):
+    """Lists your incoming follow requests.
+
+    Run 'accept id' to accept a request
+     or 'reject id' to reject."""
+    users = mastodon.follow_requests()
+    if not users:
+        cprint("  You have no incoming requests", fg('red'))
+    else:
+        cprint("  These users want to follow you:", fg('magenta'))
+        printUsersShort(users)
+        cprint("  run 'accept <id>' to accept", fg('magenta'))
+        cprint("   or 'reject <id>' to reject", fg('magenta'))
+requests.__argstr__ = ''
+requests.__section__ = 'Profile'
+
+
+@command
+def accept(mastodon, rest):
+    """Accepts a user's follow request by username or id.
+
+    ex: accept 23
+        accept @user
+        accept @user@instance.example.com"""
+    userid = get_userid(mastodon, rest)
+    if isinstance(userid, list):
+        cprint("  multiple matches found:", fg('red'))
+        printUsersShort(userid)
+    elif userid == -1:
+        cprint("  username not found", fg('red'))
+    else:
+        try:
+            mastodon.follow_request_authorize(userid)
+        except:
+            cprint("  ... well, it *looked* like it was working ...", fg('red'))
+            return
+
+        # assume it worked if no exception
+        cprint("  user {}'s request is accepted".format(userid), fg('blue'))
+    return
+accept.__argstr__ = '<user>'
+accept.__section__ = 'Profile'
+
+
+@command
+def reject(mastodon, rest):
+    """Rejects a user's follow request by username or id.
+
+    ex: reject 23
+        reject @user
+        reject @user@instance.example.com"""
+    userid = get_userid(mastodon, rest)
+    if isinstance(userid, list):
+        cprint("  multiple matches found:", fg('red'))
+        printUsersShort(userid)
+    elif userid == -1:
+        cprint("  username not found", fg('red'))
+    else:
+        try:
+            mastodon.follow_request_reject(userid)
+        except:
+            cprint("  ... well, it *looked* like it was working ...", fg('red'))
+            return
+
+        # assume it worked if no exception
+        cprint("  user {}'s request is rejected".format(userid), fg('blue'))
+    return
+reject.__argstr__ = '<user>'
+reject.__section__ = 'Profile'
+
+
+@command
+def faves(mastodon, rest):
+    """Displays posts you've favourited."""
+    for toot in reversed(mastodon.favourites()):
+        printToot(toot)
+faves.__argstr__ = ''
+faves.__section__ = 'Profile'
 
 
 @command
@@ -1320,6 +1358,7 @@ def me(mastodon, rest):
     # let view() do the work
     view(mastodon, "{} {}".format(itme['id'], rest))
 me.__argstr__ = '[<N>]'
+me.__section__ = "Profile"
 
 
 @command
@@ -1327,6 +1366,7 @@ def quit(mastodon, rest):
     """Ends the program."""
     sys.exit("Goodbye!")
 quit.__argstr__ = ''
+quit.__section__ = 'Profile'
 
 
 #####################################
