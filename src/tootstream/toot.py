@@ -789,10 +789,10 @@ unfav.__argstr__ = '<id>'
 
 
 @command
-def thread(mastodon, rest):
-    """Shows the toot conversation for an ID.
+def history(mastodon, rest):
+    """Shows the history of the conversation for an ID.
 
-    ex: thread 23"""
+    ex: history 23"""
     rest = IDS.to_global(rest)
     if rest is None:
         return
@@ -803,9 +803,42 @@ def thread(mastodon, rest):
         for toot in conversation['ancestors']:
             printToot(toot)
             completion_add(toot)
-        
+
+        cprint("Current Toot:", fg('yellow'))
         printToot(current_toot)
         completion_add(current_toot)
+    except Exception as e:
+        cprint("{}: please try again later".format(
+            type(e).__name__),
+            fg('red'))
+
+history.__argstr__ = '<id>'
+
+
+@command
+def thread(mastodon, rest):
+    """Shows the complete thread of the conversation for an ID.
+
+    ex: thread 23"""
+
+    # Save the original "rest" so the history command can use it
+    original_rest = rest
+
+    rest = IDS.to_global(rest)
+    if rest is None:
+        return
+
+    try:
+        # First display the history
+        history(mastodon, original_rest)
+
+        # Then display the rest
+        current_toot = mastodon.status(rest)
+        conversation = mastodon.status_context(rest)
+        for toot in conversation['descendants']:
+            printToot(toot)
+            completion_add(toot)
+
     except Exception as e:
         cprint("{}: please try again later".format(
             type(e).__name__),
