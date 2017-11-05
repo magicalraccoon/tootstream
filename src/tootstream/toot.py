@@ -849,6 +849,7 @@ def history(mastodon, rest):
             printToot(toot)
             completion_add(toot)
 
+
         cprint("Current Toot:", fg('yellow'))
         printToot(current_toot)
         completion_add(current_toot)
@@ -962,9 +963,12 @@ def note(mastodon, rest):
     for note in reversed(mastodon.notifications()):
         display_name = "  " + note['account']['display_name']
         username = format_username(note['account'])
+        note_id = note['id']
 
         random.seed(display_name)
 
+        # Display Note ID
+        cprint(" note: " + note_id, fg('magenta'))
 
         # Mentions
         if note['type'] == 'mention':
@@ -979,8 +983,6 @@ def note(mastodon, rest):
             countsline = format_toot_idline(note['status'])
             time = " " + stylize(note['status']['created_at'], attr('dim'))
             content = get_content(note['status'])
-
-
             cprint(display_name + username, fg(random.choice(COLORS)), end="")
             cprint(" favorited your status:", fg('yellow'))
             print("  "+countsline + stylize(time, attr('dim')))
@@ -1002,6 +1004,30 @@ def note(mastodon, rest):
 note.__argstr__ = ''
 note.__section__ = 'Timeline'
 
+@command
+def dismiss(mastodon, rest):
+    """Dismisses notifications.
+
+    ex: dismiss or dismiss 1234567
+
+    dismiss clears all notifications if no note ID is provided.
+    dismiss 1234567 will dismiss note ID 1234567.
+
+    The note ID is the id provided by the `note` command.
+    """
+    try:
+        if rest == '':
+            mastodon.notifications_clear()
+            cprint(" All notifications were dismissed. ", fg('yellow'))
+        else:
+            if rest is None:
+                return
+            mastodon.notifications_dismiss(rest)
+            cprint(" Note " + rest + " was dismissed. ", fg('yellow'))
+    except Exception as e:
+        cprint("Something went wrong: {}".format(e), fg('red'))
+
+dismiss.__argstr__ = '[<note_id>]'
 
 @command
 def block(mastodon, rest):
@@ -1475,15 +1501,14 @@ def main(instance, config, profile):
 
     user = mastodon.account_verify_credentials()
     prompt = "[@{} ({})]: ".format(str(user['username']), profile)
-    
+
     # Completion setup stuff
     for i in mastodon.account_following(user['id'], limit=80):
         bisect.insort(completion_list, '@' + i['acct'])
     readline.set_completer(complete)
     readline.parse_and_bind("tab: complete")
     readline.set_completer_delims(' ')
-    
-    
+
     while True:
         command = input(prompt).split(' ', 1)
         rest = ""
