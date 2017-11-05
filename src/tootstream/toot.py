@@ -1028,6 +1028,7 @@ def dismiss(mastodon, rest):
         cprint("Something went wrong: {}".format(e), fg('red'))
 
 dismiss.__argstr__ = '[<note_id>]'
+dismiss.__section__ = 'Timeline'
 
 @command
 def block(mastodon, rest):
