@@ -572,29 +572,54 @@ Tootstream Help:
 
 @command
 def help(mastodon, rest):
-    """List all commands or show detailed help."""
+    """List all commands or show detailed help.
+
+    ex: 'help' shows list of help commands.
+        'help toot' shows additional information about the 'toot' command.
+        'help discover' shows additional information about the 'discover' section of commands. """
+
+    # Fill out the available sections
+    sections = {}
+    for cmd, cmd_func in commands.items():
+        sections[cmd_func.__section__.lower()] = 1
+
+    section_filter = ''
+
     # argument case
     if rest and rest != '':
-        try:
-            args = rest.split()
-            cmd_func = commands[args[0]]
-        except:
+
+        args = rest.split()
+        if args[0] in commands.keys():
+            # Show Command Help
+            try:
+                cmd_func = commands[args[0]]
+            except:
+                print(__friendly_cmd_error__.format(rest))
+                return
+
+            try:
+                cmd_args = cmd_func.__argstr__
+            except:
+                cmd_args = ''
+            # print a friendly header and the detailed help
+            print(__friendly_help_header__.format(cmd_func.__name__,
+                                                  cmd_args,
+                                                  cmd_func.__doc__))
+            return
+
+        if args[0].lower() in sections.keys():
+            # Set the section filter for the full command section
+            section_filter = args[0].lower()
+        else:
+            # Command not found. Exit.
             print(__friendly_cmd_error__.format(rest))
             return
 
-        try:
-            cmd_args = cmd_func.__argstr__
-        except:
-            cmd_args = ''
-        # print a friendly header and the detailed help
-        print(__friendly_help_header__.format( cmd_func.__name__,
-                                               cmd_args,
-                                               cmd_func.__doc__ ))
-        return
-
-    # no argument, show full list
+    # Show full list (with section filtering if appropriate)
     print("Commands:")
     section = ''
+    new_section = False
+
     for command, cmd_func in commands.items():
         # get only the docstring's first line for the column view
         (cmd_doc, *_) = cmd_func.__doc__.partition('\n')
@@ -605,9 +630,15 @@ def help(mastodon, rest):
 
         if cmd_func.__section__ != section:
             section = cmd_func.__section__
-            print(" {section}:".format(section=section))
+            new_section = True
 
-        print("{:>12} {:<15}  {:<}".format(command, cmd_args, cmd_doc))
+        if section_filter == '' or section_filter == section.lower():
+            if new_section:
+                print(" {section}:".format(section=section))
+                new_section = False
+
+            print("{:>12} {:<15}  {:<}".format(command, cmd_args, cmd_doc))
+
 help.__argstr__ = '[<cmd>]'
 help.__section__ = 'Help'
 
