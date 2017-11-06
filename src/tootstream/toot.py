@@ -11,6 +11,9 @@ from tootstream.toot_parser import TootParser
 from mastodon import Mastodon, StreamListener
 from collections import OrderedDict
 from colored import fg, bg, attr, stylize
+import humanize
+import datetime
+import dateutil
 
 
 #Looks best with black background.
@@ -469,15 +472,31 @@ def printUsersShort(users):
         cprint("      "+userurl, fg('blue'))
 
 
+def format_time(time_event):
+    """ Return a formatted time and humanized time for a time event """
+    try:
+        if not isinstance(time_event, datetime.datetime):
+            time_event = dateutil.parser.parse(time_event)
+        tz_info = time_event.tzinfo
+        time_diff = datetime.datetime.now(tz_info) - time_event
+        humanize_format = humanize.naturaltime(time_diff)
+        time_format = datetime.datetime.strftime(time_event, "%F %X")
+        return time_format + " (" + humanize_format + ")"
+    except AttributeError:
+        return "(Time format error)"
+
+
 def format_toot_nameline(toot, dnamestyle):
     """Get the display, usernames and timestamp for a typical toot printout.
 
     dnamestyle: a fg/bg/attr set applied to the display name with stylize()"""
     # name line: display name, user@instance, lock if locked, timestamp
     if not toot: return ''
-    out = [ stylize(toot['account']['display_name'], dnamestyle),
-            stylize(format_username(toot['account']), fg('green')),
-            stylize(toot['created_at'], attr('dim')) ]
+    formatted_time = format_time(toot['created_at'])
+
+    out = [stylize(toot['account']['display_name'], dnamestyle),
+           stylize(format_username(toot['account']), fg('green')),
+           stylize(formatted_time, attr('dim'))]
     return ' '.join(out)
 
 
@@ -909,6 +928,7 @@ stream.__argstr__ = '<timeline>'
 @command
 def note(mastodon, rest):
     """Displays the Notifications timeline."""
+
     for note in reversed(mastodon.notifications()):
         display_name = "  " + note['account']['display_name']
         username = format_username(note['account'])
@@ -921,7 +941,7 @@ def note(mastodon, rest):
 
         # Mentions
         if note['type'] == 'mention':
-            time = " " + stylize(note['status']['created_at'], attr('dim'))
+            time = " " + stylize(format_time(note['status']['created_at']), attr('dim'))
             cprint(display_name + username, fg('magenta'))
             print("  " + format_toot_idline(note['status']) + "  " + time)
             cprint(get_content(note['status']), attr('bold'), fg('white'))
@@ -929,8 +949,11 @@ def note(mastodon, rest):
 
         # Favorites
         elif note['type'] == 'favourite':
+            tz_info = note['status']['created_at'].tzinfo
+            note_time_diff = datetime.datetime.now(tz_info) - note['status']['created_at']
             countsline = format_toot_idline(note['status'])
-            time = " " + stylize(note['status']['created_at'], attr('dim'))
+            format_time(note['status']['created_at'])
+            time = " " + stylize(format_time(note['status']['created_at']), attr('dim'))
             content = get_content(note['status'])
             cprint(display_name + username, fg(random.choice(COLORS)), end="")
             cprint(" favorited your status:", fg('yellow'))
