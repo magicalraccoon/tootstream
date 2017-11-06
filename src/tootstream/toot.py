@@ -11,6 +11,8 @@ from tootstream.toot_parser import TootParser
 from mastodon import Mastodon, StreamListener
 from collections import OrderedDict
 from colored import fg, bg, attr, stylize
+import humanize
+import datetime
 
 
 #Looks best with black background.
@@ -475,9 +477,13 @@ def format_toot_nameline(toot, dnamestyle):
     dnamestyle: a fg/bg/attr set applied to the display name with stylize()"""
     # name line: display name, user@instance, lock if locked, timestamp
     if not toot: return ''
-    out = [ stylize(toot['account']['display_name'], dnamestyle),
-            stylize(format_username(toot['account']), fg('green')),
-            stylize(toot['created_at'], attr('dim')) ]
+    tz_info = toot['created_at'].tzinfo
+    toot_time_diff = datetime.datetime.now(tz_info) - toot['created_at']
+
+    out = [stylize(toot['account']['display_name'], dnamestyle),
+           stylize(format_username(toot['account']), fg('green')),
+           stylize(toot['created_at'], attr('dim')),
+           stylize(humanize.naturaltime(toot_time_diff), attr('dim'))]
     return ' '.join(out)
 
 
@@ -909,6 +915,8 @@ stream.__argstr__ = '<timeline>'
 @command
 def note(mastodon, rest):
     """Displays the Notifications timeline."""
+
+
     for note in reversed(mastodon.notifications()):
         display_name = "  " + note['account']['display_name']
         username = format_username(note['account'])
@@ -921,7 +929,10 @@ def note(mastodon, rest):
 
         # Mentions
         if note['type'] == 'mention':
+            tz_info = note['status']['created_at'].tzinfo
+            note_time_diff = datetime.datetime.now(tz_info) - note['status']['created_at']
             time = " " + stylize(note['status']['created_at'], attr('dim'))
+            time += " " + stylize(humanize.naturaltime(note_time_diff), attr('dim'))
             cprint(display_name + username, fg('magenta'))
             print("  " + format_toot_idline(note['status']) + "  " + time)
             cprint(get_content(note['status']), attr('bold'), fg('white'))
@@ -929,8 +940,11 @@ def note(mastodon, rest):
 
         # Favorites
         elif note['type'] == 'favourite':
+            tz_info = note['status']['created_at'].tzinfo
+            note_time_diff = datetime.datetime.now(tz_info) - note['status']['created_at']
             countsline = format_toot_idline(note['status'])
             time = " " + stylize(note['status']['created_at'], attr('dim'))
+            time += " " + stylize(humanize.naturaltime(note_time_diff), attr('dim'))
             content = get_content(note['status'])
             cprint(display_name + username, fg(random.choice(COLORS)), end="")
             cprint(" favorited your status:", fg('yellow'))
