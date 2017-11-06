@@ -13,6 +13,7 @@ from collections import OrderedDict
 from colored import fg, bg, attr, stylize
 import humanize
 import datetime
+import dateutil
 
 
 #Looks best with black background.
@@ -473,11 +474,17 @@ def printUsersShort(users):
 
 def format_time(time_event):
     """ Return a formatted time and humanized time for a time event """
-    tz_info = time_event.tzinfo
-    time_diff = datetime.datetime.now(tz_info) - time_event
-    humanize_format = humanize.naturaltime(time_diff)
-    time_format = datetime.datetime.strftime(time_event, "%F %X")
-    return time_format + " (" + humanize_format + ")"
+    try:
+        if not isinstance(time_event, datetime.datetime):
+            time_event = dateutil.parser.parse(time_event)
+        tz_info = time_event.tzinfo
+        time_diff = datetime.datetime.now(tz_info) - time_event
+        humanize_format = humanize.naturaltime(time_diff)
+        time_format = datetime.datetime.strftime(time_event, "%F %X")
+        return time_format + " (" + humanize_format + ")"
+    except AttributeError:
+        return "(Time format error)"
+
 
 def format_toot_nameline(toot, dnamestyle):
     """Get the display, usernames and timestamp for a typical toot printout.
