@@ -916,7 +916,6 @@ stream.__argstr__ = '<timeline>'
 def note(mastodon, rest):
     """Displays the Notifications timeline."""
 
-
     for note in reversed(mastodon.notifications()):
         display_name = "  " + note['account']['display_name']
         username = format_username(note['account'])
