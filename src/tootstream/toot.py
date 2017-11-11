@@ -635,7 +635,6 @@ def help(mastodon, rest):
             return
 
     # Show full list (with section filtering if appropriate)
-    print("Commands:")
     section = ''
     new_section = False
 
@@ -653,7 +652,10 @@ def help(mastodon, rest):
 
         if section_filter == '' or section_filter == section.lower():
             if new_section:
-                print(" {section}:".format(section=section))
+                cprint("{section}:".format(section=section),
+                       fg('white') +
+                       attr('bold') +
+                       attr('underlined'))
                 new_section = False
 
             print("{:>12} {:<15}  {:<}".format(command, cmd_args, cmd_doc))
