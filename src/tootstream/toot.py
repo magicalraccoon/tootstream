@@ -11,6 +11,9 @@ from tootstream.toot_parser import TootParser
 from mastodon import Mastodon, StreamListener
 from collections import OrderedDict
 from colored import fg, bg, attr, stylize
+import humanize
+import datetime
+import dateutil
 
 
 #Looks best with black background.
@@ -18,8 +21,9 @@ from colored import fg, bg, attr, stylize
 COLORS = list(range(19,231))
 GLYPHS = {
     # general icons, keys don't match any Mastodon dict keys
-    'fave':          '♥',
-    'boost':         '♺',
+    'fave':          '\U00002665', # Black Heart Suit
+    'boost':         '\U0000267a', # Recycling Symbol for generic materials
+    'mentions':      '\U0000270e', # Lower Right Pencil
     'pineapple':     '\U0001f34d', # pineapple
     'toots':         '\U0001f4ea', # mailbox (for toot counts)
     # next key matches key in user dict
@@ -127,6 +131,117 @@ def get_userid(mastodon, rest):
         return users
     else:
         return users[0]['id']
+
+
+def flaghandler_tootreply(mastodon, rest):
+    """Parse input for flags and prompt user.  On success, returns
+    a tuple of the input string (minus flags) and a dict of keyword
+    arguments for Mastodon.status_post().  On failure, returns
+    (None, None)."""
+
+    # initialize kwargs to default values
+    kwargs = { 'sensitive': False,
+               'media_ids': None,
+               'spoiler_text': None,
+               'visibility': '' }
+    flags = { 'm': False,
+              'c': False,
+              'C': False,
+              'v': False }
+
+    # token-grabbing loop
+    # recognize `toot -v -m -c` as well as `toot -vmc`
+    # but `toot -v Hello -c` will only get -v
+    while rest.startswith('-'):
+        # get the next token
+        (args, _, rest) = rest.partition(' ')
+        # traditional unix "ignore flags after this" syntax
+        if args == '--': break
+        if 'v' in args: flags['v'] = True
+        if 'c' in args: flags['c'] = True
+        if 'C' in args: flags['C'] = True
+        if 'm' in args: flags['m'] = True
+
+    # if any flag is true, print a general usage message
+    if True in flags.values():
+        print("Press Ctrl-C to abort and return to the main prompt.")
+
+    # visibility flag
+    if flags['v']:
+        vis = input("Set visibility [(p)ublic/(u)nlisted/(pr)ivate/(d)irect/None]: ")
+        vis = vis.lower()
+
+        # default case; pass on through
+        if vis == '' or vis.startswith('n'): pass
+        # other cases: allow abbreviations
+        elif vis.startswith('d'):  kwargs['visibility'] = 'direct'
+        elif vis.startswith('u'):  kwargs['visibility'] = 'unlisted'
+        elif vis.startswith('pr'): kwargs['visibility'] = 'private'
+        elif vis.startswith('p'):  kwargs['visibility'] = 'public'
+        # unrecognized: abort
+        else:
+            cprint("error: only 'public', 'unlisted', 'private', 'direct' are allowed", fg('red'))
+            return (None, None)
+    # end vis
+
+    # cw/spoiler flag
+    if flags['C'] and flags['c']:
+        cprint("error: only one of -C and -c allowed", fg('red'))
+        return (None, None)
+    elif flags['C']:
+        # unset
+        kwargs['spoiler_text'] = ''
+    elif flags['c']:
+        # prompt to set
+        cw = input("Set content warning [leave blank for none]: ")
+
+        # don't set if empty
+        if cw:
+            kwargs['spoiler_text'] = cw
+    # end cw
+
+    # media flag
+    media = []
+    if flags['m']:
+        print("You can attach up to 4 files. A blank line will end filename input.")
+        count = 0
+        while count < 4:
+            fname = input("add file {}: ".format(count+1))
+
+            # break on empty line
+            if not fname:
+                break
+
+            # expand paths and check file access
+            fname = os.path.expanduser(fname)
+            if os.path.isfile(fname) and os.access(fname, os.R_OK):
+                media.append(fname)
+                count += 1
+            else:
+                cprint("error: cannot find file {}".format(fname), fg('red'))
+
+        # upload, verify
+        if count:
+            print("Attaching files:")
+            c = 1
+            kwargs['media_ids'] = []
+            for m in media:
+                try:
+                    kwargs['media_ids'].append( mastodon.media_post(m) )
+                except Exception as e:
+                    cprint("{}: API error uploading file {}".format(type(e).__name__, m), fg('red'))
+                    return (None, None)
+                print("    {}: {}".format(c, m))
+                c += 1
+
+            # prompt for sensitivity
+            nsfw = input("Mark sensitive/NSFW [y/N]: ")
+            nsfw = nsfw.lower()
+            if nsfw.startswith('y'):
+                kwargs['sensitive'] = True
+    # end media
+
+    return (rest, kwargs)
 
 
 #####################################
@@ -357,15 +472,31 @@ def printUsersShort(users):
         cprint("      "+userurl, fg('blue'))
 
 
+def format_time(time_event):
+    """ Return a formatted time and humanized time for a time event """
+    try:
+        if not isinstance(time_event, datetime.datetime):
+            time_event = dateutil.parser.parse(time_event)
+        tz_info = time_event.tzinfo
+        time_diff = datetime.datetime.now(tz_info) - time_event
+        humanize_format = humanize.naturaltime(time_diff)
+        time_format = datetime.datetime.strftime(time_event, "%F %X")
+        return time_format + " (" + humanize_format + ")"
+    except AttributeError:
+        return "(Time format error)"
+
+
 def format_toot_nameline(toot, dnamestyle):
     """Get the display, usernames and timestamp for a typical toot printout.
 
     dnamestyle: a fg/bg/attr set applied to the display name with stylize()"""
     # name line: display name, user@instance, lock if locked, timestamp
     if not toot: return ''
-    out = [ stylize(toot['account']['display_name'], dnamestyle),
-            stylize(format_username(toot['account']), fg('green')),
-            stylize(toot['created_at'], attr('dim')) ]
+    formatted_time = format_time(toot['created_at'])
+
+    out = [stylize(toot['account']['display_name'], dnamestyle),
+           stylize(format_username(toot['account']), fg('green')),
+           stylize(formatted_time, attr('dim'))]
     return ' '.join(out)
 
 
@@ -393,7 +524,8 @@ def format_toot_idline(toot):
 
 
 def printToot(toot):
-    if not toot: return
+    if not toot:
+        return
 
     out = []
     # if it's a boost, only output header line from toot
@@ -459,28 +591,53 @@ Tootstream Help:
 
 @command
 def help(mastodon, rest):
-    """List all commands or show detailed help."""
+    """List all commands or show detailed help.
+
+    ex: 'help' shows list of help commands.
+        'help toot' shows additional information about the 'toot' command.
+        'help discover' shows additional information about the 'discover' section of commands. """
+
+    # Fill out the available sections
+    sections = {}
+    for cmd, cmd_func in commands.items():
+        sections[cmd_func.__section__.lower()] = 1
+
+    section_filter = ''
+
     # argument case
     if rest and rest != '':
-        try:
-            args = rest.split()
-            cmd_func = commands[args[0]]
-        except:
+
+        args = rest.split()
+        if args[0] in commands.keys():
+            # Show Command Help
+            try:
+                cmd_func = commands[args[0]]
+            except:
+                print(__friendly_cmd_error__.format(rest))
+                return
+
+            try:
+                cmd_args = cmd_func.__argstr__
+            except:
+                cmd_args = ''
+            # print a friendly header and the detailed help
+            print(__friendly_help_header__.format(cmd_func.__name__,
+                                                  cmd_args,
+                                                  cmd_func.__doc__))
+            return
+
+        if args[0].lower() in sections.keys():
+            # Set the section filter for the full command section
+            section_filter = args[0].lower()
+        else:
+            # Command not found. Exit.
             print(__friendly_cmd_error__.format(rest))
             return
 
-        try:
-            cmd_args = cmd_func.__argstr__
-        except:
-            cmd_args = ''
-        # print a friendly header and the detailed help
-        print(__friendly_help_header__.format( cmd_func.__name__,
-                                               cmd_args,
-                                               cmd_func.__doc__ ))
-        return
+    # Show full list (with section filtering if appropriate)
+    section = ''
+    new_section = False
 
-    # no argument, show full list
-    print("Commands:")
     for command, cmd_func in commands.items():
         # get only the docstring's first line for the column view
         (cmd_doc, *_) = cmd_func.__doc__.partition('\n')
@@ -488,8 +645,23 @@ def help(mastodon, rest):
             cmd_args = cmd_func.__argstr__
         except:
             cmd_args = ''
-        print("{:>15} {:<11}  {:<}".format(command, cmd_args, cmd_doc))
-help.__argstr__ = '<cmd>'
+
+        if cmd_func.__section__ != section:
+            section = cmd_func.__section__
+            new_section = True
+
+        if section_filter == '' or section_filter == section.lower():
+            if new_section:
+                cprint("{section}:".format(section=section),
+                       fg('white') +
+                       attr('bold') +
+                       attr('underlined'))
+                new_section = False
+
+            print("{:>12} {:<15}  {:<}".format(command, cmd_args, cmd_doc))
+
+help.__argstr__ = '[<cmd>]'
+help.__section__ = 'Help'
 
 
 @command
@@ -497,55 +669,121 @@ def toot(mastodon, rest):
     """Publish a toot.
 
     ex: 'toot Hello World' will publish 'Hello World'.
-    If no text is given then this will run the default editor."""
-    if rest == '':
-        rest = edittoot()
+    If no text is given then this will run the default editor.
+
+    Toot visibility defaults to your account's settings.  You can change
+    the defaults by logging into your instance in a browser and changing
+    Preferences > Post Privacy.
+
+    ex: 'toot Hello World'
+                  will publish 'Hello World'
+        'toot -v Hello World'
+                  prompt for visibility setting and publish 'Hello World'
+
+    Options:
+        -v     Prompt for visibility (public, unlisted, private, direct)
+        -c     Prompt for Content Warning / spoiler text
+        -m     Prompt for media files and NSFW
+    """
+    # Fill in Content fields first.
     try:
-        mastodon.toot(rest)
-        cprint("You tooted: ", fg('white') + attr('bold'), end="")
-        cprint(rest, fg('magenta') + attr('bold') + attr('underlined'))
+        (text, kwargs) = flaghandler_tootreply(mastodon, rest)
+    except KeyboardInterrupt:
+        # user abort, return to main prompt
+        print('')
+        return
+
+    if text == '':
+        text = edittoot()
+    try:
+        resp = mastodon.status_post(text, **kwargs)
+        cprint("You tooted: ", fg('white') + attr('bold'), end="\n")
+        if resp['sensitive']:
+            cprint('CW: ' + resp['spoiler_text'], fg('red'))
+        cprint(text, fg('magenta') + attr('bold') + attr('underlined'))
     except Exception as e:
         cprint("Received error: ", fg('red') + attr('bold'), end="")
         cprint(e, fg('magenta') + attr('bold') + attr('underlined'))
 
-toot.__argstr__ = '<text>'
+toot.__argstr__ = '[<text>]'
+toot.__section__ = 'Toots'
 
 
 @command
 def rep(mastodon, rest):
     """Reply to a toot by ID.
 
-    ex: 'rep 42 Thank you!' will reply 'Thank you!' to message ID 42.
-    If no text is given then this will run the default editor."""
-    command = rest.split(' ', 1)
+    Reply visibility and content warnings default to the original toot's
+    settings.
 
-    if command[0] == '':
+    ex: 'rep 13 Hello again'
+                  reply to toot 13 with 'Hello again'
+        'rep -vc 13 Hello again'
+                  same but prompt for visibilitiy and spoiler changes
+    If no text is given then this will run the default editor.
+
+    Options:
+        -v     Prompt for visibility (public, unlisted, private, direct)
+        -c     Prompt for Content Warning / spoiler text
+        -C     No Content Warning (do not use original's CW)
+        -m     Prompt for media files and NSFW
+
+    """
+
+    try:
+        (text, kwargs) = flaghandler_tootreply(mastodon, rest)
+    except KeyboardInterrupt:
+        # user abort, return to main prompt
+        print('')
+        return
+
+    (parent_id, _, text) = text.partition(' ')
+    parent_id = IDS.to_global(parent_id)
+    if parent_id is None:
         msg = "  No message to reply to."
         cprint(msg, fg('red'))
         return
 
-    parent_id = IDS.to_global(command[0])
-    if parent_id is None:
+    if not text:
+        text = edittoot()
+
+    if parent_id is None or not text:
         return
-    if len(command) < 2:
-        reply_text = edittoot()
-    else:
-        reply_text = command[1]
-    parent_toot = mastodon.status(parent_id)
+
+    try:
+        parent_toot = mastodon.status(parent_id)
+    except Exception as e:
+        cprint("error searching for original: {}".format(
+            type(e).__name__),
+            fg('red'))
+        return
+
+    # handle mentions
+    # TODO: reorder so parent author is first?
     mentions = [i['acct'] for i in parent_toot['mentions']]
     mentions.append(parent_toot['account']['acct'])
-    mentions = ["@%s" % i for i in list(set(mentions))] # Remove dups
+
+    # Remove duplicates
+    mentions = ["@%s" % i for i in list(set(mentions))]
     mentions = ' '.join(mentions)
-    # TODO: Ensure that content warning visibility carries over to reply
+
+    # if user didn't set cw/spoiler, set it here
+    if kwargs['spoiler_text'] is None and parent_toot['spoiler_text'] != '':
+        kwargs['spoiler_text'] = parent_toot['spoiler_text']
+
+    if kwargs['visibility'] == '' and parent_toot['visibility'] != 'public':
+        kwargs['visibility'] = parent_toot['visibility']
+
     try:
-        reply_toot = mastodon.status_post('%s %s' % (mentions, reply_text),
-                                        in_reply_to_id=int(parent_id))
+        reply_toot = mastodon.status_post('%s %s' % (mentions, text),
+                                          in_reply_to_id=int(parent_id),
+                                          **kwargs)
         msg = "  Replied with: " + get_content(reply_toot)
         cprint(msg, fg('red'))
     except Exception as e:
-        cprint("Received error: ", fg('red') + attr('bold'), end="")
-        cprint(e, fg('magenta') + attr('bold') + attr('underlined'))
-rep.__argstr__ = '<id> <text>'
+        cprint("error while posting: {}".format(type(e).__name__), fg('red'))
+rep.__argstr__ = '<id> [<text>]'
+rep.__section__ = 'Toots'
 
 
 @command
@@ -557,6 +795,7 @@ def delete(mastodon, rest):
     mastodon.status_delete(rest)
     print("Poof! It's gone.")
 delete.__argstr__ = '<id>'
+delete.__section__ = 'Toots'
 
 
 @command
@@ -570,6 +809,7 @@ def boost(mastodon, rest):
     msg = "  You boosted: ", fg('white') + get_content(boosted)
     cprint(msg, fg('green'))
 boost.__argstr__ = '<id>'
+boost.__section__ = 'Toots'
 
 
 @command
@@ -583,6 +823,7 @@ def unboost(mastodon, rest):
     msg = "  Removed boost: " + get_content(unboosted)
     cprint(msg, fg('red'))
 unboost.__argstr__ = '<id>'
+unboost.__section__ = 'Toots'
 
 
 @command
@@ -596,6 +837,7 @@ def fav(mastodon, rest):
     msg = "  Favorited: " + get_content(faved)
     cprint(msg, fg('red'))
 fav.__argstr__ = '<id>'
+fav.__section__ = 'Toots'
 
 
 @command
@@ -609,6 +851,69 @@ def unfav(mastodon, rest):
     msg = "  Removed favorite: " + get_content(unfaved)
     cprint(msg, fg('yellow'))
 unfav.__argstr__ = '<id>'
+unfav.__section__ = 'Toots'
+
+
+@command
+def history(mastodon, rest):
+    """Shows the history of the conversation for an ID.
+
+    ex: history 23"""
+    rest = IDS.to_global(rest)
+    if rest is None:
+        return
+
+    try:
+        current_toot = mastodon.status(rest)
+        conversation = mastodon.status_context(rest)
+        for toot in conversation['ancestors']:
+            printToot(toot)
+            completion_add(toot)
+
+
+        cprint("Current Toot:", fg('yellow'))
+        printToot(current_toot)
+        completion_add(current_toot)
+    except Exception as e:
+        cprint("{}: please try again later".format(
+            type(e).__name__),
+            fg('red'))
+
+history.__argstr__ = '<id>'
+history.__section__ = 'Toots'
+
+
+@command
+def thread(mastodon, rest):
+    """Shows the complete thread of the conversation for an ID.
+
+    ex: thread 23"""
+
+    # Save the original "rest" so the history command can use it
+    original_rest = rest
+
+    rest = IDS.to_global(rest)
+    if rest is None:
+        return
+
+    try:
+        # First display the history
+        history(mastodon, original_rest)
+
+        # Then display the rest
+        current_toot = mastodon.status(rest)
+        conversation = mastodon.status_context(rest)
+        for toot in conversation['descendants']:
+            printToot(toot)
+            completion_add(toot)
+
+    except Exception as e:
+        cprint("{}: please try again later".format(
+            type(e).__name__),
+            fg('red'))
+
+thread.__argstr__ = '<id>'
+thread.__section__ = 'Toots'
 
 
 @command
@@ -617,8 +922,9 @@ def home(mastodon, rest):
     for toot in reversed(mastodon.timeline_home()):
         printToot(toot)
         completion_add(toot)
-        
+
 home.__argstr__ = ''
+home.__section__ = 'Timeline'
 
 
 @command
@@ -628,6 +934,7 @@ def fed(mastodon, rest):
         printToot(toot)
         completion_add(toot)
 fed.__argstr__ = ''
+fed.__section__ = 'Timeline'
 
 
 @command
@@ -637,6 +944,7 @@ def local(mastodon, rest):
         printToot(toot)
         completion_add(toot)
 local.__argstr__ = ''
+local.__section__ = 'Timeline'
 
 
 @command
@@ -667,21 +975,26 @@ Use ctrl+C to end streaming"""
     except KeyboardInterrupt:
         pass
 stream.__argstr__ = '<timeline>'
+stream.__section__ = 'Timeline'
 
 
 @command
 def note(mastodon, rest):
     """Displays the Notifications timeline."""
+
     for note in reversed(mastodon.notifications()):
         display_name = "  " + note['account']['display_name']
         username = format_username(note['account'])
+        note_id = note['id']
 
         random.seed(display_name)
 
+        # Display Note ID
+        cprint(" note: " + note_id, fg('magenta'))
 
         # Mentions
         if note['type'] == 'mention':
-            time = " " + stylize(note['status']['created_at'], attr('dim'))
+            time = " " + stylize(format_time(note['status']['created_at']), attr('dim'))
             cprint(display_name + username, fg('magenta'))
             print("  " + format_toot_idline(note['status']) + "  " + time)
             cprint(get_content(note['status']), attr('bold'), fg('white'))
@@ -689,11 +1002,12 @@ def note(mastodon, rest):
 
         # Favorites
         elif note['type'] == 'favourite':
+            tz_info = note['status']['created_at'].tzinfo
+            note_time_diff = datetime.datetime.now(tz_info) - note['status']['created_at']
             countsline = format_toot_idline(note['status'])
-            time = " " + stylize(note['status']['created_at'], attr('dim'))
+            format_time(note['status']['created_at'])
+            time = " " + stylize(format_time(note['status']['created_at']), attr('dim'))
             content = get_content(note['status'])
-
-
             cprint(display_name + username, fg(random.choice(COLORS)), end="")
             cprint(" favorited your status:", fg('yellow'))
             print("  "+countsline + stylize(time, attr('dim')))
@@ -713,7 +1027,33 @@ def note(mastodon, rest):
         # blank line
         print()
 note.__argstr__ = ''
+note.__section__ = 'Timeline'
 
+@command
+def dismiss(mastodon, rest):
+    """Dismisses notifications.
+
+    ex: dismiss or dismiss 1234567
+
+    dismiss clears all notifications if no note ID is provided.
+    dismiss 1234567 will dismiss note ID 1234567.
+
+    The note ID is the id provided by the `note` command.
+    """
+    try:
+        if rest == '':
+            mastodon.notifications_clear()
+            cprint(" All notifications were dismissed. ", fg('yellow'))
+        else:
+            if rest is None:
+                return
+            mastodon.notifications_dismiss(rest)
+            cprint(" Note " + rest + " was dismissed. ", fg('yellow'))
+    except Exception as e:
+        cprint("Something went wrong: {}".format(e), fg('red'))
+
+dismiss.__argstr__ = '[<note_id>]'
+dismiss.__section__ = 'Timeline'
 
 @command
 def block(mastodon, rest):
@@ -736,6 +1076,7 @@ def block(mastodon, rest):
         except:
             cprint("  ... well, it *looked* like it was working ...", fg('red'))
 block.__argstr__ = '<user>'
+block.__section__ = 'Users'
 
 
 @command
@@ -759,6 +1100,7 @@ def unblock(mastodon, rest):
         except:
             cprint("  ... well, it *looked* like it was working ...", fg('red'))
 unblock.__argstr__ = '<user>'
+unblock.__section__ = 'Users'
 
 
 @command
@@ -785,6 +1127,7 @@ def follow(mastodon, rest):
         except:
             cprint("  ... well, it *looked* like it was working ...", fg('red'))
 follow.__argstr__ = '<user>'
+follow.__section__ = 'Users'
 
 
 @command
@@ -811,6 +1154,7 @@ def unfollow(mastodon, rest):
         except:
             cprint("  ... well, it *looked* like it was working ...", fg('red'))
 unfollow.__argstr__ = '<user>'
+unfollow.__section__ = 'Users'
 
 
 @command
@@ -834,6 +1178,7 @@ def mute(mastodon, rest):
         except:
             cprint("  ... well, it *looked* like it was working ...", fg('red'))
 mute.__argstr__ = '<user>'
+mute.__section__ = 'Users'
 
 
 @command
@@ -857,6 +1202,7 @@ def unmute(mastodon, rest):
         except:
             cprint("  ... well, it *looked* like it was working ...", fg('red'))
 unmute.__argstr__ = '<user>'
+unmute.__section__ = 'Users'
 
 
 @command
@@ -894,147 +1240,7 @@ def search(mastodon, rest):
 
     return
 search.__argstr__ = '<query>'
-
-
-@command
-def info(mastodon, rest):
-    """Prints your user info."""
-    user = mastodon.account_verify_credentials()
-    printUser(user)
-info.__argstr__ = ''
-
-
-@command
-def followers(mastodon, rest):
-    """Lists users who follow you."""
-    # TODO: compare user['followers_count'] to len(users)
-    #       request more from server if first call doesn't get full list
-    # TODO: optional username/userid to show another user's followers?
-    user = mastodon.account_verify_credentials()
-    users = mastodon.account_followers(user['id'])
-    if not users:
-        cprint("  Nobody follows you", fg('red'))
-    else:
-        cprint("  People who follow you ({}):".format(len(users)), fg('magenta'))
-        printUsersShort(users)
-followers.__argstr__ = ''
-
-
-@command
-def following(mastodon, rest):
-    """Lists users you follow."""
-    # TODO: compare user['following_count'] to len(users)
-    #       request more from server if first call doesn't get full list
-    # TODO: optional username/userid to show another user's following?
-    user = mastodon.account_verify_credentials()
-    users = mastodon.account_following(user['id'])
-    if not users:
-        cprint("  You aren't following anyone", fg('red'))
-    else:
-        cprint("  People you follow ({}):".format(len(users)), fg('magenta'))
-        printUsersShort(users)
-following.__argstr__ = ''
-
-
-@command
-def blocks(mastodon, rest):
-    """Lists users you have blocked."""
-    users = mastodon.blocks()
-    if not users:
-        cprint("  You haven't blocked anyone (... yet)", fg('red'))
-    else:
-        cprint("  You have blocked:", fg('magenta'))
-        printUsersShort(users)
-blocks.__argstr__ = ''
-
-
-@command
-def mutes(mastodon, rest):
-    """Lists users you have muted."""
-    users = mastodon.mutes()
-    if not users:
-        cprint("  You haven't muted anyone (... yet)", fg('red'))
-    else:
-        cprint("  You have muted:", fg('magenta'))
-        printUsersShort(users)
-mutes.__argstr__ = ''
-
-
-@command
-def requests(mastodon, rest):
-    """Lists your incoming follow requests.
-
-    Run 'accept id' to accept a request
-     or 'reject id' to reject."""
-    users = mastodon.follow_requests()
-    if not users:
-        cprint("  You have no incoming requests", fg('red'))
-    else:
-        cprint("  These users want to follow you:", fg('magenta'))
-        printUsersShort(users)
-        cprint("  run 'accept <id>' to accept", fg('magenta'))
-        cprint("   or 'reject <id>' to reject", fg('magenta'))
-requests.__argstr__ = ''
-
-
-@command
-def accept(mastodon, rest):
-    """Accepts a user's follow request by username or id.
-
-    ex: accept 23
-        accept @user
-        accept @user@instance.example.com"""
-    userid = get_userid(mastodon, rest)
-    if isinstance(userid, list):
-        cprint("  multiple matches found:", fg('red'))
-        printUsersShort(userid)
-    elif userid == -1:
-        cprint("  username not found", fg('red'))
-    else:
-        try:
-            mastodon.follow_request_authorize(userid)
-        except:
-            cprint("  ... well, it *looked* like it was working ...", fg('red'))
-            return
-
-        # assume it worked if no exception
-        cprint("  user {}'s request is accepted".format(userid), fg('blue'))
-    return
-accept.__argstr__ = '<user>'
-
-
-@command
-def reject(mastodon, rest):
-    """Rejects a user's follow request by username or id.
-
-    ex: reject 23
-        reject @user
-        reject @user@instance.example.com"""
-    userid = get_userid(mastodon, rest)
-    if isinstance(userid, list):
-        cprint("  multiple matches found:", fg('red'))
-        printUsersShort(userid)
-    elif userid == -1:
-        cprint("  username not found", fg('red'))
-    else:
-        try:
-            mastodon.follow_request_reject(userid)
-        except:
-            cprint("  ... well, it *looked* like it was working ...", fg('red'))
-            return
-
-        # assume it worked if no exception
-        cprint("  user {}'s request is rejected".format(userid), fg('blue'))
-    return
-reject.__argstr__ = '<user>'
-
-
-@command
-def faves(mastodon, rest):
-    """Displays posts you've favourited."""
-    for toot in reversed(mastodon.favourites()):
-        printToot(toot)
-faves.__argstr__ = ''
+search.__section__ = 'Discover'
 
 
 @command
@@ -1071,7 +1277,158 @@ def view(mastodon, rest):
             printToot(toot)
 
     return
-view.__argstr__ = '<user> <N>'
+view.__argstr__ = '<user> [<N>]'
+view.__section__ = 'Discover'
+
+
+@command
+def info(mastodon, rest):
+    """Prints your user info."""
+    user = mastodon.account_verify_credentials()
+    printUser(user)
+info.__argstr__ = ''
+info.__section__ = 'Profile'
+
+
+@command
+def followers(mastodon, rest):
+    """Lists users who follow you."""
+    # TODO: compare user['followers_count'] to len(users)
+    #       request more from server if first call doesn't get full list
+    # TODO: optional username/userid to show another user's followers?
+    user = mastodon.account_verify_credentials()
+    users = mastodon.account_followers(user['id'])
+    if not users:
+        cprint("  Nobody follows you", fg('red'))
+    else:
+        cprint("  People who follow you ({}):".format(len(users)), fg('magenta'))
+        printUsersShort(users)
+followers.__argstr__ = ''
+followers.__section__ = 'Profile'
+
+
+@command
+def following(mastodon, rest):
+    """Lists users you follow."""
+    # TODO: compare user['following_count'] to len(users)
+    #       request more from server if first call doesn't get full list
+    # TODO: optional username/userid to show another user's following?
+    user = mastodon.account_verify_credentials()
+    users = mastodon.account_following(user['id'])
+    if not users:
+        cprint("  You aren't following anyone", fg('red'))
+    else:
+        cprint("  People you follow ({}):".format(len(users)), fg('magenta'))
+        printUsersShort(users)
+following.__argstr__ = ''
+following.__section__ = 'Profile'
+
+
+@command
+def blocks(mastodon, rest):
+    """Lists users you have blocked."""
+    users = mastodon.blocks()
+    if not users:
+        cprint("  You haven't blocked anyone (... yet)", fg('red'))
+    else:
+        cprint("  You have blocked:", fg('magenta'))
+        printUsersShort(users)
+blocks.__argstr__ = ''
+blocks.__section__ = 'Profile'
+
+
+@command
+def mutes(mastodon, rest):
+    """Lists users you have muted."""
+    users = mastodon.mutes()
+    if not users:
+        cprint("  You haven't muted anyone (... yet)", fg('red'))
+    else:
+        cprint("  You have muted:", fg('magenta'))
+        printUsersShort(users)
+mutes.__argstr__ = ''
+mutes.__section__ = 'Profile'
+
+
+@command
+def requests(mastodon, rest):
+    """Lists your incoming follow requests.
+
+    Run 'accept id' to accept a request
+     or 'reject id' to reject."""
+    users = mastodon.follow_requests()
+    if not users:
+        cprint("  You have no incoming requests", fg('red'))
+    else:
+        cprint("  These users want to follow you:", fg('magenta'))
+        printUsersShort(users)
+        cprint("  run 'accept <id>' to accept", fg('magenta'))
+        cprint("   or 'reject <id>' to reject", fg('magenta'))
+requests.__argstr__ = ''
+requests.__section__ = 'Profile'
+
+
+@command
+def accept(mastodon, rest):
+    """Accepts a user's follow request by username or id.
+
+    ex: accept 23
+        accept @user
+        accept @user@instance.example.com"""
+    userid = get_userid(mastodon, rest)
+    if isinstance(userid, list):
+        cprint("  multiple matches found:", fg('red'))
+        printUsersShort(userid)
+    elif userid == -1:
+        cprint("  username not found", fg('red'))
+    else:
+        try:
+            mastodon.follow_request_authorize(userid)
+        except:
+            cprint("  ... well, it *looked* like it was working ...", fg('red'))
+            return
+
+        # assume it worked if no exception
+        cprint("  user {}'s request is accepted".format(userid), fg('blue'))
+    return
+accept.__argstr__ = '<user>'
+accept.__section__ = 'Profile'
+
+
+@command
+def reject(mastodon, rest):
+    """Rejects a user's follow request by username or id.
+
+    ex: reject 23
+        reject @user
+        reject @user@instance.example.com"""
+    userid = get_userid(mastodon, rest)
+    if isinstance(userid, list):
+        cprint("  multiple matches found:", fg('red'))
+        printUsersShort(userid)
+    elif userid == -1:
+        cprint("  username not found", fg('red'))
+    else:
+        try:
+            mastodon.follow_request_reject(userid)
+        except:
+            cprint("  ... well, it *looked* like it was working ...", fg('red'))
+            return
+
+        # assume it worked if no exception
+        cprint("  user {}'s request is rejected".format(userid), fg('blue'))
+    return
+reject.__argstr__ = '<user>'
+reject.__section__ = 'Profile'
+
+
+@command
+def faves(mastodon, rest):
+    """Displays posts you've favourited."""
+    for toot in reversed(mastodon.favourites()):
+        printToot(toot)
+faves.__argstr__ = ''
+faves.__section__ = 'Profile'
 
 
 @command
@@ -1083,7 +1440,8 @@ def me(mastodon, rest):
     # no specific API for user's own timeline
     # let view() do the work
     view(mastodon, "{} {}".format(itme['id'], rest))
-me.__argstr__ = '<N>'
+me.__argstr__ = '[<N>]'
+me.__section__ = "Profile"
 
 
 @command
@@ -1091,6 +1449,7 @@ def quit(mastodon, rest):
     """Ends the program."""
     sys.exit("Goodbye!")
 quit.__argstr__ = ''
+quit.__section__ = 'Profile'
 
 
 #####################################
@@ -1168,15 +1527,14 @@ def main(instance, config, profile):
 
     user = mastodon.account_verify_credentials()
     prompt = "[@{} ({})]: ".format(str(user['username']), profile)
-    
+
     # Completion setup stuff
     for i in mastodon.account_following(user['id'], limit=80):
         bisect.insort(completion_list, '@' + i['acct'])
     readline.set_completer(complete)
     readline.parse_and_bind("tab: complete")
     readline.set_completer_delims(' ')
-    
-    
+
     while True:
         command = input(prompt).split(' ', 1)
         rest = ""
