@@ -5,7 +5,24 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Release
-### [0.2.0] - TBA
+### [0.3.0] - TBA
+#### Added
+- Upload media via a toot and set visibility
+- Set content warnings on a toot
+- Set visibility of a toot (public, unlisted, private, direct)
+- Thread and history commands for viewing a toot's thread
+- "Humanized" time formats for toots (how long ago did this occur from now?)
+- Clear out notifications / dismiss individual notifications
+
+##### Changed
+- Help is split into sections (Help, Toots, Timeline, Users, Discover, and Profile)
+- Can type "help section" to see the help for that section
+
+##### Fixed
+- Changed the glyphs so they are encoded
+
+### Release
+### [0.2.0] - 2017-10-17
 #### Added
 - Command auto-complete
 - Nickname autocomplete for local and federated users
