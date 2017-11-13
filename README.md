@@ -1,6 +1,6 @@
 # tootstream
 
-A command line interface for interacting with Mastodon instances written in python.
+A command line interface for interacting with Mastodon instances written in Python (requires Python 3).
 
 OAuth and 2FA are supported.
 
