@@ -90,6 +90,7 @@ toot_listener = TootListener()
 def get_content(toot):
     html = toot['content']
     toot_parser.reset()
+    toot_parser.set_mentions(toot.get('mentions'))
     toot_parser.feed(html)
     toot_parser.close()
     return toot_parser.get_text()
