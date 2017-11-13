@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ##### Fixed
 - Changed the glyphs so they are encoded
+- Python 3 requirement is now explicit
 
 ### Release
 ### [0.2.0] - 2017-10-17
