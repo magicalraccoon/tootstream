@@ -1,6 +1,6 @@
 from html.parser import HTMLParser
 from textwrap import TextWrapper
-from colored import fg, stylize
+from colored import fg, attr, stylize
 
 def extract_mention_url(attrs):
     """
@@ -21,20 +21,6 @@ def extract_mention_url(attrs):
     else:
         return None
 
-def get_text_for_mention(mention):
-    """
-    Given a mention dict as provided by mastodon.py, format it as text.
-    Returns None if the mention does not exist or does not contain an
-    account for some reason.
-    """
-
-    if mention is None: return None
-    acct = mention.get('acct')
-    if acct is None: return None
-    acct_text = stylize('@' + acct, fg('green'))
-    id_text = stylize('(id:{})'.format(mention.get('id', '?')), fg('red'))
-    return acct_text + ' ' + id_text
-
 class TootParser(HTMLParser):
     def __init__(self,
             indent = '',
@@ -42,6 +28,7 @@ class TootParser(HTMLParser):
 
         super().__init__()
         self.reset()
+        self.base_style = attr('reset')
         self.strict = False
         self.convert_charrefs = True
 
@@ -74,6 +61,20 @@ class TootParser(HTMLParser):
                 if url is not None:
                     self.mentions[url] = mention
 
+    def get_text_for_mention(self, mention):
+        """
+        Given a mention dict as provided by mastodon.py, format it as text.
+        Returns None if the mention does not exist or does not contain an
+        account for some reason.
+        """
+
+        if mention is None: return None
+        acct = mention.get('acct')
+        if acct is None: return None
+        acct_text = fg('green') + '@' + acct + self.base_style
+        id_text = fg('red') + '(id:{})'.format(mention.get('id', '?')) + self.base_style
+        return acct_text + ' ' + id_text
+
     def pop_line(self):
         line = ''.join(self.fed)
         self.fed = []
@@ -93,7 +94,7 @@ class TootParser(HTMLParser):
             mentioned_href = extract_mention_url(attrs)
             if mentioned_href is not None:
                 mention = self.mentions.get(mentioned_href, dict())
-                text = get_text_for_mention(mention)
+                text = self.get_text_for_mention(mention)
                 if text is not None:
                     self.fed.append(text)
                     self.in_mention = True
@@ -106,7 +107,7 @@ class TootParser(HTMLParser):
         self.lines.append(self.pop_line())
 
         if self.wrap == None:
-            return self.indent + ('\n' + self.indent).join(self.lines)
+            return self.indent + self.base_style + ('\n' + self.indent).join(self.lines)
 
         out = []
         for line in self.lines:
@@ -115,4 +116,4 @@ class TootParser(HTMLParser):
             else:
                 out.append(self.wrap.fill(line))
 
-        return '\n'.join(out)
+        return self.base_style + '\n'.join(out)

@@ -87,14 +87,17 @@ toot_listener = TootListener()
 #####################################
 ######## UTILITY FUNCTIONS   ########
 #####################################
-def get_content(toot):
+def get_content(toot, base_style=attr('reset')):
     html = toot['content']
     toot_parser.reset()
+    toot_parser.base_style = base_style
     toot_parser.set_mentions(toot.get('mentions'))
     toot_parser.feed(html)
     toot_parser.close()
     return toot_parser.get_text()
 
+def get_prefixed_content(prefix, toot, base_style=attr('reset')):
+    return stylize(prefix, base_style) + get_content(toot, base_style)
 
 def get_userid(mastodon, rest):
     # we got some user input.  we need a userid (int).
@@ -546,7 +549,7 @@ def printToot(toot):
     if toot['spoiler_text'] != '':
         # pass CW through get_content for wrapping/indenting
         faketoot = { 'content': "[CW: "+toot['spoiler_text']+"]" }
-        out.append( stylize(get_content(faketoot), fg('red')))
+        out.append(get_content(faketoot, fg('red')))
 
     out.append( get_content(toot) )
 
@@ -779,8 +782,7 @@ def rep(mastodon, rest):
         reply_toot = mastodon.status_post('%s %s' % (mentions, text),
                                           in_reply_to_id=int(parent_id),
                                           **kwargs)
-        msg = "  Replied with: " + get_content(reply_toot)
-        cprint(msg, fg('red'))
+        print(get_prefixed_content("  Replied with: ", reply_toot, fg('red')))
     except Exception as e:
         cprint("error while posting: {}".format(type(e).__name__), fg('red'))
 rep.__argstr__ = '<id> [<text>]'
@@ -807,8 +809,8 @@ def boost(mastodon, rest):
         return
     mastodon.status_reblog(rest)
     boosted = mastodon.status(rest)
-    msg = "  You boosted: ", fg('white') + get_content(boosted)
-    cprint(msg, fg('green'))
+    print(stylize("  You boosted: ", fg('green')) +
+            get_content(boosted, fg('white')))
 boost.__argstr__ = '<id>'
 boost.__section__ = 'Toots'
 
@@ -821,8 +823,7 @@ def unboost(mastodon, rest):
         return
     mastodon.status_unreblog(rest)
     unboosted = mastodon.status(rest)
-    msg = "  Removed boost: " + get_content(unboosted)
-    cprint(msg, fg('red'))
+    print(get_prefixed_content("  Removed boost: ", unboosted, fg('red')))
 unboost.__argstr__ = '<id>'
 unboost.__section__ = 'Toots'
 
@@ -835,8 +836,7 @@ def fav(mastodon, rest):
         return
     mastodon.status_favourite(rest)
     faved = mastodon.status(rest)
-    msg = "  Favorited: " + get_content(faved)
-    cprint(msg, fg('red'))
+    print(get_prefixed_content("  Favorited: ", faved, fg('red')))
 fav.__argstr__ = '<id>'
 fav.__section__ = 'Toots'
 
@@ -849,8 +849,7 @@ def unfav(mastodon, rest):
         return
     mastodon.status_unfavourite(rest)
     unfaved = mastodon.status(rest)
-    msg = "  Removed favorite: " + get_content(unfaved)
-    cprint(msg, fg('yellow'))
+    print(get_prefixed_content("  Removed favorite: ", unfaved, fg('yellow')))
 unfav.__argstr__ = '<id>'
 unfav.__section__ = 'Toots'
 
@@ -998,7 +997,7 @@ def note(mastodon, rest):
             time = " " + stylize(format_time(note['status']['created_at']), attr('dim'))
             cprint(display_name + username, fg('magenta'))
             print("  " + format_toot_idline(note['status']) + "  " + time)
-            cprint(get_content(note['status']), attr('bold'), fg('white'))
+            print(get_content(note['status'], attr('bold') + fg('white')))
             print(stylize("", attr('dim')))
 
         # Favorites
@@ -1008,17 +1007,16 @@ def note(mastodon, rest):
             countsline = format_toot_idline(note['status'])
             format_time(note['status']['created_at'])
             time = " " + stylize(format_time(note['status']['created_at']), attr('dim'))
-            content = get_content(note['status'])
             cprint(display_name + username, fg(random.choice(COLORS)), end="")
             cprint(" favorited your status:", fg('yellow'))
             print("  "+countsline + stylize(time, attr('dim')))
-            cprint(content, attr('dim'))
+            print(get_content(note['status'], attr('dim')))
 
 
         # Boosts
         elif note['type'] == 'reblog':
             cprint(display_name + username + " boosted your status:", fg('yellow'))
-            cprint(get_content(note['status']), attr('dim'))
+            print(get_content(note['status'], attr('dim')))
 
         # Follows
         elif note['type'] == 'follow':
