@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Release
 ### [0.3.0] - 2017-11-17
-### Dedicated to the memory of Natalie Nguyen, (aka Tipsy Tentacle). May she live on in our hearts and our changelog.
+### Dedicated to the memory of Natalie Nguyen (aka Tipsy Tentacle). May she live on in our hearts and our changelog.
 #### Added
 - Upload media via a toot and set visibility
 - Set content warnings on a toot
