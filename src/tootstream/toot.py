@@ -985,7 +985,7 @@ def note(mastodon, rest):
     for note in reversed(mastodon.notifications()):
         display_name = "  " + note['account']['display_name']
         username = format_username(note['account'])
-        note_id = note['id']
+        note_id = str(note['id'])
 
         random.seed(display_name)
 
