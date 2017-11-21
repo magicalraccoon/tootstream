@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Release
+### [0.3.1] - 2017-11-21
+
+#### Fixed
+- Compatibility with Mastodon 1.1.2 fix
+
+### Release
 ### [0.3.0] - 2017-11-17
 ### Dedicated to the memory of Natalie Nguyen (aka Tipsy Tentacle). May she live on in our hearts and our changelog.
 #### Added
