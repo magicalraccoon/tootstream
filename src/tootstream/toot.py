@@ -758,13 +758,19 @@ def rep(mastodon, rest):
             fg('red'))
         return
 
-    # handle mentions
-    # TODO: reorder so parent author is first?
-    mentions = [i['acct'] for i in parent_toot['mentions']]
-    mentions.append(parent_toot['account']['acct'])
+    # Handle mentions text at the beginning:
+    mentions_set = set()
+    for i in parent_toot['mentions']:
+        mentions_set.add(i['acct'])
+    mentions_set.add(parent_toot['account']['acct'])
 
-    # Remove duplicates
-    mentions = ["@%s" % i for i in list(set(mentions))]
+    # Remove our account
+    # TODO: Better way to get this information?
+    my_user = mastodon.account_verify_credentials()
+    mentions_set.discard(my_user['username'])
+
+    # Format each using @username@host and add a space
+    mentions = ["@%s" % i for i in list(mentions_set)]
     mentions = ' '.join(mentions)
 
     # if user didn't set cw/spoiler, set it here
