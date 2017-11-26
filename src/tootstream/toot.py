@@ -16,6 +16,9 @@ import datetime
 import dateutil
 import shutil
 
+# Get the version of Tootstream
+import pkg_resources  # part of setuptools
+version = pkg_resources.require("tootstream")[0].version
 
 #Looks best with black background.
 #TODO: Set color list in config file
@@ -1500,6 +1503,15 @@ def me(mastodon, rest):
 me.__argstr__ = '[<N>]'
 me.__section__ = "Profile"
 
+@command
+def about(mastodon, rest):
+    """Shows version information and connected instance """
+    print("Tootstream version: %s" % version)
+    print("You are connected to ", end="")
+    cprint(mastodon.api_base_url, fg('green') + attr('bold'))
+about.__argstr__ = ''
+about.__section__ = 'Profile'
+
 
 @command
 def quit(mastodon, rest):
@@ -1551,7 +1563,7 @@ def main(instance, config, profile):
         config.add_section(profile)
 
     instance, client_id, client_secret, token = \
-                            get_or_input_profile(config, profile, instance)
+        get_or_input_profile(config, profile, instance)
 
     if not token:
         cprint("Could not log you in.  Please try again later.", fg('red'))
@@ -1577,8 +1589,8 @@ def main(instance, config, profile):
     say_error = lambda a, b: cprint("Invalid command. Use 'help' for a list of commands.",
             fg('white') + bg('red'))
 
-    print("You are connected to ", end="")
-    cprint(instance, fg('green') + attr('bold'))
+    about(mastodon, '')
+
     print("Enter a command. Use 'help' for a list of commands.")
     print("\n")
 
