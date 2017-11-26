@@ -62,6 +62,14 @@ $ tootstream
 ```
 3: Close the environment with `$ deactivate`
 
+## Ubuntu and Unicode
+
+Tootstream relies heavily on Unicode fonts. The best experience can be had by installing the following package:
+
+```
+$ sudo apt-get install ttf-ancient-fonts
+```
+
 ## Contributing
 
 Contributions welcome! Please read the [contributing guidelines](CONTRIBUTING.md) before getting started.
