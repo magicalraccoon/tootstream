@@ -5,6 +5,15 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Release
+### [0.3.2] - TBD
+
+#### Fixed
+- Replies no longer include the logged-in user
+
+#### Added
+- Reworked the Tootstream Parser to add styling, link-shortening, link retrieval, and emoji code shortening.
+
+### Release
 ### [0.3.1] - 2017-11-21
 
 #### Fixed
