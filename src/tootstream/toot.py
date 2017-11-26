@@ -14,6 +14,7 @@ from colored import fg, bg, attr, stylize
 import humanize
 import datetime
 import dateutil
+import shutil
 
 
 #Looks best with black background.
@@ -80,7 +81,9 @@ class TootListener(StreamListener):
 
 IDS = IdDict();
 
-toot_parser = TootParser(indent='  ')
+# Get the current width of the terminal
+terminal_size = shutil.get_terminal_size((80, 20))
+toot_parser = TootParser(indent='  ', width=int(terminal_size.columns))
 
 toot_listener = TootListener()
 
