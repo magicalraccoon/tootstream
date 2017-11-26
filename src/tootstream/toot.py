@@ -1025,6 +1025,13 @@ stream.__section__ = 'Timeline'
 def note(mastodon, rest):
     """Displays the Notifications timeline.
 
+    ex: 'note'
+                 will show all notifications
+        'note -b'
+                 will show all notifications minus boosts
+        'note -f -F -b' (or 'note -fFb')
+                will only show mentions
+
     Options:
         -b    Filter boosts
         -f    Filter favourites
