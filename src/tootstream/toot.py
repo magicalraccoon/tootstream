@@ -86,7 +86,7 @@ IDS = IdDict();
 
 # Get the current width of the terminal
 terminal_size = shutil.get_terminal_size((80, 20))
-toot_parser = TootParser(indent='  ', width=int(terminal_size.columns))
+toot_parser = TootParser(indent='  ', width=int(terminal_size.columns) - 2)
 
 toot_listener = TootListener()
 
