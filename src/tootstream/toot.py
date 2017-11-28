@@ -960,6 +960,33 @@ thread.__section__ = 'Toots'
 
 
 @command
+def links(mastodon, rest):
+    """Show the urls of any links, hashtags, or mentions by ID.
+
+    ex: links 23"""
+
+    status_id = IDS.to_global(rest)
+    if status_id is None:
+        return
+
+    try:
+        toot = mastodon.status(status_id)
+        toot_parser.parse(toot['content'])
+        links = toot_parser.get_links()
+
+        for link in links:
+            print(link)
+
+    except Exception as e:
+        cprint("{}: please try again later".format(
+            type(e).__name__),
+            fg('red'))
+
+links.__argstr__ = '<id>'
+links.__section__ = 'Toots'
+
+
+@command
 def home(mastodon, rest):
     """Displays the Home timeline."""
     for toot in reversed(mastodon.timeline_home()):
