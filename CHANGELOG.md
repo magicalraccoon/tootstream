@@ -11,8 +11,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Replies no longer include the logged-in user
 
 #### Added
-- Reworked the Tootstream Parser to add styling, link-shortening, link retrieval, and emoji code shortening.
-- About shows current version of Tootstream and the connected instance.
+- Reworked the Tootstream Parser to add styling, link-shortening, link retrieval, and emoji code shortening
+- About shows current version of Tootstream and the connected instance
+- Notifications may now be filtered
 
 ### Release
 ### [0.3.1] - 2017-11-21
