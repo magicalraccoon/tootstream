@@ -595,8 +595,8 @@ def printToot(toot):
     print()
 
 
-def edittoot():
-    edited_message = click.edit()
+def edittoot(text):
+    edited_message = click.edit(text)
     if edited_message:
         return edited_message
     return ''
@@ -722,6 +722,7 @@ def toot(mastodon, rest):
         -c     Prompt for Content Warning / spoiler text
         -m     Prompt for media files and NSFW
     """
+    posted = False
     # Fill in Content fields first.
     try:
         (text, kwargs) = flaghandler_tootreply(mastodon, rest)
@@ -731,16 +732,26 @@ def toot(mastodon, rest):
         return
 
     if text == '':
-        text = edittoot()
-    try:
-        resp = mastodon.status_post(text, **kwargs)
-        cprint("You tooted: ", fg('white') + attr('bold'), end="\n")
-        if resp['sensitive']:
-            cprint('CW: ' + resp['spoiler_text'], fg('red'))
-        cprint(text, fg('magenta') + attr('bold') + attr('underlined'))
-    except Exception as e:
-        cprint("Received error: ", fg('red') + attr('bold'), end="")
-        cprint(e, fg('magenta') + attr('bold') + attr('underlined'))
+        text = edittoot(text="")
+
+    while posted is False:
+        try:
+            resp = mastodon.status_post(text, **kwargs)
+            cprint("You tooted: ", fg('white') + attr('bold'), end="\n")
+            if resp['sensitive']:
+                cprint('CW: ' + resp['spoiler_text'], fg('red'))
+            cprint(text, fg('magenta') + attr('bold') + attr('underlined'))
+            posted = True
+        except Exception as e:
+            cprint("Received error: ", fg('red') + attr('bold'), end="")
+            cprint(e, fg('magenta') + attr('bold') + attr('underlined'))
+        
+        if posted is False:
+            retry = input("Edit toot and re-try? [Y/N]: ")
+            if retry.lower() == 'y':
+                text = edittoot(text=text)
+            else:
+                posted = True
 
 toot.__argstr__ = '[<text>]'
 toot.__section__ = 'Toots'
@@ -767,6 +778,7 @@ def rep(mastodon, rest):
 
     """
 
+    posted = False
     try:
         (text, kwargs) = flaghandler_tootreply(mastodon, rest)
     except KeyboardInterrupt:
@@ -782,7 +794,7 @@ def rep(mastodon, rest):
         return
 
     if not text:
-        text = edittoot()
+        text = edittoot(text="")
 
     if parent_id is None or not text:
         return
@@ -817,14 +829,24 @@ def rep(mastodon, rest):
     if kwargs['visibility'] == '' and parent_toot['visibility'] != 'public':
         kwargs['visibility'] = parent_toot['visibility']
 
-    try:
-        reply_toot = mastodon.status_post('%s %s' % (mentions, text),
-                                          in_reply_to_id=int(parent_id),
-                                          **kwargs)
-        msg = "  Replied with: " + get_content(reply_toot)
-        cprint(msg, fg('red'))
-    except Exception as e:
-        cprint("error while posting: {}".format(type(e).__name__), fg('red'))
+    while posted is False:
+        try:
+            reply_toot = mastodon.status_post('%s %s' % (mentions, text),
+                                            in_reply_to_id=int(parent_id),
+                                            **kwargs)
+            msg = "  Replied with: " + get_content(reply_toot)
+            cprint(msg, fg('red'))
+            posted = True
+        except Exception as e:
+            cprint("error while posting: {}".format(type(e).__name__), fg('red'))
+
+        if posted is False:
+            retry = input("Edit toot and re-try? [Y/N]: ")
+            if retry.lower() == 'y':
+                text = edittoot(text=text)
+            else:
+                posted = True
+
 rep.__argstr__ = '<id> [<text>]'
 rep.__section__ = 'Toots'
 
