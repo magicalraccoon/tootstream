@@ -1047,21 +1047,14 @@ Use ctrl+C to end streaming"""
     print("Use ctrl+C to end streaming")
     try:
         if rest == "home" or rest == "":
-            mastodon.user_stream(toot_listener)
+            mastodon.stream_user(toot_listener)
         elif rest == "fed" or rest == "public":
-            mastodon.public_stream(toot_listener)
+            mastodon.stream_public(toot_listener)
         elif rest == "local":
-            # TODO: no corresponding Mastodon method yet, will probably be
-            #mastodon.local_stream(TootListener())
-            # for now use the stream helper directly
-            mastodon._Mastodon__stream('/api/v1/streaming/public/local', TootListener())
+            mastodon.stream_local(toot_listener)
         elif rest.startswith('#'):
             tag = rest[1:]
-            # TODO: this should work but currently broken
-            #mastodon.hashtag_stream(tag, TootListener())
-            # for now use the stream helper directly
-            endpt = "/api/v1/streaming/hashtag?tag={}".format(tag)
-            mastodon._Mastodon__stream(endpt, TootListener())
+            mastodon.stream_hashtag(tag, toot_listener)
         else:
             print("Only 'home', 'fed', 'local', and '#hashtag' streams are supported.")
     except KeyboardInterrupt:
