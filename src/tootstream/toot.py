@@ -1061,7 +1061,7 @@ def note(mastodon, rest):
 
     Options:
         -b    Filter boosts
-        -f    Filter favourites
+        -f    Filter favorites
         -F    Filter follows
         -m    Filter mentions
 """
