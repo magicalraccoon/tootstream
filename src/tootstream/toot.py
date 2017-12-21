@@ -136,6 +136,39 @@ def get_userid(mastodon, rest):
     else:
         return users[0]['id']
 
+def flaghandler_note(mastodon, rest):
+    """Parse input for flagsr. """
+
+    # initialize kwargs to default values
+    kwargs = {'mention': True,
+              'favourite': True,
+              'reblog': True,
+              'follow': True}
+
+    flags = {'m': False,
+             'f': False,
+             'b': False,
+             'F': False}
+
+    # token-grabbing loop
+    # recognize `note -m -f -b -F` as well as `note -mfbF`
+    while rest.startswith('-'):
+        # get the next token
+        (args, _, rest) = rest.partition(' ')
+        # traditional unix "ignore flags after this" syntax
+        if args == '--':
+            break
+        if 'm' in args:
+            kwargs['mention'] = False
+        if 'f' in args:
+            kwargs['favourite'] = False
+        if 'b' in args:
+            kwargs['reblog'] = False
+        if 'F' in args:
+            kwargs['follow'] = False
+
+    return (rest, kwargs)
+
 
 def flaghandler_tootreply(mastodon, rest):
     """Parse input for flags and prompt user.  On success, returns
@@ -1017,7 +1050,29 @@ stream.__section__ = 'Timeline'
 
 @command
 def note(mastodon, rest):
-    """Displays the Notifications timeline."""
+    """Displays the Notifications timeline.
+
+    ex: 'note'
+                 will show all notifications
+        'note -b'
+                 will show all notifications minus boosts
+        'note -f -F -b' (or 'note -fFb')
+                will only show mentions
+
+    Options:
+        -b    Filter boosts
+        -f    Filter favorites
+        -F    Filter follows
+        -m    Filter mentions
+"""
+
+    # Fill in Content fields first.
+    try:
+        (text, kwargs) = flaghandler_note(mastodon, rest)
+    except KeyboardInterrupt:
+        # user abort, return to main prompt
+        print('')
+        return
 
     for note in reversed(mastodon.notifications()):
         display_name = "  " + note['account']['display_name']
@@ -1026,44 +1081,46 @@ def note(mastodon, rest):
 
         random.seed(display_name)
 
-        # Display Note ID
-        cprint(" note: " + note_id, fg('magenta'))
+        # Check if we should even display this note type
+        if kwargs[note['type']]:
+            # Display Note ID
+            cprint(" note: " + note_id, fg('magenta'))
 
-        # Mentions
-        if note['type'] == 'mention':
-            time = " " + stylize(format_time(note['status']['created_at']), attr('dim'))
-            cprint(display_name + username, fg('magenta'))
-            print("  " + format_toot_idline(note['status']) + "  " + time)
-            cprint(get_content(note['status']), attr('bold'), fg('white'))
-            print(stylize("", attr('dim')))
+            # Mentions
+            if note['type'] == 'mention':
+                time = " " + stylize(format_time(note['status']['created_at']), attr('dim'))
+                cprint(display_name + username, fg('magenta'))
+                print("  " + format_toot_idline(note['status']) + "  " + time)
+                cprint(get_content(note['status']), attr('bold'), fg('white'))
+                print(stylize("", attr('dim')))
 
-        # Favorites
-        elif note['type'] == 'favourite':
-            tz_info = note['status']['created_at'].tzinfo
-            note_time_diff = datetime.datetime.now(tz_info) - note['status']['created_at']
-            countsline = format_toot_idline(note['status'])
-            format_time(note['status']['created_at'])
-            time = " " + stylize(format_time(note['status']['created_at']), attr('dim'))
-            content = get_content(note['status'])
-            cprint(display_name + username, fg(random.choice(COLORS)), end="")
-            cprint(" favorited your status:", fg('yellow'))
-            print("  "+countsline + stylize(time, attr('dim')))
-            cprint(content, attr('dim'))
+            # Favorites
+            elif note['type'] == 'favourite':
+                tz_info = note['status']['created_at'].tzinfo
+                note_time_diff = datetime.datetime.now(tz_info) - note['status']['created_at']
+                countsline = format_toot_idline(note['status'])
+                format_time(note['status']['created_at'])
+                time = " " + stylize(format_time(note['status']['created_at']), attr('dim'))
+                content = get_content(note['status'])
+                cprint(display_name + username, fg(random.choice(COLORS)), end="")
+                cprint(" favorited your status:", fg('yellow'))
+                print("  "+countsline + stylize(time, attr('dim')))
+                cprint(content, attr('dim'))
 
 
-        # Boosts
-        elif note['type'] == 'reblog':
-            cprint(display_name + username + " boosted your status:", fg('yellow'))
-            cprint(get_content(note['status']), attr('dim'))
+            # Boosts
+            elif note['type'] == 'reblog':
+                cprint(display_name + username + " boosted your status:", fg('yellow'))
+                cprint(get_content(note['status']), attr('dim'))
 
-        # Follows
-        elif note['type'] == 'follow':
-            print("  ", end="")
-            cprint(display_name + username + " followed you!", fg('yellow'))
+            # Follows
+            elif note['type'] == 'follow':
+                print("  ", end="")
+                cprint(display_name + username + " followed you!", fg('yellow'))
 
-        # blank line
-        print()
-note.__argstr__ = ''
+            # blank line
+            print()
+note.__argstr__ = '[<filter>]'
 note.__section__ = 'Timeline'
 
 @command
