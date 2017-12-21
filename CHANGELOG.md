@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 #### Fixed
 - Replies no longer include the logged-in user
+- Allow user to edit a toot when an API error occurs
+- Compatibility with Mastodon.py 1.2.1
 
 #### Added
 - Reworked the Tootstream Parser to add styling, link-shortening, link retrieval, and emoji code shortening
