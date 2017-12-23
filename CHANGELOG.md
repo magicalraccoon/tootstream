@@ -5,7 +5,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Release
-### [0.3.2] - TBD
+### [0.3.2] - 2017-12-23
 
 #### Added
 - Reworked the Tootstream Parser to add styling, link-shortening, link retrieval, and emoji code shortening
