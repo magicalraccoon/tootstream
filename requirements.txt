@@ -1,4 +1,5 @@
 click>=6.7
-Mastodon.py==1.1.2
+Mastodon.py==1.2.1
 colored>=1.3.5
 humanize>=0.5.1
+emoji>=0.4.5

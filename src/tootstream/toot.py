@@ -14,7 +14,11 @@ from colored import fg, bg, attr, stylize
 import humanize
 import datetime
 import dateutil
+import shutil
 
+# Get the version of Tootstream
+import pkg_resources  # part of setuptools
+version = pkg_resources.require("tootstream")[0].version
 
 #Looks best with black background.
 #TODO: Set color list in config file
@@ -80,7 +84,9 @@ class TootListener(StreamListener):
 
 IDS = IdDict();
 
-toot_parser = TootParser(indent='  ')
+# Get the current width of the terminal
+terminal_size = shutil.get_terminal_size((80, 20))
+toot_parser = TootParser(indent='  ', width=int(terminal_size.columns) - 2)
 
 toot_listener = TootListener()
 
@@ -89,9 +95,7 @@ toot_listener = TootListener()
 #####################################
 def get_content(toot):
     html = toot['content']
-    toot_parser.reset()
-    toot_parser.feed(html)
-    toot_parser.close()
+    toot_parser.parse(html)
     return toot_parser.get_text()
 
 
@@ -131,6 +135,39 @@ def get_userid(mastodon, rest):
         return users
     else:
         return users[0]['id']
+
+def flaghandler_note(mastodon, rest):
+    """Parse input for flagsr. """
+
+    # initialize kwargs to default values
+    kwargs = {'mention': True,
+              'favourite': True,
+              'reblog': True,
+              'follow': True}
+
+    flags = {'m': False,
+             'f': False,
+             'b': False,
+             'F': False}
+
+    # token-grabbing loop
+    # recognize `note -m -f -b -F` as well as `note -mfbF`
+    while rest.startswith('-'):
+        # get the next token
+        (args, _, rest) = rest.partition(' ')
+        # traditional unix "ignore flags after this" syntax
+        if args == '--':
+            break
+        if 'm' in args:
+            kwargs['mention'] = False
+        if 'f' in args:
+            kwargs['favourite'] = False
+        if 'b' in args:
+            kwargs['reblog'] = False
+        if 'F' in args:
+            kwargs['follow'] = False
+
+    return (rest, kwargs)
 
 
 def flaghandler_tootreply(mastodon, rest):
@@ -558,8 +595,8 @@ def printToot(toot):
     print()
 
 
-def edittoot():
-    edited_message = click.edit()
+def edittoot(text):
+    edited_message = click.edit(text)
     if edited_message:
         return edited_message
     return ''
@@ -685,6 +722,7 @@ def toot(mastodon, rest):
         -c     Prompt for Content Warning / spoiler text
         -m     Prompt for media files and NSFW
     """
+    posted = False
     # Fill in Content fields first.
     try:
         (text, kwargs) = flaghandler_tootreply(mastodon, rest)
@@ -694,16 +732,26 @@ def toot(mastodon, rest):
         return
 
     if text == '':
-        text = edittoot()
-    try:
-        resp = mastodon.status_post(text, **kwargs)
-        cprint("You tooted: ", fg('white') + attr('bold'), end="\n")
-        if resp['sensitive']:
-            cprint('CW: ' + resp['spoiler_text'], fg('red'))
-        cprint(text, fg('magenta') + attr('bold') + attr('underlined'))
-    except Exception as e:
-        cprint("Received error: ", fg('red') + attr('bold'), end="")
-        cprint(e, fg('magenta') + attr('bold') + attr('underlined'))
+        text = edittoot(text="")
+
+    while posted is False:
+        try:
+            resp = mastodon.status_post(text, **kwargs)
+            cprint("You tooted: ", fg('white') + attr('bold'), end="\n")
+            if resp['sensitive']:
+                cprint('CW: ' + resp['spoiler_text'], fg('red'))
+            cprint(text, fg('magenta') + attr('bold') + attr('underlined'))
+            posted = True
+        except Exception as e:
+            cprint("Received error: ", fg('red') + attr('bold'), end="")
+            cprint(e, fg('magenta') + attr('bold') + attr('underlined'))
+        
+        if posted is False:
+            retry = input("Edit toot and re-try? [Y/N]: ")
+            if retry.lower() == 'y':
+                text = edittoot(text=text)
+            else:
+                posted = True
 
 toot.__argstr__ = '[<text>]'
 toot.__section__ = 'Toots'
@@ -730,6 +778,7 @@ def rep(mastodon, rest):
 
     """
 
+    posted = False
     try:
         (text, kwargs) = flaghandler_tootreply(mastodon, rest)
     except KeyboardInterrupt:
@@ -745,7 +794,7 @@ def rep(mastodon, rest):
         return
 
     if not text:
-        text = edittoot()
+        text = edittoot(text="")
 
     if parent_id is None or not text:
         return
@@ -758,13 +807,19 @@ def rep(mastodon, rest):
             fg('red'))
         return
 
-    # handle mentions
-    # TODO: reorder so parent author is first?
-    mentions = [i['acct'] for i in parent_toot['mentions']]
-    mentions.append(parent_toot['account']['acct'])
+    # Handle mentions text at the beginning:
+    mentions_set = set()
+    for i in parent_toot['mentions']:
+        mentions_set.add(i['acct'])
+    mentions_set.add(parent_toot['account']['acct'])
 
-    # Remove duplicates
-    mentions = ["@%s" % i for i in list(set(mentions))]
+    # Remove our account
+    # TODO: Better way to get this information?
+    my_user = mastodon.account_verify_credentials()
+    mentions_set.discard(my_user['username'])
+
+    # Format each using @username@host and add a space
+    mentions = ["@%s" % i for i in list(mentions_set)]
     mentions = ' '.join(mentions)
 
     # if user didn't set cw/spoiler, set it here
@@ -774,14 +829,24 @@ def rep(mastodon, rest):
     if kwargs['visibility'] == '' and parent_toot['visibility'] != 'public':
         kwargs['visibility'] = parent_toot['visibility']
 
-    try:
-        reply_toot = mastodon.status_post('%s %s' % (mentions, text),
-                                          in_reply_to_id=int(parent_id),
-                                          **kwargs)
-        msg = "  Replied with: " + get_content(reply_toot)
-        cprint(msg, fg('red'))
-    except Exception as e:
-        cprint("error while posting: {}".format(type(e).__name__), fg('red'))
+    while posted is False:
+        try:
+            reply_toot = mastodon.status_post('%s %s' % (mentions, text),
+                                            in_reply_to_id=int(parent_id),
+                                            **kwargs)
+            msg = "  Replied with: " + get_content(reply_toot)
+            cprint(msg, fg('red'))
+            posted = True
+        except Exception as e:
+            cprint("error while posting: {}".format(type(e).__name__), fg('red'))
+
+        if posted is False:
+            retry = input("Edit toot and re-try? [Y/N]: ")
+            if retry.lower() == 'y':
+                text = edittoot(text=text)
+            else:
+                posted = True
+
 rep.__argstr__ = '<id> [<text>]'
 rep.__section__ = 'Toots'
 
@@ -917,6 +982,33 @@ thread.__section__ = 'Toots'
 
 
 @command
+def links(mastodon, rest):
+    """Show the urls of any links, hashtags, or mentions by ID.
+
+    ex: links 23"""
+
+    status_id = IDS.to_global(rest)
+    if status_id is None:
+        return
+
+    try:
+        toot = mastodon.status(status_id)
+        toot_parser.parse(toot['content'])
+        links = toot_parser.get_links()
+
+        for link in links:
+            print(link)
+
+    except Exception as e:
+        cprint("{}: please try again later".format(
+            type(e).__name__),
+            fg('red'))
+
+links.__argstr__ = '<id>'
+links.__section__ = 'Toots'
+
+
+@command
 def home(mastodon, rest):
     """Displays the Home timeline."""
     for toot in reversed(mastodon.timeline_home()):
@@ -955,21 +1047,14 @@ Use ctrl+C to end streaming"""
     print("Use ctrl+C to end streaming")
     try:
         if rest == "home" or rest == "":
-            mastodon.user_stream(toot_listener)
+            mastodon.stream_user(toot_listener)
         elif rest == "fed" or rest == "public":
-            mastodon.public_stream(toot_listener)
+            mastodon.stream_public(toot_listener)
         elif rest == "local":
-            # TODO: no corresponding Mastodon method yet, will probably be
-            #mastodon.local_stream(TootListener())
-            # for now use the stream helper directly
-            mastodon._Mastodon__stream('/api/v1/streaming/public/local', TootListener())
+            mastodon.stream_local(toot_listener)
         elif rest.startswith('#'):
             tag = rest[1:]
-            # TODO: this should work but currently broken
-            #mastodon.hashtag_stream(tag, TootListener())
-            # for now use the stream helper directly
-            endpt = "/api/v1/streaming/hashtag?tag={}".format(tag)
-            mastodon._Mastodon__stream(endpt, TootListener())
+            mastodon.stream_hashtag(tag, toot_listener)
         else:
             print("Only 'home', 'fed', 'local', and '#hashtag' streams are supported.")
     except KeyboardInterrupt:
@@ -980,7 +1065,29 @@ stream.__section__ = 'Timeline'
 
 @command
 def note(mastodon, rest):
-    """Displays the Notifications timeline."""
+    """Displays the Notifications timeline.
+
+    ex: 'note'
+                 will show all notifications
+        'note -b'
+                 will show all notifications minus boosts
+        'note -f -F -b' (or 'note -fFb')
+                will only show mentions
+
+    Options:
+        -b    Filter boosts
+        -f    Filter favorites
+        -F    Filter follows
+        -m    Filter mentions
+"""
+
+    # Fill in Content fields first.
+    try:
+        (text, kwargs) = flaghandler_note(mastodon, rest)
+    except KeyboardInterrupt:
+        # user abort, return to main prompt
+        print('')
+        return
 
     for note in reversed(mastodon.notifications()):
         display_name = "  " + note['account']['display_name']
@@ -989,44 +1096,46 @@ def note(mastodon, rest):
 
         random.seed(display_name)
 
-        # Display Note ID
-        cprint(" note: " + note_id, fg('magenta'))
+        # Check if we should even display this note type
+        if kwargs[note['type']]:
+            # Display Note ID
+            cprint(" note: " + note_id, fg('magenta'))
 
-        # Mentions
-        if note['type'] == 'mention':
-            time = " " + stylize(format_time(note['status']['created_at']), attr('dim'))
-            cprint(display_name + username, fg('magenta'))
-            print("  " + format_toot_idline(note['status']) + "  " + time)
-            cprint(get_content(note['status']), attr('bold'), fg('white'))
-            print(stylize("", attr('dim')))
+            # Mentions
+            if note['type'] == 'mention':
+                time = " " + stylize(format_time(note['status']['created_at']), attr('dim'))
+                cprint(display_name + username, fg('magenta'))
+                print("  " + format_toot_idline(note['status']) + "  " + time)
+                cprint(get_content(note['status']), attr('bold'), fg('white'))
+                print(stylize("", attr('dim')))
 
-        # Favorites
-        elif note['type'] == 'favourite':
-            tz_info = note['status']['created_at'].tzinfo
-            note_time_diff = datetime.datetime.now(tz_info) - note['status']['created_at']
-            countsline = format_toot_idline(note['status'])
-            format_time(note['status']['created_at'])
-            time = " " + stylize(format_time(note['status']['created_at']), attr('dim'))
-            content = get_content(note['status'])
-            cprint(display_name + username, fg(random.choice(COLORS)), end="")
-            cprint(" favorited your status:", fg('yellow'))
-            print("  "+countsline + stylize(time, attr('dim')))
-            cprint(content, attr('dim'))
+            # Favorites
+            elif note['type'] == 'favourite':
+                tz_info = note['status']['created_at'].tzinfo
+                note_time_diff = datetime.datetime.now(tz_info) - note['status']['created_at']
+                countsline = format_toot_idline(note['status'])
+                format_time(note['status']['created_at'])
+                time = " " + stylize(format_time(note['status']['created_at']), attr('dim'))
+                content = get_content(note['status'])
+                cprint(display_name + username, fg(random.choice(COLORS)), end="")
+                cprint(" favorited your status:", fg('yellow'))
+                print("  "+countsline + stylize(time, attr('dim')))
+                cprint(content, attr('dim'))
 
 
-        # Boosts
-        elif note['type'] == 'reblog':
-            cprint(display_name + username + " boosted your status:", fg('yellow'))
-            cprint(get_content(note['status']), attr('dim'))
+            # Boosts
+            elif note['type'] == 'reblog':
+                cprint(display_name + username + " boosted your status:", fg('yellow'))
+                cprint(get_content(note['status']), attr('dim'))
 
-        # Follows
-        elif note['type'] == 'follow':
-            print("  ", end="")
-            cprint(display_name + username + " followed you!", fg('yellow'))
+            # Follows
+            elif note['type'] == 'follow':
+                print("  ", end="")
+                cprint(display_name + username + " followed you!", fg('yellow'))
 
-        # blank line
-        print()
-note.__argstr__ = ''
+            # blank line
+            print()
+note.__argstr__ = '[<filter>]'
 note.__section__ = 'Timeline'
 
 @command
@@ -1443,6 +1552,15 @@ def me(mastodon, rest):
 me.__argstr__ = '[<N>]'
 me.__section__ = "Profile"
 
+@command
+def about(mastodon, rest):
+    """Shows version information and connected instance """
+    print("Tootstream version: %s" % version)
+    print("You are connected to ", end="")
+    cprint(mastodon.api_base_url, fg('green') + attr('bold'))
+about.__argstr__ = ''
+about.__section__ = 'Profile'
+
 
 @command
 def quit(mastodon, rest):
@@ -1494,7 +1612,7 @@ def main(instance, config, profile):
         config.add_section(profile)
 
     instance, client_id, client_secret, token = \
-                            get_or_input_profile(config, profile, instance)
+        get_or_input_profile(config, profile, instance)
 
     if not token:
         cprint("Could not log you in.  Please try again later.", fg('red'))
@@ -1520,8 +1638,8 @@ def main(instance, config, profile):
     say_error = lambda a, b: cprint("Invalid command. Use 'help' for a list of commands.",
             fg('white') + bg('red'))
 
-    print("You are connected to ", end="")
-    cprint(instance, fg('green') + attr('bold'))
+    about(mastodon, '')
+
     print("Enter a command. Use 'help' for a list of commands.")
     print("\n")
 

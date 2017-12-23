@@ -5,6 +5,25 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Release
+### [0.3.2] - TBD
+
+#### Added
+- Reworked the Tootstream Parser to add styling, link-shortening, link retrieval, and emoji code shortening
+- About shows current version of Tootstream and the connected instance
+- Notifications may now be filtered
+
+#### Fixed
+- Replies no longer include the logged-in user
+- Allow user to edit a toot when an API error occurs
+- Compatibility with Mastodon.py 1.2.1
+
+### Release
+### [0.3.1] - 2017-11-21
+
+#### Fixed
+- Compatibility with Mastodon 1.1.2 fix
+
+### Release
 ### [0.3.0] - 2017-11-17
 ### Dedicated to the memory of Natalie Nguyen (aka Tipsy Tentacle). May she live on in our hearts and our changelog.
 #### Added
