@@ -250,7 +250,7 @@ def flaghandler_tootreply(mastodon, rest):
                 break
 
             # expand paths and check file access
-            fname = os.path.expanduser(fname)
+            fname = os.path.expanduser(fname).strip()
             if os.path.isfile(fname) and os.access(fname, os.R_OK):
                 media.append(fname)
                 count += 1
