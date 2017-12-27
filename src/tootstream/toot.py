@@ -1717,6 +1717,34 @@ listadd.__section__ = 'List'
 
 
 @command
+def listrename(mastodon, rest):
+    """update list."""
+    rest = rest.strip()
+    if not rest:
+        cprint("Argument required.", fg('red'))
+        return
+    items = rest.split(' ')
+    if len(items) < 2:
+        cprint("Not enough arguments.", fg('red'))
+        return
+
+    list_id = get_list_id(mastodon, items[0])
+    updated_name = items[1]
+
+    if not list_id:
+        cprint("List {} is not found".format(items[0]), fg('red'))
+        return
+
+    try:
+        mastodon.list_update(list_id, updated_name)
+        cprint("Renamed {} to {}.".format(items[1], items[0]), fg('green'))
+    except Exception as e:
+        cprint("error while updating list: {}".format(type(e).__name__), fg('red'))
+listrename.__argstr__ = ''
+listrename.__section__ = 'List'
+
+
+@command
 def listremove(mastodon, rest):
     """Remove user from list."""
     if not rest:
