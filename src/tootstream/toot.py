@@ -136,6 +136,7 @@ def get_userid(mastodon, rest):
     else:
         return users[0]['id']
 
+
 def get_list_id(mastodon, rest):
     """Get the ID for a list"""
     if not rest:
@@ -146,6 +147,8 @@ def get_list_id(mastodon, rest):
         return int(rest)
     except ValueError:
         pass
+
+    rest = rest.strip()
 
     # not an int
     lists = mastodon.lists()
@@ -1658,6 +1661,7 @@ def listhome(mastodon, rest):
         list_toots = mastodon.timeline_list(item)
         for toot in reversed(list_toots):
             printToot(toot)
+            completion_add(toot)
     except Exception as e:
         cprint("error while displaying list: {}".format(type(e).__name__), fg('red'))
 listhome.__argstr__ = ''
@@ -1818,6 +1822,8 @@ def main(instance, config, profile):
     prompt = "[@{} ({})]: ".format(str(user['username']), profile)
 
     # Completion setup stuff
+    for i in mastodon.lists():
+        bisect.insort(completion_list, i['title'].lower())
     for i in mastodon.account_following(user['id'], limit=80):
         bisect.insort(completion_list, '@' + i['acct'])
     readline.set_completer(complete)
