@@ -1069,7 +1069,9 @@ local.__section__ = 'Timeline'
 
 @command
 def stream(mastodon, rest):
-    """Streams a timeline. Specify home, fed, local, or a #hashtagname.
+    """Streams a timeline. Specify home, fed, local, list, or a #hashtagname.
+
+Timeline 'list' requires a list name (ex: stream list listname).
 
 Use ctrl+C to end streaming"""
     print("Use ctrl+C to end streaming")
@@ -1607,7 +1609,7 @@ quit.__section__ = 'Profile'
 
 @command
 def lists(mastodon, rest):
-    """Shows the lists that the user has created """
+    """Shows the lists that the user has created."""
     user_lists = mastodon.lists()
     for list_item in user_lists:
         printList(list_item)
@@ -1617,7 +1619,7 @@ lists.__section__ = 'List'
 
 @command
 def listcreate(mastodon, rest):
-    """Creates a list """
+    """Creates a list."""
 
     try:
         mastodon.list_create(rest)
@@ -1625,13 +1627,44 @@ def listcreate(mastodon, rest):
     except Exception as e:
         cprint("error while creating list: {}".format(type(e).__name__), fg('red'))
     return
-listcreate.__argstr__ = ''
+listcreate.__argstr__ = '<list>'
 listcreate.__section__ = 'List'
 
 
 @command
+def listrename(mastodon, rest):
+    """Rename a list.
+    ex:  listrename oldlist newlist"""
+    rest = rest.strip()
+    if not rest:
+        cprint("Argument required.", fg('red'))
+        return
+    items = rest.split(' ')
+    if len(items) < 2:
+        cprint("Not enough arguments.", fg('red'))
+        return
+
+    list_id = get_list_id(mastodon, items[0])
+    updated_name = items[1]
+
+    if not list_id:
+        cprint("List {} is not found".format(items[0]), fg('red'))
+        return
+
+    try:
+        mastodon.list_update(list_id, updated_name)
+        cprint("Renamed {} to {}.".format(items[1], items[0]), fg('green'))
+    except Exception as e:
+        cprint("error while updating list: {}".format(type(e).__name__), fg('red'))
+listrename.__argstr__ = '<list> <list>'
+listrename.__section__ = 'List'
+
+
+@command
 def listdestroy(mastodon, rest):
-    """Destroys a list """
+    """Destroys a list.
+    ex: listdestroy listname
+        listdestroy 23"""
     item = get_list_id(mastodon, rest)
     if not item or item == -1:
         cprint("List {} is not found".format(rest), fg('red'))
@@ -1643,12 +1676,15 @@ def listdestroy(mastodon, rest):
     except Exception as e:
         cprint("error while creating list: {}".format(type(e).__name__), fg('red'))
     return
-listdestroy.__argstr__ = ''
+listdestroy.__argstr__ = '<list>'
 listdestroy.__section__ = 'List'
+
 
 @command
 def listhome(mastodon, rest):
-    """Show the toots from a list"""
+    """Show the toots from a list.
+    ex:  listhome listname
+         listhome 23"""
     if not rest:
         cprint("Argument required.", fg('red'))
         return
@@ -1664,13 +1700,15 @@ def listhome(mastodon, rest):
             completion_add(toot)
     except Exception as e:
         cprint("error while displaying list: {}".format(type(e).__name__), fg('red'))
-listhome.__argstr__ = ''
+listhome.__argstr__ = '<list>'
 listhome.__section__ = 'List'
 
 
 @command
 def listaccounts(mastodon, rest):
-    """Show the accounts for the list """
+    """Show the accounts for the list.
+    ex:  listaccounts listname
+         listaccounts 23"""
     item = get_list_id(mastodon, rest)
     if not item:
         cprint("List {} is not found".format(rest), fg('red'))
@@ -1681,13 +1719,15 @@ def listaccounts(mastodon, rest):
     for user in list_accounts:
         printUser(user)
 
-listaccounts.__argstr__ = ''
+listaccounts.__argstr__ = '<list>'
 listaccounts.__section__ = 'List'
 
 
 @command
 def listadd(mastodon, rest):
-    """Add user to list."""
+    """Add user to list.
+    ex:  listadd listname @user@instance.example.com
+         listadd 23 @user@instance.example.com"""
     if not rest:
         cprint("Argument required.", fg('red'))
         return
@@ -1712,41 +1752,16 @@ def listadd(mastodon, rest):
         cprint("Added {} to list {}.".format(items[1], items[0]), fg('green'))
     except Exception as e:
         cprint("error while adding to list: {}".format(type(e).__name__), fg('red'))
-listadd.__argstr__ = ''
+listadd.__argstr__ = '<list> <user>'
 listadd.__section__ = 'List'
 
 
 @command
-def listrename(mastodon, rest):
-    """update list."""
-    rest = rest.strip()
-    if not rest:
-        cprint("Argument required.", fg('red'))
-        return
-    items = rest.split(' ')
-    if len(items) < 2:
-        cprint("Not enough arguments.", fg('red'))
-        return
-
-    list_id = get_list_id(mastodon, items[0])
-    updated_name = items[1]
-
-    if not list_id:
-        cprint("List {} is not found".format(items[0]), fg('red'))
-        return
-
-    try:
-        mastodon.list_update(list_id, updated_name)
-        cprint("Renamed {} to {}.".format(items[1], items[0]), fg('green'))
-    except Exception as e:
-        cprint("error while updating list: {}".format(type(e).__name__), fg('red'))
-listrename.__argstr__ = ''
-listrename.__section__ = 'List'
-
-
-@command
 def listremove(mastodon, rest):
-    """Remove user from list."""
+    """Remove user from list.
+    ex:  listremove list user@instance.example.com
+         listremove 23 user@instance.example.com
+         listremove 23 42"""
     if not rest:
         cprint("Argument required.", fg('red'))
         return
@@ -1771,7 +1786,7 @@ def listremove(mastodon, rest):
         cprint("Removed {} from list {}.".format(items[1], items[0]), fg('green'))
     except Exception as e:
         cprint("error while deleting from list: {}".format(type(e).__name__), fg('red'))
-listremove.__argstr__ = ''
+listremove.__argstr__ = '<list> <user>'
 listremove.__section__ = 'List'
 #####################################
 ######### END COMMAND BLOCK #########
