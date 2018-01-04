@@ -90,9 +90,19 @@ toot_parser = TootParser(indent='  ', width=int(terminal_size.columns) - 2)
 
 toot_listener = TootListener()
 
+
 #####################################
 ######## UTILITY FUNCTIONS   ########
 #####################################
+
+def list_support(mastodon, silent=False):
+    lists_available = mastodon.verify_minimum_version("2.1.0")
+    if lists_available is False and silent is False:
+        cprint("List support is not available with this version of Mastodon",
+               fg('red'))
+    return lists_available
+
+
 def get_content(toot):
     html = toot['content']
     toot_parser.parse(html)
@@ -150,7 +160,6 @@ def get_list_id(mastodon, rest):
 
     rest = rest.strip()
 
-    # not an int
     lists = mastodon.lists()
     for item in lists:
         if item['title'].lower() == rest.lower():
@@ -1610,6 +1619,8 @@ quit.__section__ = 'Profile'
 @command
 def lists(mastodon, rest):
     """Shows the lists that the user has created."""
+    if not(list_support(mastodon)):
+        return
     user_lists = mastodon.lists()
     for list_item in user_lists:
         printList(list_item)
@@ -1620,7 +1631,8 @@ lists.__section__ = 'List'
 @command
 def listcreate(mastodon, rest):
     """Creates a list."""
-
+    if not(list_support(mastodon)):
+        return
     try:
         mastodon.list_create(rest)
         cprint("List {} created.".format(rest), fg('green'))
@@ -1635,6 +1647,8 @@ listcreate.__section__ = 'List'
 def listrename(mastodon, rest):
     """Rename a list.
     ex:  listrename oldlist newlist"""
+    if not(list_supportmastodon()):
+        return
     rest = rest.strip()
     if not rest:
         cprint("Argument required.", fg('red'))
@@ -1665,6 +1679,8 @@ def listdestroy(mastodon, rest):
     """Destroys a list.
     ex: listdestroy listname
         listdestroy 23"""
+    if not(list_support(mastodon)):
+        return
     item = get_list_id(mastodon, rest)
     if not item or item == -1:
         cprint("List {} is not found".format(rest), fg('red'))
@@ -1685,6 +1701,8 @@ def listhome(mastodon, rest):
     """Show the toots from a list.
     ex:  listhome listname
          listhome 23"""
+    if not(list_support(mastodon)):
+        return
     if not rest:
         cprint("Argument required.", fg('red'))
         return
@@ -1709,6 +1727,8 @@ def listaccounts(mastodon, rest):
     """Show the accounts for the list.
     ex:  listaccounts listname
          listaccounts 23"""
+    if not(list_support(mastodon)):
+        return
     item = get_list_id(mastodon, rest)
     if not item:
         cprint("List {} is not found".format(rest), fg('red'))
@@ -1728,6 +1748,8 @@ def listadd(mastodon, rest):
     """Add user to list.
     ex:  listadd listname @user@instance.example.com
          listadd 23 @user@instance.example.com"""
+    if not(list_support(mastodon)):
+        return
     if not rest:
         cprint("Argument required.", fg('red'))
         return
@@ -1762,6 +1784,8 @@ def listremove(mastodon, rest):
     ex:  listremove list user@instance.example.com
          listremove 23 user@instance.example.com
          listremove 23 42"""
+    if not(list_support(mastodon)):
+        return
     if not rest:
         cprint("Argument required.", fg('red'))
         return
@@ -1842,6 +1866,7 @@ def main(instance, config, profile):
         access_token=token,
         api_base_url="https://" + instance)
 
+
     # update config before writing
     if "token" not in config[profile]:
         config[profile] = {
@@ -1865,8 +1890,10 @@ def main(instance, config, profile):
     prompt = "[@{} ({})]: ".format(str(user['username']), profile)
 
     # Completion setup stuff
-    for i in mastodon.lists():
-        bisect.insort(completion_list, i['title'].lower())
+    if list_support(mastodon, silent=True):
+        for i in mastodon.lists():
+            bisect.insort(completion_list, i['title'].lower())
+
     for i in mastodon.account_following(user['id'], limit=80):
         bisect.insort(completion_list, '@' + i['acct'])
     readline.set_completer(complete)
