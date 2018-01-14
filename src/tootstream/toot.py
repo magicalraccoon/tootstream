@@ -22,7 +22,7 @@ import pkg_resources  # part of setuptools
 version = pkg_resources.require("tootstream")[0].version
 
 # placeholder variable for converting enoji to shortcodes until we get it in config
-convert_emoji_to_shortcode = True
+convert_emoji_to_shortcode = False
 
 #Looks best with black background.
 #TODO: Set color list in config file
