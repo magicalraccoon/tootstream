@@ -1622,6 +1622,9 @@ def lists(mastodon, rest):
     if not(list_support(mastodon)):
         return
     user_lists = mastodon.lists()
+    if len(user_lists) == 0:
+        cprint("No lists found", fg('red'))
+        return
     for list_item in user_lists:
         printList(list_item)
 lists.__argstr__ = ''
