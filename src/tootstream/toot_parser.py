@@ -4,14 +4,19 @@ from html.parser import HTMLParser
 from textwrap import TextWrapper
 
 
-def convert_emoji_shortcodes(text):
+def emoji_shortcode_to_unicode(text):
     """Convert standard emoji short codes to unicode emoji in
     the provided text.
 
       text - The text to parse.
       Returns the modified text.
     """
-    return emoji.emojize(text, use_aliases = True)
+    return emoji.emojize(text, use_aliases=True)
+
+
+def emoji_unicode_to_shortcodes(text):
+    """Convert unicode emoji to standard emoji short codes."""
+    return emoji.demojize(text)
 
 
 def find_attr(name, attrs):
@@ -76,21 +81,24 @@ class TootParser(HTMLParser):
       indent - A string to prepend to all lines in the output text.
       width - The maximum number of characters to allow in a line of text.
       shorten_links - Whether or not to shorten links.
-      convert_emoji - Whether or not to convert emoji short codes to unicode.
+      convert_emoji_to_unicode - Whether or not to convert emoji short codes to unicode.
+      convert_emoji_to_shortcode - Whether or not to convert emoji unicode to short codes unicode.
       link_style - The colored style to apply to generic links.
       mention_style - The colored style to apply to mentions.
       hashtag_style - The colored style to apply to hashtags.
 
     """
 
-    def __init__(self,
-            indent = '',
-            width = 0,
-            convert_emoji = False,
-            shorten_links = False,
-            link_style = None,
-            mention_style = None,
-            hashtag_style = None):
+    def __init__(
+            self,
+            indent='',
+            width=0,
+            convert_emoji_to_unicode=False,
+            convert_emoji_to_shortcode=False,
+            shorten_links=False,
+            link_style=None,
+            mention_style=None,
+            hashtag_style=None):
 
         super().__init__()
         self.reset()
@@ -98,7 +106,8 @@ class TootParser(HTMLParser):
         self.convert_charrefs = True
 
         self.indent = indent
-        self.convert_emoji = convert_emoji
+        self.convert_emoji_to_unicode = convert_emoji_to_unicode
+        self.convert_emoji_to_shortcode = convert_emoji_to_shortcode
         self.shorten_links = shorten_links
         self.link_style = link_style
         self.mention_style = mention_style
@@ -139,8 +148,11 @@ class TootParser(HTMLParser):
         if self.hide:
             return
 
-        if self.convert_emoji:
-            data = convert_emoji_shortcodes(data)
+        if self.convert_emoji_to_unicode:
+            data = emoji_shortcode_to_unicode(data)
+
+        if self.convert_emoji_to_shortcode:
+            data = emoji_unicode_to_shortcodes(data)
 
         self.fed.append(data)
 

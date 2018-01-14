@@ -15,10 +15,14 @@ import humanize
 import datetime
 import dateutil
 import shutil
+import emoji
 
 # Get the version of Tootstream
 import pkg_resources  # part of setuptools
 version = pkg_resources.require("tootstream")[0].version
+
+# placeholder variable for converting enoji to shortcodes until we get it in config
+convert_emoji_to_shortcode = True
 
 #Looks best with black background.
 #TODO: Set color list in config file
@@ -86,7 +90,11 @@ IDS = IdDict();
 
 # Get the current width of the terminal
 terminal_size = shutil.get_terminal_size((80, 20))
-toot_parser = TootParser(indent='  ', width=int(terminal_size.columns) - 2)
+toot_parser = TootParser(
+    indent='  ',
+    width=int(terminal_size.columns) - 2,
+    convert_emoji_to_unicode=False,
+    convert_emoji_to_shortcode=convert_emoji_to_shortcode)
 
 toot_listener = TootListener()
 
@@ -475,8 +483,8 @@ def cprint(text, style, end="\n"):
 
 def format_username(user):
     """Get a user's account name including lock indicator."""
-    return ''.join(( "@", user['acct'],
-                     (" {}".format(GLYPHS['locked']) if user['locked'] else "") ))
+    return ''.join(("@", user['acct'],
+                   (" {}".format(GLYPHS['locked']) if user['locked'] else "")))
 
 
 def format_user_counts(user):
@@ -487,12 +495,20 @@ def format_user_counts(user):
                       countfmt.format(GLYPHS['followed_by'], user['followers_count']) ))
 
 
+def format_display_name(name):
+    if convert_emoji_to_shortcode:
+        name = emoji.demojize(name)
+        return name
+    return name
+
+
 def printUser(user):
     """Prints user data nicely with hardcoded colors."""
     counts = stylize(format_user_counts(user), fg('blue'))
 
     print(format_username(user) + " " + counts)
-    cprint(user['display_name'], fg('cyan'))
+    display_name = format_display_name(user['disply_name'])
+    cprint(display_name, fg('cyan'))
     print(user['url'])
     cprint(re.sub('<[^<]+?>', '', user['note']), fg('red'))
 
@@ -501,7 +517,8 @@ def printUsersShort(users):
     for user in users:
         if not user: continue
         userid = "(id:"+str(user['id'])+")"
-        userdisp = "'"+str(user['display_name'])+"'"
+        display_name = format_display_name(user['display_name'])
+        userdisp = "'"+str(display_name)+"'"
         userurl = str(user['url'])
         cprint("  "+format_username(user), fg('green'), end=" ")
         cprint(" "+userid, fg('red'), end=" ")
@@ -531,7 +548,8 @@ def format_toot_nameline(toot, dnamestyle):
     if not toot: return ''
     formatted_time = format_time(toot['created_at'])
 
-    out = [stylize(toot['account']['display_name'], dnamestyle),
+    display_name = format_display_name(toot['account']['display_name'])
+    out = [stylize(display_name, dnamestyle),
            stylize(format_username(toot['account']), fg('green')),
            stylize(formatted_time, attr('dim'))]
     return ' '.join(out)
@@ -569,7 +587,8 @@ def printToot(toot):
     # then get other data from toot['reblog']
     if toot['reblog']:
         header = stylize("  Boosted by ", fg('yellow'))
-        name = " ".join(( toot['account']['display_name'],
+        display_name = format_display_name(toot['account']['display_name'])
+        name = " ".join(( display_name,
                           format_username(toot['account'])+":" ))
         out.append(header + stylize(name, fg('blue')))
         toot = toot['reblog']
@@ -1090,7 +1109,7 @@ def note(mastodon, rest):
         return
 
     for note in reversed(mastodon.notifications()):
-        display_name = "  " + note['account']['display_name']
+        display_name = "  " + format_display_name(note['account']['display_name'])
         username = format_username(note['account'])
         note_id = str(note['id'])
 
