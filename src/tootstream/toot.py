@@ -590,6 +590,8 @@ def printToot(toot):
         # simple version: output # of attachments. TODO: urls instead?
         nsfw = ("NSFW " if toot['sensitive'] else "")
         out.append( stylize("  "+nsfw+"media: "+str(len(toot['media_attachments'])), fg('magenta')))
+        for media in toot['media_attachments']:
+            out.append(stylize("   " + nsfw + " " + media.url, fg('green')))
 
     print( '\n'.join(out) )
     print()
