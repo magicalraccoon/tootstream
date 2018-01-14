@@ -24,6 +24,9 @@ version = pkg_resources.require("tootstream")[0].version
 # placeholder variable for converting enoji to shortcodes until we get it in config
 convert_emoji_to_shortcode = True
 
+# placeholder variable for showing media links until we get it in config
+show_media_links = False
+
 #Looks best with black background.
 #TODO: Set color list in config file
 COLORS = list(range(19,231))
@@ -609,8 +612,9 @@ def printToot(toot):
         # simple version: output # of attachments. TODO: urls instead?
         nsfw = ("NSFW " if toot['sensitive'] else "")
         out.append( stylize("  "+nsfw+"media: "+str(len(toot['media_attachments'])), fg('magenta')))
-        for media in toot['media_attachments']:
-            out.append(stylize("   " + nsfw + " " + media.url, fg('green')))
+        if show_media_links:
+            for media in toot['media_attachments']:
+                out.append(stylize("   " + nsfw + " " + media.url, fg('green')))
 
     print( '\n'.join(out) )
     print()
