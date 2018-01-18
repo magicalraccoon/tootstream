@@ -888,10 +888,15 @@ def boost(mastodon, rest):
     rest = IDS.to_global(rest)
     if rest is None:
         return
-    mastodon.status_reblog(rest)
-    boosted = mastodon.status(rest)
-    msg = "  You boosted: ", fg('white') + get_content(boosted)
-    cprint(msg, fg('green'))
+    try:
+        mastodon.status_reblog(rest)
+        boosted = mastodon.status(rest)
+        msg = "  You boosted: ", fg('white') + get_content(boosted)
+        cprint(msg, fg('green'))
+    except Exception as e:
+        cprint("Received error: ", fg('red') + attr('bold'), end="")
+        cprint(e, fg('magenta') + attr('bold') + attr('underlined'))
+
 boost.__argstr__ = '<id>'
 boost.__section__ = 'Toots'
 
