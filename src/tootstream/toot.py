@@ -1083,6 +1083,8 @@ Use ctrl+C to end streaming"""
             print("Only 'home', 'fed', 'local', and '#hashtag' streams are supported.")
     except KeyboardInterrupt:
         pass
+    except Exception as e:
+        cprint("Something went wrong: {}".format(e), fg('red'))
 stream.__argstr__ = '<timeline>'
 stream.__section__ = 'Timeline'
 
