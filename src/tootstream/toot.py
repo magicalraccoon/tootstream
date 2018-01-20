@@ -507,7 +507,7 @@ def printUser(user):
     counts = stylize(format_user_counts(user), fg('blue'))
 
     print(format_username(user) + " " + counts)
-    display_name = format_display_name(user['disply_name'])
+    display_name = format_display_name(user['display_name'])
     cprint(display_name, fg('cyan'))
     print(user['url'])
     cprint(re.sub('<[^<]+?>', '', user['note']), fg('red'))
