@@ -891,7 +891,7 @@ def boost(mastodon, rest):
     try:
         mastodon.status_reblog(rest)
         boosted = mastodon.status(rest)
-        msg = "  You boosted: ", fg('white') + get_content(boosted)
+        msg = "  You boosted: " + fg('white') + get_content(boosted)
         cprint(msg, fg('green'))
     except Exception as e:
         cprint("Received error: ", fg('red') + attr('bold'), end="")
