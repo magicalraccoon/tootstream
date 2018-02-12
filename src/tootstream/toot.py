@@ -98,9 +98,19 @@ toot_parser = TootParser(
 
 toot_listener = TootListener()
 
+
 #####################################
 ######## UTILITY FUNCTIONS   ########
 #####################################
+
+def list_support(mastodon, silent=False):
+    lists_available = mastodon.verify_minimum_version("2.1.0")
+    if lists_available is False and silent is False:
+        cprint("List support is not available with this version of Mastodon",
+               fg('red'))
+    return lists_available
+
+
 def get_content(toot):
     html = toot['content']
     toot_parser.parse(html)
@@ -143,6 +153,27 @@ def get_userid(mastodon, rest):
         return users
     else:
         return users[0]['id']
+
+
+def get_list_id(mastodon, rest):
+    """Get the ID for a list"""
+    if not rest:
+        return -1
+
+    # maybe it's already an int
+    try:
+        return int(rest)
+    except ValueError:
+        pass
+
+    rest = rest.strip()
+
+    lists = mastodon.lists()
+    for item in lists:
+        if item['title'].lower() == rest.lower():
+            return item['id']
+
+
 
 def flaghandler_note(mastodon, rest):
     """Parse input for flagsr. """
@@ -621,6 +652,12 @@ def edittoot(text):
     return ''
 
 
+def printList(list_item):
+    """Prints list entry nicely with hardcoded colors."""
+    cprint(list_item['title'], fg('cyan'), end=" ")
+    cprint("(id: %s)" % list_item['id'], fg('red'))
+
+
 #####################################
 ######## DECORATORS          ########
 #####################################
@@ -1065,7 +1102,9 @@ local.__section__ = 'Timeline'
 
 @command
 def stream(mastodon, rest):
-    """Streams a timeline. Specify home, fed, local, or a #hashtagname.
+    """Streams a timeline. Specify home, fed, local, list, or a #hashtagname.
+
+Timeline 'list' requires a list name (ex: stream list listname).
 
 Use ctrl+C to end streaming"""
     print("Use ctrl+C to end streaming")
@@ -1076,11 +1115,18 @@ Use ctrl+C to end streaming"""
             mastodon.stream_public(toot_listener)
         elif rest == "local":
             mastodon.stream_local(toot_listener)
+        elif rest.startswith('list'):
+            items = rest.split(' ')
+            if len(items) < 2:
+                print("list stream must have a list ID.")
+                return
+            item = get_list_id(mastodon, items[-1])
+            mastodon.stream_list(item, toot_listener)
         elif rest.startswith('#'):
             tag = rest[1:]
             mastodon.stream_hashtag(tag, toot_listener)
         else:
-            print("Only 'home', 'fed', 'local', and '#hashtag' streams are supported.")
+            print("Only 'home', 'fed', 'local', 'list', and '#hashtag' streams are supported.")
     except KeyboardInterrupt:
         pass
     except Exception as e:
@@ -1596,6 +1642,205 @@ quit.__argstr__ = ''
 quit.__section__ = 'Profile'
 
 
+@command
+def lists(mastodon, rest):
+    """Shows the lists that the user has created."""
+    if not(list_support(mastodon)):
+        return
+    user_lists = mastodon.lists()
+    if len(user_lists) == 0:
+        cprint("No lists found", fg('red'))
+        return
+    for list_item in user_lists:
+        printList(list_item)
+lists.__argstr__ = ''
+lists.__section__ = 'List'
+
+
+@command
+def listcreate(mastodon, rest):
+    """Creates a list."""
+    if not(list_support(mastodon)):
+        return
+    try:
+        mastodon.list_create(rest)
+        cprint("List {} created.".format(rest), fg('green'))
+    except Exception as e:
+        cprint("error while creating list: {}".format(type(e).__name__), fg('red'))
+    return
+listcreate.__argstr__ = '<list>'
+listcreate.__section__ = 'List'
+
+
+@command
+def listrename(mastodon, rest):
+    """Rename a list.
+    ex:  listrename oldlist newlist"""
+    if not(list_supportmastodon()):
+        return
+    rest = rest.strip()
+    if not rest:
+        cprint("Argument required.", fg('red'))
+        return
+    items = rest.split(' ')
+    if len(items) < 2:
+        cprint("Not enough arguments.", fg('red'))
+        return
+
+    list_id = get_list_id(mastodon, items[0])
+    updated_name = items[1]
+
+    if not list_id:
+        cprint("List {} is not found".format(items[0]), fg('red'))
+        return
+
+    try:
+        mastodon.list_update(list_id, updated_name)
+        cprint("Renamed {} to {}.".format(items[1], items[0]), fg('green'))
+    except Exception as e:
+        cprint("error while updating list: {}".format(type(e).__name__), fg('red'))
+listrename.__argstr__ = '<list> <list>'
+listrename.__section__ = 'List'
+
+
+@command
+def listdestroy(mastodon, rest):
+    """Destroys a list.
+    ex: listdestroy listname
+        listdestroy 23"""
+    if not(list_support(mastodon)):
+        return
+    item = get_list_id(mastodon, rest)
+    if not item or item == -1:
+        cprint("List {} is not found".format(rest), fg('red'))
+        return
+    try:
+        mastodon.list_delete(item)
+        cprint("List {} deleted.".format(rest), fg('green'))
+
+    except Exception as e:
+        cprint("error while creating list: {}".format(type(e).__name__), fg('red'))
+    return
+listdestroy.__argstr__ = '<list>'
+listdestroy.__section__ = 'List'
+
+
+@command
+def listhome(mastodon, rest):
+    """Show the toots from a list.
+    ex:  listhome listname
+         listhome 23"""
+    if not(list_support(mastodon)):
+        return
+    if not rest:
+        cprint("Argument required.", fg('red'))
+        return
+
+    try:
+        item = get_list_id(mastodon, rest)
+        if not item or item == -1:
+            cprint("List {} is not found".format(rest), fg('red'))
+            return
+        list_toots = mastodon.timeline_list(item)
+        for toot in reversed(list_toots):
+            printToot(toot)
+            completion_add(toot)
+    except Exception as e:
+        cprint("error while displaying list: {}".format(type(e).__name__), fg('red'))
+listhome.__argstr__ = '<list>'
+listhome.__section__ = 'List'
+
+
+@command
+def listaccounts(mastodon, rest):
+    """Show the accounts for the list.
+    ex:  listaccounts listname
+         listaccounts 23"""
+    if not(list_support(mastodon)):
+        return
+    item = get_list_id(mastodon, rest)
+    if not item:
+        cprint("List {} is not found".format(rest), fg('red'))
+        return
+    list_accounts = mastodon.list_accounts(item)
+
+    cprint("List: %s" % rest, fg('green'))
+    for user in list_accounts:
+        printUser(user)
+
+listaccounts.__argstr__ = '<list>'
+listaccounts.__section__ = 'List'
+
+
+@command
+def listadd(mastodon, rest):
+    """Add user to list.
+    ex:  listadd listname @user@instance.example.com
+         listadd 23 @user@instance.example.com"""
+    if not(list_support(mastodon)):
+        return
+    if not rest:
+        cprint("Argument required.", fg('red'))
+        return
+    items = rest.split(' ')
+    if len(items) < 2:
+        cprint("Not enough arguments.", fg('red'))
+        return
+
+    list_id = get_list_id(mastodon, items[0])
+    account_id = get_userid(mastodon, items[1])
+
+    if not list_id:
+        cprint("List {} is not found".format(items[0]), fg('red'))
+        return
+
+    if not account_id:
+        cprint("Account {} is not found".format(items[1]), fg('red'))
+        return
+
+    try:
+        mastodon.list_accounts_add(list_id, account_id)
+        cprint("Added {} to list {}.".format(items[1], items[0]), fg('green'))
+    except Exception as e:
+        cprint("error while adding to list: {}".format(type(e).__name__), fg('red'))
+listadd.__argstr__ = '<list> <user>'
+listadd.__section__ = 'List'
+
+
+@command
+def listremove(mastodon, rest):
+    """Remove user from list.
+    ex:  listremove list user@instance.example.com
+         listremove 23 user@instance.example.com
+         listremove 23 42"""
+    if not(list_support(mastodon)):
+        return
+    if not rest:
+        cprint("Argument required.", fg('red'))
+        return
+    items = rest.split(' ')
+    if len(items) < 2:
+        cprint("Not enough arguments.", fg('red'))
+        return
+
+    list_id = get_list_id(mastodon, items[0])
+    account_id = get_userid(mastodon, items[1])
+
+    if not list_id:
+        cprint("List {} is not found".format(items[0]), fg('red'))
+        return
+
+    if not account_id:
+        cprint("Account {} is not found".format(items[1]), fg('red'))
+        return
+
+    try:
+        mastodon.list_accounts_delete(list_id, account_id)
+        cprint("Removed {} from list {}.".format(items[1], items[0]), fg('green'))
+    except Exception as e:
+        cprint("error while deleting from list: {}".format(type(e).__name__), fg('red'))
+listremove.__argstr__ = '<list> <user>'
+listremove.__section__ = 'List'
 #####################################
 ######### END COMMAND BLOCK #########
 #####################################
@@ -1650,6 +1895,7 @@ def main(instance, config, profile):
         access_token=token,
         api_base_url="https://" + instance)
 
+
     # update config before writing
     if "token" not in config[profile]:
         config[profile] = {
@@ -1673,6 +1919,10 @@ def main(instance, config, profile):
     prompt = "[@{} ({})]: ".format(str(user['username']), profile)
 
     # Completion setup stuff
+    if list_support(mastodon, silent=True):
+        for i in mastodon.lists():
+            bisect.insort(completion_list, i['title'].lower())
+
     for i in mastodon.account_following(user['id'], limit=80):
         bisect.insort(completion_list, '@' + i['acct'])
     readline.set_completer(complete)
