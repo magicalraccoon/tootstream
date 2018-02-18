@@ -5,7 +5,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Release
-### [0.3.3] - TBD
+### [0.3.3] - 2018-02-17
 
 #### Added
 - List support for servers that support it. (See ``help list`` for more details.)
