@@ -5,7 +5,27 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Release
-### [0.3.2] - TBD
+### [0.3.3] - 2018-02-17
+
+#### Added
+- List support for servers that support it. (See ``help list`` for more details.)
+- Bumped to Mastodon.py 1.2.2
+
+#### Added (awaiting proper config)
+( The following items are active but require a re-working of the configuration file to make active. Currently they are flags inside the ``toot_parser.py`` file. Intrepid explorers may find them.)
+- Added emoji shortcode (defaults to "off").
+- Added emoji "demoji" to show shortcodes for emoji (defaults to off).
+
+#### Fixed
+- Fixed boosting private toots
+- Fixed message for boosting toots
+- Fixed leading / trailing whitespace from media filepath
+- Added better exception handling around streaming API
+
+####
+
+### Release
+### [0.3.2] - 2017-12-23
 
 #### Added
 - Reworked the Tootstream Parser to add styling, link-shortening, link retrieval, and emoji code shortening
