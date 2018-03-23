@@ -1823,7 +1823,7 @@ def listhome(mastodon, rest):
         list_toots = mastodon.timeline_list(item)
         
         if stepper_enabled:
-            step_through(mastodon, list_toots, ctx_name='list rest')
+            step_through(mastodon, list_toots, ctx_name='list')
         else:
             for toot in reversed(list_toots):
                 printToot(toot)
