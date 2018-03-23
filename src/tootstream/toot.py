@@ -369,7 +369,7 @@ def step_through(mastodon, listing, ctx_name=None, add_completion=True):
                     if cmd_func.__argstr__.startswith('<id>'):
                         rest = str(IDS.to_local(toot['id'])) + " " + rest
                     if cmd_func.__argstr__.startswith('<user>'):
-                        rest = toot['account']['display_name'] + " " + rest
+                        rest = "@" + toot['account']['username'] + " " + rest
                 cmd_func(mastodon, rest)
         
         if command == 'a':
