@@ -1107,8 +1107,9 @@ def stream(mastodon, rest):
     Timeline 'list' requires a list name (ex: stream list listname).
 
     Use ctrl+C to end streaming"""
+    
+    cprint("Initializing stream...", style=fg('magenta'))
 
-    print("Use 'help' for a list of commands or press ctrl+c to end streaming.")
     def say_error(*args, **kwargs):
         cprint("Invalid command. Use 'help' for a list of commands or press ctrl+c to end streaming.",
         fg('white') + bg('red'))
@@ -1135,6 +1136,8 @@ def stream(mastodon, rest):
             print("Only 'home', 'fed', 'local', 'list', and '#hashtag' streams are supported.")
     except Exception as e:
         cprint("Something went wrong: {}".format(e), fg('red'))
+    else:
+        print("Use 'help' for a list of commands or press ctrl+c to end streaming.")
     
     if handle is not None:
         command = None
@@ -1142,7 +1145,7 @@ def stream(mastodon, rest):
             try:
                 command = input().split(' ', 1)
             except KeyboardInterrupt:
-                cprint("Wrapping up, just a sec...", style=fg('magenta'))
+                cprint("Wrapping up, this can take a couple of seconds...", style=fg('magenta'))
                 command = "abort"
             else:
                 try:
