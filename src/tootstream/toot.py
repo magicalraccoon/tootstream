@@ -16,6 +16,7 @@ import datetime
 import dateutil
 import shutil
 import emoji
+import webbrowser
 
 # Get the version of Tootstream
 import pkg_resources  # part of setuptools
@@ -1067,6 +1068,55 @@ def links(mastodon, rest):
 
 links.__argstr__ = '<id>'
 links.__section__ = 'Toots'
+
+@command
+def web(mastodon, rest):
+    """Open links from a toot in the default webbrowser.
+
+    Examples:
+        >>> links 23      # defaults to the first link found
+        >>> links 23 2    # open second link
+        >>> links 23 all  # open all links """
+
+    args = rest.split(' ')
+
+    status_id = IDS.to_global(args[0])
+    if status_id is None:
+        return
+
+    link_num = 1
+    if len(args) == 2:
+        if args[1] == 'all':
+            link_num = -1
+        else:
+            link_num = int(args[1])
+            link_num = link_num if link_num > 0 else 1
+
+    try:
+        toot = mastodon.status(status_id)
+        toot_parser.parse(toot['content'])
+        links = toot_parser.weblinks
+
+        if link_num == -1:
+            for link in links:
+                webbrowser.open(link)
+        else:
+            if len(links) < link_num:
+                cprint("Cannot open link {}. Toot contains {} weblinks".format(
+                    link_num, len(links)), fg('red'))
+                return
+
+            webbrowser.open(links[link_num - 1])
+
+    except Exception as e:
+        cprint("{}: please try again later".format(
+            type(e).__name__),
+            fg('red'))
+
+web.__argstr__ = '<id>'
+web.__section__ = 'Toots'
+
+
 
 
 @command
