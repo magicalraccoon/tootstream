@@ -1085,7 +1085,7 @@ def web(mastodon, rest):
         return
 
     link_num = 1
-    if len(args) == 2:
+    if len(args) == 2 and len(args[1]) > 0:
         if args[1] == 'all':
             link_num = -1
         else:
