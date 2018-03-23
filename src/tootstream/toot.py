@@ -1097,21 +1097,21 @@ def web(mastodon, rest):
         toot_parser.parse(toot['content'])
         links = toot_parser.weblinks
 
-        if link_num == -1:
-            for link in links:
-                webbrowser.open(link)
-        else:
-            if len(links) < link_num:
-                cprint("Cannot open link {}. Toot contains {} weblinks".format(
-                    link_num, len(links)), fg('red'))
-                return
-
-            webbrowser.open(links[link_num - 1])
-
     except Exception as e:
         cprint("{}: please try again later".format(
             type(e).__name__),
             fg('red'))
+
+    if link_num == -1:
+        for link in links:
+            webbrowser.open(link)
+    else:
+        if len(links) < link_num:
+            cprint("Cannot open link {}. Toot contains {} weblinks".format(
+                link_num, len(links)), fg('red'))
+            return
+
+        webbrowser.open(links[link_num - 1])
 
 web.__argstr__ = '<id>'
 web.__section__ = 'Toots'
