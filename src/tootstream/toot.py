@@ -1095,7 +1095,7 @@ def web(mastodon, rest):
     try:
         toot = mastodon.status(status_id)
         toot_parser.parse(toot['content'])
-        links = toot_parser.weblinks
+        links = toot_parser.get_weblinks()
 
     except Exception as e:
         cprint("{}: please try again later".format(

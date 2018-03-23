@@ -282,6 +282,6 @@ class TootParser(HTMLParser):
         return self.links
 
 
-    def get_links(self):
+    def get_weblinks(self):
         """Returns an array of non-mastodon links parsed from the toot."""
         return self.weblinks
