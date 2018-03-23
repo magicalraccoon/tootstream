@@ -347,7 +347,7 @@ def step_through(mastodon, listing, ctx_name=None, add_completion=True):
         cprint("Invalid command. Use 'help' for a list of commands or press [enter] for next toot, [a] to abort.",
             fg('white') + bg('red'))
 
-    for pos, toot in enumerate(reversed(listing)):
+    for pos, toot in enumerate(listing):
         printToot(toot)
         if add_completion is True:
             completion_add(toot)
