@@ -1045,100 +1045,55 @@ thread.__section__ = 'Toots'
 
 @command
 def links(mastodon, rest):
-    """Show the urls of any links, hashtags, or mentions by ID.
+    """Open the urls of any links in the toot.
 
-    ex: links 23"""
-
-    status_id = IDS.to_global(rest)
-    if status_id is None:
-        return
-
-    try:
-        toot = mastodon.status(status_id)
-        toot_parser.parse(toot['content'])
-        links = toot_parser.get_links()
-
-        for link in links:
-            print(link)
-
-    except Exception as e:
-        cprint("{}: please try again later".format(
-            type(e).__name__),
-            fg('red'))
-
-links.__argstr__ = '<id>'
-links.__section__ = 'Toots'
-
-@command
-def web(mastodon, rest):
-    """Open toot in default webbrowser. See `help web` for more options.
-
-    Add `gui` parameter to open toot in the Mastodon web user interface. 
-    Add `pub` parameter to open shareable public toot URL. 
-    Add `all` parameter to open all contained links in separate browser tabs.
+    Use `links <id> show` to display link URLs.
 
     Examples:
-        >>> web 23      # defaults to the first link found
-        >>> web 23 2    # open second link
-        >>> web 23 all  # open all links
-        >>> web 23 pub  # open public web url of toot 
-        >>> web 23 gui  # open toot in mastodon web gui
+        >>> links 23
+        >>> links 23 show
+        >>> links 23 1  # to open just the first link
     """
 
     args = rest.split(' ')
+    if len(args) < 1:
+        return
 
     status_id = IDS.to_global(args[0])
     if status_id is None:
         return
 
-    link_num = 1
-    open_all = False
-    if len(args) == 2 and len(args[1]) > 0:
-        if args[1] == 'all':
-            open_all = True
-        elif args[1] == 'pub':
-            link_num = 0
-        elif args[1] == 'gui':
-            link_num = -1
-        else:
-            link_num = int(args[1])
-            link_num = link_num if link_num >= 0 else 1
-
     try:
         toot = mastodon.status(status_id)
         toot_parser.parse(toot['content'])
-        links = toot_parser.get_weblinks()
     except Exception as e:
         cprint("{}: please try again later".format(
             type(e).__name__),
             fg('red'))
-
-    # Open public toot URL
-    if link_num == 0 or len(links) == 0:
-        links = [toot.url]
-        open_all = True
-
-    # Open toot in web gui
-    if link_num == -1:
-        links = ["/".join(
-            [mastodon.api_base_url, "web", "statuses", str(toot.id)])]
-        open_all = True
-
-    if open_all:
-        for link in links:
-            webbrowser.open(link)
     else:
-        if len(links) < link_num:
-            cprint("Cannot open link {}. Toot contains {} weblinks".format(
-                link_num, len(links)), fg('red'))
-            return
+        if len(args) == 1 or args[1] != "show":
+            links = toot_parser.get_weblinks()
+            link_num = None
 
-        webbrowser.open(links[link_num - 1])
+            if len(args) == 2 and len(args[1]) > 0:
+                # Parse requested link number
+                link_num = int(args[1])
+                if len(links) < link_num or link_num < 1:
+                    cprint("Cannot open link {}. Toot contains {} weblinks".format(
+                        link_num, len(links)), fg('red'))
+                    return
+                links = links[link_num - 1]
 
-web.__argstr__ = '<id>'
-web.__section__ = 'Toots'
+            for link in links:
+                webbrowser.open(link)
 
+        else:
+            links = toot_parser.get_weblinks()
+            for i, link in enumerate(links):
+                print("{}: {}".format(i + 1, link))
 
+links.__argstr__ = '<id>'
+links.__section__ = 'Toots'
 
 
 @command
