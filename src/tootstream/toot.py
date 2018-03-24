@@ -1074,9 +1074,11 @@ def web(mastodon, rest):
     """Open links from a toot in the default webbrowser.
 
     Examples:
-        >>> links 23      # defaults to the first link found
-        >>> links 23 2    # open second link
-        >>> links 23 all  # open all links """
+        >>> web 23      # defaults to the first link found
+        >>> web 23 2    # open second link
+        >>> web 23 all  # open all links
+        >>> web 23 toot # open original web url of toot 
+    """
 
     args = rest.split(' ')
 
@@ -1088,19 +1090,24 @@ def web(mastodon, rest):
     if len(args) == 2 and len(args[1]) > 0:
         if args[1] == 'all':
             link_num = -1
+        elif args[1] == 'toot':
+            link_num = 0
         else:
             link_num = int(args[1])
-            link_num = link_num if link_num > 0 else 1
+            link_num = link_num if link_num >= 0 else 1
 
     try:
         toot = mastodon.status(status_id)
         toot_parser.parse(toot['content'])
         links = toot_parser.get_weblinks()
-
     except Exception as e:
         cprint("{}: please try again later".format(
             type(e).__name__),
             fg('red'))
+
+    if link_num == 0 or len(links) == 0:
+        links = [toot.url]
+        link_num = -1
 
     if link_num == -1:
         for link in links:
