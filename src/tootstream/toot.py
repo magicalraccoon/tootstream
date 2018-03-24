@@ -1071,13 +1071,18 @@ links.__section__ = 'Toots'
 
 @command
 def web(mastodon, rest):
-    """Open links from a toot in the default webbrowser.
+    """Open toot in default webbrowser. See `help web` for more options.
+
+    Add `gui` parameter to open toot in the Mastodon web user interface. 
+    Add `pub` parameter to open shareable public toot URL. 
+    Add `all` parameter to open all contained links in separate browser tabs.
 
     Examples:
         >>> web 23      # defaults to the first link found
         >>> web 23 2    # open second link
         >>> web 23 all  # open all links
-        >>> web 23 toot # open original web url of toot 
+        >>> web 23 pub  # open public web url of toot 
+        >>> web 23 gui  # open toot in mastodon web gui
     """
 
     args = rest.split(' ')
@@ -1087,11 +1092,14 @@ def web(mastodon, rest):
         return
 
     link_num = 1
+    open_all = False
     if len(args) == 2 and len(args[1]) > 0:
         if args[1] == 'all':
-            link_num = -1
-        elif args[1] == 'toot':
+            open_all = True
+        elif args[1] == 'pub':
             link_num = 0
+        elif args[1] == 'gui':
+            link_num = -1
         else:
             link_num = int(args[1])
             link_num = link_num if link_num >= 0 else 1
@@ -1105,11 +1113,18 @@ def web(mastodon, rest):
             type(e).__name__),
             fg('red'))
 
+    # Open public toot URL
     if link_num == 0 or len(links) == 0:
         links = [toot.url]
-        link_num = -1
+        open_all = True
 
+    # Open toot in web gui
     if link_num == -1:
+        links = ["/".join(
+            [mastodon.api_base_url, "web", "statuses", str(toot.id)])]
+        open_all = True
+
+    if open_all:
         for link in links:
             webbrowser.open(link)
     else:
