@@ -1082,7 +1082,7 @@ def links(mastodon, rest):
                     cprint("Cannot open link {}. Toot contains {} weblinks".format(
                         link_num, len(links)), fg('red'))
                     return
-                links = links[link_num - 1]
+                links = [links[link_num - 1]]
 
             for link in links:
                 webbrowser.open(link)
