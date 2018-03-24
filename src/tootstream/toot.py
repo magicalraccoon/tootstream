@@ -1097,6 +1097,40 @@ links.__section__ = 'Toots'
 
 
 @command
+def browse(mastodon, rest):
+    """Open toot in browser. Use `browse <id> in client` to open Mastodon GUI.
+
+    Examples:
+        >>> browse 23
+        >>> browse 23 in client
+    """
+
+    args = rest.split(' ', 1)
+
+    status_id = IDS.to_global(args[0])
+    if status_id is None:
+        return
+    
+    try:
+        toot = mastodon.status(status_id)
+    except Exception as e:
+        cprint("{}: please try again later".format(
+            type(e).__name__),
+            fg('red'))
+    else:
+        if len(args) > 1 and args[1] == 'in client':
+            url = "/".join(
+                [mastodon.api_base_url, "web", "statuses", str(toot.id)])
+        else:
+            url = toot.url
+
+        webbrowser.open(url)
+
+browse.__argstr__ = '<id>'
+browse.__section__ = 'Toots'
+
+
+@command
 def home(mastodon, rest):
     """Displays the Home timeline."""
     for toot in reversed(mastodon.timeline_home()):
