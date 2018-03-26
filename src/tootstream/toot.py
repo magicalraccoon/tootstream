@@ -56,8 +56,6 @@ GLYPHS = {
 # reserved config sections (disallowed as profile names)
 RESERVED = ( "theme", "global" )
 
-stepper_enabled = False
-
 
 class IdDict:
     """Represents a mapping of local (tootstream) ID's to global
@@ -111,6 +109,13 @@ def list_support(mastodon, silent=False):
         cprint("List support is not available with this version of Mastodon",
                fg('red'))
     return lists_available
+
+
+def step_flag(rest):
+    if 'step' in rest:
+        return True, rest.replace(' step', '')
+    else:
+        return False, rest
 
 
 def get_content(toot):
@@ -322,10 +327,10 @@ def flaghandler_tootreply(mastodon, rest):
     return (rest, kwargs)
 
 
-def print_toots(mastodon, listing, ctx_name=None, add_completion=True):
+def print_toots(mastodon, listing, stepper, ctx_name=None, add_completion=True):
     """Print toot listings and allow context dependent commands.
 
-    If config variable `stepper = true` it lets user step through listings with 
+    If `stepper` is True it lets user step through listings with 
     enter key. Entering [a] aborts stepping.
 
     Commands that require a toot id or username are partially applied based on
@@ -353,7 +358,7 @@ def print_toots(mastodon, listing, ctx_name=None, add_completion=True):
         if add_completion is True:
             completion_add(toot)
 
-        if stepper_enabled:
+        if stepper:
             prompt = "[@{} {}/{}{}]: ".format(
                 str(user['username']), pos + 1, len(listing), ctx)
             command = None
@@ -1130,7 +1135,8 @@ links.__section__ = 'Toots'
 @command
 def home(mastodon, rest):
     """Displays the Home timeline."""
-    print_toots(mastodon, mastodon.timeline_home(), ctx_name='home')
+    stepper, rest = step_flag(rest)
+    print_toots(mastodon, mastodon.timeline_home(), stepper, ctx_name='home')
 
 home.__argstr__ = ''
 home.__section__ = 'Timeline'
@@ -1139,7 +1145,11 @@ home.__section__ = 'Timeline'
 @command
 def fed(mastodon, rest):
     """Displays the Federated timeline."""
-    print_toots(mastodon, mastodon.timeline_public(), 
+    stepper, rest = step_flag(rest)
+    print_toots(
+        mastodon,
+        mastodon.timeline_public(),
+        stepper,
         ctx_name='federated timeline')
 
 fed.__argstr__ = ''
@@ -1149,7 +1159,8 @@ fed.__section__ = 'Timeline'
 @command
 def local(mastodon, rest):
     """Displays the Local timeline."""
-    print_toots(mastodon, mastodon.timeline_local(), ctx_name='local timeline')
+    stepper, rest = step_flag(rest)
+    print_toots(mastodon, mastodon.timeline_local(), stepper, ctx_name='local timeline')
 
 local.__argstr__ = ''
 local.__section__ = 'Timeline'
@@ -1790,6 +1801,7 @@ def listhome(mastodon, rest):
     if not rest:
         cprint("Argument required.", fg('red'))
         return
+    stepper, rest = step_flag(rest)
 
     try:
         item = get_list_id(mastodon, rest)
@@ -1797,9 +1809,8 @@ def listhome(mastodon, rest):
             cprint("List {} is not found".format(rest), fg('red'))
             return
         list_toots = mastodon.timeline_list(item)
-        
+        print_toots(mastodon, list_toots, stepper, ctx_name='list')
 
-        print_toots(mastodon, list_toots, ctx_name='list')
     except Exception as e:
         cprint("error while displaying list: {}".format(type(e).__name__), fg('red'))
 listhome.__argstr__ = '<list>'
@@ -1959,9 +1970,6 @@ def main(instance, config, profile):
                 'client_secret': client_secret,
                 'token': token
         }
-
-    global stepper_enabled
-    stepper_enabled = config[profile].getboolean('stepper', False)
 
     save_config(configpath, config)
 
