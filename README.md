@@ -102,6 +102,10 @@ If you have already set up a profile you may use the ``--profile`` command-line 
 
 You may select a different configuration using ``--config`` and pass it the full-path to that file.
 
+## Notes on networking
+
+Tootstream and Mastodon.py use the [requests](https://pypi.python.org/pypi/requests) library for communicating with the Mastodon instance. Any proxy settings you may need to communicate with the network will need to be in a format that the requests library understands. See the requests documentation for more details on what those environment variables should be. 
+
 ## Contributing
 
 Contributions welcome! Please read the [contributing guidelines](CONTRIBUTING.md) before getting started.
