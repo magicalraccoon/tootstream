@@ -128,6 +128,7 @@ class TootParser(HTMLParser):
         self.fed = []
         self.lines = []
         self.links = []
+        self.weblinks = []
         self.cur_type = None
         self.hide = False
         self.ellipsis = False
@@ -174,6 +175,7 @@ class TootParser(HTMLParser):
             if self.mention_style != None:
                 self.fed.append(self.mention_style)
         else:
+            self.weblinks.append(find_attr('href', attrs))
             self.cur_type = 'link'
             if self.link_style != None:
                 self.fed.append(self.link_style)
@@ -278,3 +280,8 @@ class TootParser(HTMLParser):
     def get_links(self):
         """Returns an array of links parsed from the source HTML toot."""
         return self.links
+
+
+    def get_weblinks(self):
+        """Returns an array of non-mastodon links parsed from the toot."""
+        return self.weblinks
