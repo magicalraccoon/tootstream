@@ -1045,14 +1045,15 @@ thread.__section__ = 'Toots'
 
 @command
 def links(mastodon, rest):
-    """Open the urls of any links in the toot.
+    """Show URLs or any links in a toot, optionally open in browser.
 
-    Use `links <id> show` to display link URLs.
+    Use `links <id> open` to open all link URLs or `links <id> open <number>` to
+    open a specific link.
 
     Examples:
         >>> links 23
-        >>> links 23 show
-        >>> links 23 1  # to open just the first link
+        >>> links 23 open
+        >>> links 23 open 1  # to open just the first link
     """
 
     args = rest.split(' ')
@@ -1071,26 +1072,29 @@ def links(mastodon, rest):
             type(e).__name__),
             fg('red'))
     else:
-        if len(args) == 1 or args[1] != "show":
-            links = toot_parser.get_weblinks()
+        links = toot_parser.get_weblinks()
+
+        if len(args) == 1:
+            # Print links
+            for i, link in enumerate(links):
+                print("{}: {}".format(i + 1, link))
+        else:
+            # Open links
             link_num = None
 
-            if len(args) == 2 and len(args[1]) > 0:
+            if len(args) == 3 and len(args[2]) > 0:
                 # Parse requested link number
-                link_num = int(args[1])
+                link_num = int(args[2])
                 if len(links) < link_num or link_num < 1:
                     cprint("Cannot open link {}. Toot contains {} weblinks".format(
                         link_num, len(links)), fg('red'))
-                    return
-                links = [links[link_num - 1]]
+                else:
+                    webbrowser.open(links[link_num - 1])
+            
+            else:
+                for link in links:
+                    webbrowser.open(link)
 
-            for link in links:
-                webbrowser.open(link)
-
-        else:
-            links = toot_parser.get_weblinks()
-            for i, link in enumerate(links):
-                print("{}: {}".format(i + 1, link))
 
 links.__argstr__ = '<id>'
 links.__section__ = 'Toots'
