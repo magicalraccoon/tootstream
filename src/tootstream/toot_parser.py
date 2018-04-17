@@ -276,12 +276,12 @@ class TootParser(HTMLParser):
                 out.append(self.wrap.fill(line))
         return '\n'.join(out)
 
-
     def get_links(self):
         """Returns an array of links parsed from the source HTML toot."""
         return self.links
 
-
     def get_weblinks(self):
         """Returns an array of non-mastodon links parsed from the toot."""
-        return self.weblinks
+        links = self.weblinks
+        links.extend(self.get_links())
+        return links
