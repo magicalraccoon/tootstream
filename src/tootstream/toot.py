@@ -16,6 +16,7 @@ import datetime
 import dateutil
 import shutil
 import emoji
+import webbrowser
 
 # Get the version of Tootstream
 import pkg_resources  # part of setuptools
@@ -1044,26 +1045,56 @@ thread.__section__ = 'Toots'
 
 @command
 def links(mastodon, rest):
-    """Show the urls of any links, hashtags, or mentions by ID.
+    """Show URLs or any links in a toot, optionally open in browser.
 
-    ex: links 23"""
+    Use `links <id> open` to open all link URLs or `links <id> open <number>` to
+    open a specific link.
 
-    status_id = IDS.to_global(rest)
+    Examples:
+        >>> links 23
+        >>> links 23 open
+        >>> links 23 open 1  # to open just the first link
+    """
+
+    args = rest.split(' ')
+    if len(args) < 1:
+        return
+
+    status_id = IDS.to_global(args[0])
     if status_id is None:
         return
 
     try:
         toot = mastodon.status(status_id)
         toot_parser.parse(toot['content'])
-        links = toot_parser.get_links()
-
-        for link in links:
-            print(link)
-
     except Exception as e:
         cprint("{}: please try again later".format(
             type(e).__name__),
             fg('red'))
+    else:
+        links = toot_parser.get_weblinks()
+
+        if len(args) == 1:
+            # Print links
+            for i, link in enumerate(links):
+                print("{}: {}".format(i + 1, link))
+        else:
+            # Open links
+            link_num = None
+
+            if len(args) == 3 and len(args[2]) > 0:
+                # Parse requested link number
+                link_num = int(args[2])
+                if len(links) < link_num or link_num < 1:
+                    cprint("Cannot open link {}. Toot contains {} weblinks".format(
+                        link_num, len(links)), fg('red'))
+                else:
+                    webbrowser.open(links[link_num - 1])
+            
+            else:
+                for link in links:
+                    webbrowser.open(link)
+
 
 links.__argstr__ = '<id>'
 links.__section__ = 'Toots'
