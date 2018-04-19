@@ -13,6 +13,7 @@ setup(
     author="Sara Murray",
     author_email="saramurray@protonmail.com",
     description="A command line interface for interacting with Mastodon instances",  # nopep8
+    long_description="A command line interface for interacting with Mastodon instances",  # nopep8
     license="MIT",
     keywords="mastodon, mastodon.social, toot, tootstream",
     url="http://www.github.com/magicalraccoon/tootstream",
