@@ -1135,33 +1135,58 @@ local.__section__ = 'Timeline'
 def stream(mastodon, rest):
     """Streams a timeline. Specify home, fed, local, list, or a #hashtagname.
 
-Timeline 'list' requires a list name (ex: stream list listname).
+    Timeline 'list' requires a list name (ex: stream list listname).
 
-Use ctrl+C to end streaming"""
-    print("Use ctrl+C to end streaming")
+    Use ctrl+C to end streaming"""
+    
+    cprint("Initializing stream...", style=fg('magenta'))
+
+    def say_error(*args, **kwargs):
+        cprint("Invalid command. Use 'help' for a list of commands or press ctrl+c to end streaming.",
+        fg('white') + bg('red'))
+
     try:
         if rest == "home" or rest == "":
-            mastodon.stream_user(toot_listener)
+            handle = mastodon.stream_user(toot_listener, async=True)
         elif rest == "fed" or rest == "public":
-            mastodon.stream_public(toot_listener)
+            handle = mastodon.stream_public(toot_listener, async=True)
         elif rest == "local":
-            mastodon.stream_local(toot_listener)
+            handle = mastodon.stream_local(toot_listener, async=True)
         elif rest.startswith('list'):
             items = rest.split(' ')
             if len(items) < 2:
                 print("list stream must have a list ID.")
                 return
             item = get_list_id(mastodon, items[-1])
-            mastodon.stream_list(item, toot_listener)
+            handle = mastodon.stream_list(item, toot_listener, async=True)
         elif rest.startswith('#'):
             tag = rest[1:]
-            mastodon.stream_hashtag(tag, toot_listener)
+            handle = mastodon.stream_hashtag(tag, toot_listener, async=True)
         else:
+            handle = None
             print("Only 'home', 'fed', 'local', 'list', and '#hashtag' streams are supported.")
-    except KeyboardInterrupt:
-        pass
     except Exception as e:
         cprint("Something went wrong: {}".format(e), fg('red'))
+    else:
+        print("Use 'help' for a list of commands or press ctrl+c to end streaming.")
+    
+    if handle is not None:
+        command = None
+        while command != "abort":
+            try:
+                command = input().split(' ', 1)
+            except KeyboardInterrupt:
+                cprint("Wrapping up, this can take a couple of seconds...", style=fg('magenta'))
+                command = "abort"
+            else:
+                try:
+                    rest_ = command[1]
+                except IndexError:
+                    rest_ = ""
+                command = command[0]
+                cmd_func = commands.get(command, say_error)
+                cmd_func(mastodon, rest_)
+        handle.close()
 stream.__argstr__ = '<timeline>'
 stream.__section__ = 'Timeline'
 
