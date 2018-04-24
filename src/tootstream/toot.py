@@ -112,6 +112,13 @@ def list_support(mastodon, silent=False):
     return lists_available
 
 
+def step_flag(rest):
+    if 'step' in rest:
+        return True, rest.replace(' step', '')
+    else:
+        return False, rest
+
+
 def get_content(toot):
     html = toot['content']
     toot_parser.parse(html)
@@ -319,6 +326,62 @@ def flaghandler_tootreply(mastodon, rest):
     # end media
 
     return (rest, kwargs)
+
+
+def print_toots(mastodon, listing, stepper, ctx_name=None, add_completion=True):
+    """Print toot listings and allow context dependent commands.
+
+    If `stepper` is True it lets user step through listings with 
+    enter key. Entering [a] aborts stepping.
+
+    Commands that require a toot id or username are partially applied based on
+    context (current toot in listing) so that only the remaining (if any) 
+    parameters are necessary.
+
+    Args:
+        mastodon: Mastodon instance
+        listing: Iterable containing toots
+        ctx_name (str, optional): Displayed in command prompt
+        add_completion (bool, optional): Add toots to completion list
+
+    Examples:
+        >>> print_toots(mastodon, mastodon.timeline_home(), ctx_name='home')
+    
+    """
+    user = mastodon.account_verify_credentials()
+    ctx = '' if ctx_name is None else ' in {}'.format(ctx_name)
+    def say_error(*args, **kwargs):
+        cprint("Invalid command. Use 'help' for a list of commands or press [enter] for next toot, [a] to abort.",
+            fg('white') + bg('red'))
+
+    for pos, toot in enumerate(listing):
+        printToot(toot)
+        if add_completion is True:
+            completion_add(toot)
+
+        if stepper:
+            prompt = "[@{} {}/{}{}]: ".format(
+                str(user['username']), pos + 1, len(listing), ctx)
+            command = None
+            while command not in ['', 'a']:
+                command = input(prompt).split(' ', 1)
+                
+                try:
+                    rest = command[1]
+                except IndexError:
+                    rest = ""
+                command = command[0]
+                if command not in ['', 'a']:
+                    cmd_func = commands.get(command, say_error)
+                    if hasattr(cmd_func, '__argstr__') and cmd_func.__argstr__ is not None:
+                        if cmd_func.__argstr__.startswith('<id>'):
+                            rest = str(IDS.to_local(toot['id'])) + " " + rest
+                        if cmd_func.__argstr__.startswith('<user>'):
+                            rest = "@" + toot['account']['username'] + " " + rest
+                    cmd_func(mastodon, rest)
+            
+            if command == 'a':
+                break
 
 
 #####################################
@@ -1103,9 +1166,8 @@ links.__section__ = 'Toots'
 @command
 def home(mastodon, rest):
     """Displays the Home timeline."""
-    for toot in reversed(mastodon.timeline_home()):
-        printToot(toot)
-        completion_add(toot)
+    stepper, rest = step_flag(rest)
+    print_toots(mastodon, mastodon.timeline_home(), stepper, ctx_name='home')
 
 home.__argstr__ = ''
 home.__section__ = 'Timeline'
@@ -1114,9 +1176,13 @@ home.__section__ = 'Timeline'
 @command
 def fed(mastodon, rest):
     """Displays the Federated timeline."""
-    for toot in reversed(mastodon.timeline_public()):
-        printToot(toot)
-        completion_add(toot)
+    stepper, rest = step_flag(rest)
+    print_toots(
+        mastodon,
+        mastodon.timeline_public(),
+        stepper,
+        ctx_name='federated timeline')
+
 fed.__argstr__ = ''
 fed.__section__ = 'Timeline'
 
@@ -1124,9 +1190,9 @@ fed.__section__ = 'Timeline'
 @command
 def local(mastodon, rest):
     """Displays the Local timeline."""
-    for toot in reversed(mastodon.timeline_local()):
-        printToot(toot)
-        completion_add(toot)
+    stepper, rest = step_flag(rest)
+    print_toots(mastodon, mastodon.timeline_local(), stepper, ctx_name='local timeline')
+
 local.__argstr__ = ''
 local.__section__ = 'Timeline'
 
@@ -1443,8 +1509,8 @@ def search(mastodon, rest):
 
     # # hashtag search
     elif indicator == "#" and not query == "":
-        for toot in reversed(mastodon.timeline_hashtag(query)):
-            printToot(toot)
+        print_toots(mastodon, mastodon.timeline_hashtag(query), 
+            ctx_name='search for #{}'.format(query), add_completion=False)
     # end #
 
     else:
@@ -1485,9 +1551,9 @@ def view(mastodon, rest):
     elif userid == -1:
         cprint("  username not found", fg('red'))
     else:
-        for toot in reversed(mastodon.account_statuses(userid, limit=count)):
-            printToot(toot)
 
+        print_toots(mastodon, mastodon.account_statuses(userid, limit=count), 
+            ctx_name="user timeline", add_completion=False)
     return
 view.__argstr__ = '<user> [<N>]'
 view.__section__ = 'Discover'
@@ -1637,8 +1703,8 @@ reject.__section__ = 'Profile'
 @command
 def faves(mastodon, rest):
     """Displays posts you've favourited."""
-    for toot in reversed(mastodon.favourites()):
-        printToot(toot)
+    print_toots(mastodon, mastodon.favourites(), 
+        ctx_name='favourites', add_completion=False)
 faves.__argstr__ = ''
 faves.__section__ = 'Profile'
 
@@ -1766,6 +1832,7 @@ def listhome(mastodon, rest):
     if not rest:
         cprint("Argument required.", fg('red'))
         return
+    stepper, rest = step_flag(rest)
 
     try:
         item = get_list_id(mastodon, rest)
@@ -1773,9 +1840,8 @@ def listhome(mastodon, rest):
             cprint("List {} is not found".format(rest), fg('red'))
             return
         list_toots = mastodon.timeline_list(item)
-        for toot in reversed(list_toots):
-            printToot(toot)
-            completion_add(toot)
+        print_toots(mastodon, list_toots, stepper, ctx_name='list')
+
     except Exception as e:
         cprint("error while displaying list: {}".format(type(e).__name__), fg('red'))
 listhome.__argstr__ = '<list>'
