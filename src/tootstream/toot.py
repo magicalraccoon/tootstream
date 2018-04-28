@@ -83,9 +83,11 @@ class IdDict:
             cprint('Invalid ID.', fg('red'))
             return None
 
+
 class TootListener(StreamListener):
     def on_update(self, status):
         printToot(status)
+
 
 IDS = IdDict();
 
@@ -680,7 +682,7 @@ def printToot(toot):
     out = []
     # if it's a boost, only output header line from toot
     # then get other data from toot['reblog']
-    if toot['reblog']:
+    if toot.get('reblog'):
         header = stylize("  Boosted by ", fg('yellow'))
         display_name = format_display_name(toot['account']['display_name'])
         name = " ".join(( display_name,
@@ -700,7 +702,7 @@ def printToot(toot):
 
     out.append( get_content(toot) )
 
-    if toot['media_attachments']:
+    if toot.get('media_attachments'):
         # simple version: output # of attachments. TODO: urls instead?
         nsfw = ("NSFW " if toot['sensitive'] else "")
         out.append( stylize("  "+nsfw+"media: "+str(len(toot['media_attachments'])), fg('magenta')))
@@ -1225,7 +1227,8 @@ Use ctrl+C to end streaming"""
         else:
             print("Only 'home', 'fed', 'local', 'list', and '#hashtag' streams are supported.")
     except KeyboardInterrupt:
-        pass
+        # Prevent the ^C from interfering with the prompt
+        print("\n")
     except Exception as e:
         cprint("Something went wrong: {}".format(e), fg('red'))
 stream.__argstr__ = '<timeline>'
