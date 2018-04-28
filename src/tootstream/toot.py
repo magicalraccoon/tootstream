@@ -330,14 +330,14 @@ def flaghandler_tootreply(mastodon, rest):
     return (rest, kwargs)
 
 
-def print_toots(mastodon, listing, stepper, ctx_name=None, add_completion=True):
+def print_toots(mastodon, listing, stepper=False, ctx_name=None, add_completion=True):
     """Print toot listings and allow context dependent commands.
 
-    If `stepper` is True it lets user step through listings with 
+    If `stepper` is True it lets user step through listings with
     enter key. Entering [a] aborts stepping.
 
     Commands that require a toot id or username are partially applied based on
-    context (current toot in listing) so that only the remaining (if any) 
+    context (current toot in listing) so that only the remaining (if any)
     parameters are necessary.
 
     Args:
@@ -348,7 +348,7 @@ def print_toots(mastodon, listing, stepper, ctx_name=None, add_completion=True):
 
     Examples:
         >>> print_toots(mastodon, mastodon.timeline_home(), ctx_name='home')
-    
+
     """
     user = mastodon.account_verify_credentials()
     ctx = '' if ctx_name is None else ' in {}'.format(ctx_name)
@@ -356,7 +356,7 @@ def print_toots(mastodon, listing, stepper, ctx_name=None, add_completion=True):
         cprint("Invalid command. Use 'help' for a list of commands or press [enter] for next toot, [a] to abort.",
             fg('white') + bg('red'))
 
-    for pos, toot in enumerate(listing):
+    for pos, toot in enumerate(reversed(listing)):
         printToot(toot)
         if add_completion is True:
             completion_add(toot)
@@ -367,7 +367,7 @@ def print_toots(mastodon, listing, stepper, ctx_name=None, add_completion=True):
             command = None
             while command not in ['', 'a']:
                 command = input(prompt).split(' ', 1)
-                
+
                 try:
                     rest = command[1]
                 except IndexError:
@@ -381,7 +381,7 @@ def print_toots(mastodon, listing, stepper, ctx_name=None, add_completion=True):
                         if cmd_func.__argstr__.startswith('<user>'):
                             rest = "@" + toot['account']['username'] + " " + rest
                     cmd_func(mastodon, rest)
-            
+
             if command == 'a':
                 break
 
