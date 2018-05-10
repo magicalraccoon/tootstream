@@ -386,6 +386,22 @@ def print_toots(mastodon, listing, stepper=False, ctx_name=None, add_completion=
                 break
 
 
+def toot_visibility(mastodon, flag_visibility=None, parent_visibility=None):
+    """ Return the visibility of a toot.
+    We use the following precedence for flagging the privacy of a toot:
+    flags > parent (if not public) > account settings
+    """
+
+    default_visibility = mastodon.account_verify_credentials()['source']['privacy']
+    if flag_visibility:
+        return flag_visibility
+
+    if parent_visibility and parent_visibility != 'public':
+        return parent_visibility
+
+    return default_visibility
+
+
 #####################################
 ########     COMPLETION      ########
 #####################################
@@ -853,6 +869,8 @@ def toot(mastodon, rest):
         print('')
         return
 
+    kwargs['visibility'] = toot_visibility(mastodon, flag_visibility=kwargs['visibility'])
+
     if text == '':
         text = edittoot(text="")
 
@@ -867,7 +885,7 @@ def toot(mastodon, rest):
         except Exception as e:
             cprint("Received error: ", fg('red') + attr('bold'), end="")
             cprint(e, fg('magenta') + attr('bold') + attr('underlined'))
-        
+
         if posted is False:
             retry = input("Edit toot and re-try? [Y/N]: ")
             if retry.lower() == 'y':
@@ -889,7 +907,7 @@ def rep(mastodon, rest):
     ex: 'rep 13 Hello again'
                   reply to toot 13 with 'Hello again'
         'rep -vc 13 Hello again'
-                  same but prompt for visibilitiy and spoiler changes
+                  same but prompt for visibility and spoiler changes
     If no text is given then this will run the default editor.
 
     Options:
@@ -948,14 +966,15 @@ def rep(mastodon, rest):
     if kwargs['spoiler_text'] is None and parent_toot['spoiler_text'] != '':
         kwargs['spoiler_text'] = parent_toot['spoiler_text']
 
-    if kwargs['visibility'] == '' and parent_toot['visibility'] != 'public':
-        kwargs['visibility'] = parent_toot['visibility']
+    kwargs['visibility'] = toot_visibility(mastodon,
+                                           flag_visibility=kwargs['visibility'],
+                                           parent_visibility=parent_toot['visibility'])
 
     while posted is False:
         try:
             reply_toot = mastodon.status_post('%s %s' % (mentions, text),
-                                            in_reply_to_id=int(parent_id),
-                                            **kwargs)
+                                              in_reply_to_id=int(parent_id),
+                                              **kwargs)
             msg = "  Replied with: " + get_content(reply_toot)
             cprint(msg, fg('red'))
             posted = True
