@@ -287,7 +287,6 @@ class TootParser(HTMLParser):
 
     def get_weblinks(self):
         """Returns an array of non-mastodon links parsed from the toot."""
-        __import__('pdb').set_trace()
         links = self.weblinks
         links.extend(self.get_links())
         links = unique(links)
