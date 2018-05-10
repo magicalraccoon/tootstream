@@ -10,9 +10,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 #### Added
 - Added step switch for stepping through the timelines (ex: home step, listhome step)
 - Added ability to show links and optionally open those links in a browser (see "help links" for details).
+- Display media links by default
 
 ### Fixed
 - Privacy settings now default to server privacy settings for toots
+- CTRL-C in streaming adds a linefeed to preserve prompt spacing
 
 ### Release
 ### [0.3.3] - 2018-02-17

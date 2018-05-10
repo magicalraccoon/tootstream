@@ -25,6 +25,9 @@ version = pkg_resources.require("tootstream")[0].version
 # placeholder variable for converting enoji to shortcodes until we get it in config
 convert_emoji_to_shortcode = False
 
+# placeholder variable for showing media links until we get it in config
+show_media_links = True
+
 #Looks best with black background.
 #TODO: Set color list in config file
 COLORS = list(range(19,231))
@@ -722,6 +725,9 @@ def printToot(toot):
         # simple version: output # of attachments. TODO: urls instead?
         nsfw = ("NSFW " if toot['sensitive'] else "")
         out.append( stylize("  "+nsfw+"media: "+str(len(toot['media_attachments'])), fg('magenta')))
+        if show_media_links:
+            for media in toot['media_attachments']:
+                out.append(stylize("   " + nsfw + " " + media.url, fg('green')))
 
     print( '\n'.join(out) )
     print()
@@ -1157,6 +1163,8 @@ def links(mastodon, rest):
             fg('red'))
     else:
         links = toot_parser.get_weblinks()
+        for media in toot.get('media_attachments'):
+            links.append(media.url)
 
         if len(args) == 1:
             # Print links
@@ -1165,8 +1173,7 @@ def links(mastodon, rest):
         else:
             # Open links
             link_num = None
-
-            if len(args) == 3 and len(args[2]) > 0:
+            if len(args) == 3 and args[1] == 'open' and len(args[2]) > 0:
                 # Parse requested link number
                 link_num = int(args[2])
                 if len(links) < link_num or link_num < 1:
@@ -1174,10 +1181,12 @@ def links(mastodon, rest):
                         link_num, len(links)), fg('red'))
                 else:
                     webbrowser.open(links[link_num - 1])
-            
+
+            elif args[1] == 'open':
+                    for link in links:
+                        webbrowser.open(link)
             else:
-                for link in links:
-                    webbrowser.open(link)
+                cprint("Links argument was not correct. Please try again.", fg('red'))
 
 
 links.__argstr__ = '<id>'
@@ -1222,34 +1231,61 @@ local.__section__ = 'Timeline'
 def stream(mastodon, rest):
     """Streams a timeline. Specify home, fed, local, list, or a #hashtagname.
 
-Timeline 'list' requires a list name (ex: stream list listname).
+    Timeline 'list' requires a list name (ex: stream list listname).
 
-Use ctrl+C to end streaming"""
-    print("Use ctrl+C to end streaming")
+    Use ctrl+C to end streaming"""
+    
+    cprint("Initializing stream...", style=fg('magenta'))
+
+    def say_error(*args, **kwargs):
+        cprint("Invalid command. Use 'help' for a list of commands or press ctrl+c to end streaming.",
+        fg('white') + bg('red'))
+
     try:
         if rest == "home" or rest == "":
-            mastodon.stream_user(toot_listener)
+            handle = mastodon.stream_user(toot_listener, async=True)
         elif rest == "fed" or rest == "public":
-            mastodon.stream_public(toot_listener)
+            handle = mastodon.stream_public(toot_listener, async=True)
         elif rest == "local":
-            mastodon.stream_local(toot_listener)
+            handle = mastodon.stream_local(toot_listener, async=True)
         elif rest.startswith('list'):
             items = rest.split(' ')
             if len(items) < 2:
                 print("list stream must have a list ID.")
                 return
             item = get_list_id(mastodon, items[-1])
-            mastodon.stream_list(item, toot_listener)
+            handle = mastodon.stream_list(item, toot_listener, async=True)
         elif rest.startswith('#'):
             tag = rest[1:]
-            mastodon.stream_hashtag(tag, toot_listener)
+            handle = mastodon.stream_hashtag(tag, toot_listener, async=True)
         else:
+            handle = None
             print("Only 'home', 'fed', 'local', 'list', and '#hashtag' streams are supported.")
     except KeyboardInterrupt:
         # Prevent the ^C from interfering with the prompt
         print("\n")
     except Exception as e:
         cprint("Something went wrong: {}".format(e), fg('red'))
+    else:
+        print("Use 'help' for a list of commands or press ctrl+c to end streaming.")
+
+    if handle is not None:
+        command = None
+        while command != "abort":
+            try:
+                command = input().split(' ', 1)
+            except KeyboardInterrupt:
+                cprint("Wrapping up, this can take a couple of seconds...", style=fg('magenta'))
+                command = "abort"
+            else:
+                try:
+                    rest_ = command[1]
+                except IndexError:
+                    rest_ = ""
+                command = command[0]
+                cmd_func = commands.get(command, say_error)
+                cmd_func(mastodon, rest_)
+        handle.close()
 stream.__argstr__ = '<timeline>'
 stream.__section__ = 'Timeline'
 
