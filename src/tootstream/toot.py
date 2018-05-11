@@ -333,7 +333,7 @@ def flaghandler_tootreply(mastodon, rest):
     return (rest, kwargs)
 
 
-def print_toots(mastodon, listing, stepper=False, ctx_name=None, add_completion=True):
+def print_toots(mastodon, listing, stepper=False, ctx_name=None, add_completion=True, sort_toots=True):
     """Print toot listings and allow context dependent commands.
 
     If `stepper` is True it lets user step through listings with
@@ -352,6 +352,8 @@ def print_toots(mastodon, listing, stepper=False, ctx_name=None, add_completion=
     Examples:
         >>> print_toots(mastodon, mastodon.timeline_home(), ctx_name='home')
 
+    sort_toots is used to apply reversed (chronological) sort to the list of toots.
+        Default is true; threading needs this to be false.
     """
     user = mastodon.account_verify_credentials()
     ctx = '' if ctx_name is None else ' in {}'.format(ctx_name)
@@ -359,7 +361,12 @@ def print_toots(mastodon, listing, stepper=False, ctx_name=None, add_completion=
         cprint("Invalid command. Use 'help' for a list of commands or press [enter] for next toot, [a] to abort.",
             fg('white') + bg('red'))
 
-    for pos, toot in enumerate(reversed(listing)):
+    if sort_toots:
+        toot_list = enumerate(reversed(listing))
+    else:
+        toot_list = enumerate(listing)
+
+    for pos, toot in toot_list:
         printToot(toot)
         if add_completion is True:
             completion_add(toot)
@@ -1076,6 +1083,7 @@ def history(mastodon, rest):
     """Shows the history of the conversation for an ID.
 
     ex: history 23"""
+    stepper, rest = step_flag(rest)
     rest = IDS.to_global(rest)
     if rest is None:
         return
@@ -1083,14 +1091,13 @@ def history(mastodon, rest):
     try:
         current_toot = mastodon.status(rest)
         conversation = mastodon.status_context(rest)
-        for toot in conversation['ancestors']:
-            printToot(toot)
-            completion_add(toot)
+        print_toots(mastodon, conversation['ancestors'], stepper, ctx_name="Previous toots", sort_toots=False)
 
-
-        cprint("Current Toot:", fg('yellow'))
-        printToot(current_toot)
-        completion_add(current_toot)
+        if stepper is False:
+            cprint("Current Toot:", fg('yellow'))
+        print_toots(mastodon, [current_toot], stepper, ctx_name="Current toot")
+        # printToot(current_toot)
+        # completion_add(current_toot)
     except Exception as e:
         cprint("{}: please try again later".format(
             type(e).__name__),
@@ -1108,6 +1115,7 @@ def thread(mastodon, rest):
 
     # Save the original "rest" so the history command can use it
     original_rest = rest
+    stepper, rest = step_flag(rest)
 
     rest = IDS.to_global(rest)
     if rest is None:
@@ -1118,13 +1126,12 @@ def thread(mastodon, rest):
         history(mastodon, original_rest)
 
         # Then display the rest
-        current_toot = mastodon.status(rest)
+        # current_toot = mastodon.status(rest)
         conversation = mastodon.status_context(rest)
-        for toot in conversation['descendants']:
-            printToot(toot)
-            completion_add(toot)
+        print_toots(mastodon, conversation['descendants'], stepper, sort_toots=False)
 
     except Exception as e:
+        raise e
         cprint("{}: please try again later".format(
             type(e).__name__),
             fg('red'))
@@ -1550,6 +1557,7 @@ def search(mastodon, rest):
          search @user@instance.example.com"""
     usage = str( "  usage: search #tagname\n" +
                  "         search @username" )
+    stepper, rest = step_flag(rest)
     try:
         indicator = rest[:1]
         query = rest[1:]
@@ -1567,7 +1575,7 @@ def search(mastodon, rest):
 
     # # hashtag search
     elif indicator == "#" and not query == "":
-        print_toots(mastodon, mastodon.timeline_hashtag(query), 
+        print_toots(mastodon, mastodon.timeline_hashtag(query), stepper,
             ctx_name='search for #{}'.format(query), add_completion=False)
     # end #
 
