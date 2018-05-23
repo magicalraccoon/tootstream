@@ -87,9 +87,17 @@ class IdDict:
             return None
 
 
+def redisplay_prompt():
+    print(readline.get_line_buffer(), end='', flush=True)
+    readline.redisplay()
+
+
 class TootListener(StreamListener):
     def on_update(self, status):
+        print()
         printToot(status)
+        print()
+        redisplay_prompt()
 
 
 IDS = IdDict();
@@ -324,7 +332,7 @@ def flaghandler_tootreply(mastodon, rest):
                 c += 1
 
             # prompt for sensitivity
-            nsfw = input("Mark sensitive/NSFW [y/N]: ")
+            nsfw = input("Mark sensitive media [y/N]: ")
             nsfw = nsfw.lower()
             if nsfw.startswith('y'):
                 kwargs['sensitive'] = True
@@ -730,7 +738,7 @@ def printToot(toot):
 
     if toot.get('media_attachments'):
         # simple version: output # of attachments. TODO: urls instead?
-        nsfw = ("NSFW " if toot['sensitive'] else "")
+        nsfw = ("CW " if toot['sensitive'] else "")
         out.append( stylize("  "+nsfw+"media: "+str(len(toot['media_attachments'])), fg('magenta')))
         if show_media_links:
             for media in toot['media_attachments']:
@@ -871,7 +879,7 @@ def toot(mastodon, rest):
     Options:
         -v     Prompt for visibility (public, unlisted, private, direct)
         -c     Prompt for Content Warning / spoiler text
-        -m     Prompt for media files and NSFW
+        -m     Prompt for media files and Sensitive Media
     """
     posted = False
     # Fill in Content fields first.
@@ -927,7 +935,7 @@ def rep(mastodon, rest):
         -v     Prompt for visibility (public, unlisted, private, direct)
         -c     Prompt for Content Warning / spoiler text
         -C     No Content Warning (do not use original's CW)
-        -m     Prompt for media files and NSFW
+        -m     Prompt for media files and Sensitive Media
 
     """
 
@@ -1241,7 +1249,7 @@ def stream(mastodon, rest):
     Timeline 'list' requires a list name (ex: stream list listname).
 
     Use ctrl+C to end streaming"""
-    
+
     cprint("Initializing stream...", style=fg('magenta'))
 
     def say_error(*args, **kwargs):
