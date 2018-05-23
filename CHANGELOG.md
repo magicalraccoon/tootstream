@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Added step switch for stepping through the timelines (ex: home step, listhome step)
 - Execute commands on stepped toots (fav, boost, reply, etc.)
 - Added ability to show links and optionally open those links in a browser (see "help links" for details).
+- Added ability to execute commands while streaming (toot, fav, rep, etc.)
 - Display media links by default
 
 ### Fixed

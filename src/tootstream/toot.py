@@ -28,6 +28,9 @@ convert_emoji_to_shortcode = False
 # placeholder variable for showing media links until we get it in config
 show_media_links = True
 
+# Flag for whether we're streaming or not
+is_streaming = False
+
 #Looks best with black background.
 #TODO: Set color list in config file
 COLORS = list(range(19,231))
@@ -749,6 +752,10 @@ def printToot(toot):
 
 
 def edittoot(text):
+    global is_streaming
+    if is_streaming:
+        cprint("Using the editor while streaming is unsupported at this time.", fg('red'))
+        return ''
     edited_message = click.edit(text)
     if edited_message:
         return edited_message
@@ -881,6 +888,7 @@ def toot(mastodon, rest):
         -c     Prompt for Content Warning / spoiler text
         -m     Prompt for media files and Sensitive Media
     """
+    global is_streaming
     posted = False
     # Fill in Content fields first.
     try:
@@ -906,6 +914,10 @@ def toot(mastodon, rest):
         except Exception as e:
             cprint("Received error: ", fg('red') + attr('bold'), end="")
             cprint(e, fg('magenta') + attr('bold') + attr('underlined'))
+
+        # If we're streaming then we can't edit the toot, so assume that we posted.
+        if is_streaming is True:
+            posted = True
 
         if posted is False:
             retry = input("Edit toot and re-try? [Y/N]: ")
@@ -1250,6 +1262,11 @@ def stream(mastodon, rest):
 
     Use ctrl+C to end streaming"""
 
+    global is_streaming
+    if is_streaming:
+        cprint("Already streaming. Press ctrl+c to end this stream.", fg('red'))
+        return
+
     cprint("Initializing stream...", style=fg('magenta'))
 
     def say_error(*args, **kwargs):
@@ -1285,6 +1302,7 @@ def stream(mastodon, rest):
         print("Use 'help' for a list of commands or press ctrl+c to end streaming.")
 
     if handle is not None:
+        is_streaming = True
         command = None
         while command != "abort":
             try:
@@ -1301,6 +1319,7 @@ def stream(mastodon, rest):
                 cmd_func = commands.get(command, say_error)
                 cmd_func(mastodon, rest_)
         handle.close()
+        is_streaming = False
 stream.__argstr__ = '<timeline>'
 stream.__section__ = 'Timeline'
 
