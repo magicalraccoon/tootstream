@@ -1260,6 +1260,10 @@ def stream(mastodon, rest):
 
     Timeline 'list' requires a list name (ex: stream list listname).
 
+    Commands may be typed while streaming (ex: fav 23).
+
+    Only one stream may be running at a time.
+
     Use ctrl+C to end streaming"""
 
     global is_streaming
@@ -1281,11 +1285,16 @@ def stream(mastodon, rest):
         elif rest == "local":
             handle = mastodon.stream_local(toot_listener, async=True)
         elif rest.startswith('list'):
-            items = rest.split(' ')
+            # Remove list from the rest string
+            items = rest.split('list ')
             if len(items) < 2:
                 print("list stream must have a list ID.")
                 return
             item = get_list_id(mastodon, items[-1])
+            if not item or item == -1:
+                cprint("List {} is not found".format(items[-1]), fg('red'))
+                return
+
             handle = mastodon.stream_list(item, toot_listener, async=True)
         elif rest.startswith('#'):
             tag = rest[1:]
