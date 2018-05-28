@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Execute commands on stepped toots (fav, boost, rep, etc.)
 - Added ability to show links and optionally open those links in a browser (see "help links" for details).
 - Display media links by default
+- Display message when no notifications are present
 
 ### Fixed
 - Privacy settings now default to server privacy settings for toots

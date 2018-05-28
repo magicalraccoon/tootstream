@@ -1359,7 +1359,12 @@ def note(mastodon, rest):
         print('')
         return
 
-    for note in reversed(mastodon.notifications()):
+    notifications = mastodon.notifications()
+    if not(len(notifications) > 0):
+        cprint("You don't have any notifications yet.", fg('magenta'))
+        return
+
+    for note in reversed(notifications):
         display_name = "  " + format_display_name(note['account']['display_name'])
         username = format_username(note['account'])
         note_id = str(note['id'])
