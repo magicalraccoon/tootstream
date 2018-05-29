@@ -2140,9 +2140,12 @@ def main(instance, config, profile):
             rest = command[1]
         except IndexError:
             pass
-        command = command[0]
-        cmd_func = commands.get(command, say_error)
-        cmd_func(mastodon, rest)
+        try:
+            command = command[0]
+            cmd_func = commands.get(command, say_error)
+            cmd_func(mastodon, rest)
+        except Exception as e:
+            cprint(e, fg('red'))
 
 
 if __name__ == '__main__':
