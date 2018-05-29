@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - CTRL-C in streaming adds a linefeed to preserve prompt spacing
 - Streaming now supports lists with spaces
 - Added broad exception handling so tootstream shouldn't crash while running commands.
+- Minor formatting fixes
 
 ### Release
 ### [0.3.3] - 2018-02-17

@@ -1078,7 +1078,7 @@ def fav(mastodon, rest):
         return
     mastodon.status_favourite(rest)
     faved = mastodon.status(rest)
-    msg = "  Favorited: " + get_content(faved)
+    msg = "  Favorited:\n" + get_content(faved)
     cprint(msg, fg('red'))
 fav.__argstr__ = '<id>'
 fav.__section__ = 'Toots'
