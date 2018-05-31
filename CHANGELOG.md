@@ -5,6 +5,24 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Release
+### [0.3.4] - TBD
+
+#### Added
+- Added ability to execute commands while streaming (toot, fav, rep, etc.)
+- Added step switch for stepping through the timelines (ex: home step, listhome step)
+- Execute commands on stepped toots (fav, boost, rep, etc.)
+- Added ability to show links and optionally open those links in a browser (see "help links" for details).
+- Display media links by default
+- Display message when no notifications are present
+
+### Fixed
+- Privacy settings now default to server privacy settings for toots
+- CTRL-C in streaming adds a linefeed to preserve prompt spacing
+- Streaming now supports lists with spaces
+- Added broad exception handling so tootstream shouldn't crash while running commands.
+- Minor formatting fixes
+
+### Release
 ### [0.3.3] - 2018-02-17
 
 #### Added
