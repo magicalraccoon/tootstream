@@ -4,6 +4,11 @@ from html.parser import HTMLParser
 from textwrap import TextWrapper
 
 
+def unique(sequence):
+    seen = set()
+    return [x for x in sequence if not (x in seen or seen.add(x))]
+
+
 def emoji_shortcode_to_unicode(text):
     """Convert standard emoji short codes to unicode emoji in
     the provided text.
@@ -128,6 +133,7 @@ class TootParser(HTMLParser):
         self.fed = []
         self.lines = []
         self.links = []
+        self.weblinks = []
         self.cur_type = None
         self.hide = False
         self.ellipsis = False
@@ -174,6 +180,7 @@ class TootParser(HTMLParser):
             if self.mention_style != None:
                 self.fed.append(self.mention_style)
         else:
+            self.weblinks.append(find_attr('href', attrs))
             self.cur_type = 'link'
             if self.link_style != None:
                 self.fed.append(self.link_style)
@@ -274,7 +281,13 @@ class TootParser(HTMLParser):
                 out.append(self.wrap.fill(line))
         return '\n'.join(out)
 
-
     def get_links(self):
         """Returns an array of links parsed from the source HTML toot."""
         return self.links
+
+    def get_weblinks(self):
+        """Returns an array of non-mastodon links parsed from the toot."""
+        links = self.weblinks
+        links.extend(self.get_links())
+        links = unique(links)
+        return links

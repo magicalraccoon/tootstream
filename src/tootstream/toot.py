@@ -16,6 +16,7 @@ import datetime
 import dateutil
 import shutil
 import emoji
+import webbrowser
 
 # Get the version of Tootstream
 import pkg_resources  # part of setuptools
@@ -23,6 +24,12 @@ version = pkg_resources.require("tootstream")[0].version
 
 # placeholder variable for converting enoji to shortcodes until we get it in config
 convert_emoji_to_shortcode = False
+
+# placeholder variable for showing media links until we get it in config
+show_media_links = True
+
+# Flag for whether we're streaming or not
+is_streaming = False
 
 #Looks best with black background.
 #TODO: Set color list in config file
@@ -82,9 +89,19 @@ class IdDict:
             cprint('Invalid ID.', fg('red'))
             return None
 
+
+def redisplay_prompt():
+    print(readline.get_line_buffer(), end='', flush=True)
+    readline.redisplay()
+
+
 class TootListener(StreamListener):
     def on_update(self, status):
+        print()
         printToot(status)
+        print()
+        redisplay_prompt()
+
 
 IDS = IdDict();
 
@@ -109,6 +126,13 @@ def list_support(mastodon, silent=False):
         cprint("List support is not available with this version of Mastodon",
                fg('red'))
     return lists_available
+
+
+def step_flag(rest):
+    if 'step' in rest:
+        return True, rest.replace(' step', '')
+    else:
+        return False, rest
 
 
 def get_content(toot):
@@ -311,13 +335,92 @@ def flaghandler_tootreply(mastodon, rest):
                 c += 1
 
             # prompt for sensitivity
-            nsfw = input("Mark sensitive/NSFW [y/N]: ")
+            nsfw = input("Mark sensitive media [y/N]: ")
             nsfw = nsfw.lower()
             if nsfw.startswith('y'):
                 kwargs['sensitive'] = True
     # end media
 
     return (rest, kwargs)
+
+
+def print_toots(mastodon, listing, stepper=False, ctx_name=None, add_completion=True, sort_toots=True):
+    """Print toot listings and allow context dependent commands.
+
+    If `stepper` is True it lets user step through listings with
+    enter key. Entering [a] aborts stepping.
+
+    Commands that require a toot id or username are partially applied based on
+    context (current toot in listing) so that only the remaining (if any)
+    parameters are necessary.
+
+    Args:
+        mastodon: Mastodon instance
+        listing: Iterable containing toots
+        ctx_name (str, optional): Displayed in command prompt
+        add_completion (bool, optional): Add toots to completion list
+
+    Examples:
+        >>> print_toots(mastodon, mastodon.timeline_home(), ctx_name='home')
+
+    sort_toots is used to apply reversed (chronological) sort to the list of toots.
+        Default is true; threading needs this to be false.
+    """
+    user = mastodon.account_verify_credentials()
+    ctx = '' if ctx_name is None else ' in {}'.format(ctx_name)
+    def say_error(*args, **kwargs):
+        cprint("Invalid command. Use 'help' for a list of commands or press [enter] for next toot, [a] to abort.",
+            fg('white') + bg('red'))
+
+    if sort_toots:
+        toot_list = enumerate(reversed(listing))
+    else:
+        toot_list = enumerate(listing)
+
+    for pos, toot in toot_list:
+        printToot(toot)
+        if add_completion is True:
+            completion_add(toot)
+
+        if stepper:
+            prompt = "[@{} {}/{}{}]: ".format(
+                str(user['username']), pos + 1, len(listing), ctx)
+            command = None
+            while command not in ['', 'a']:
+                command = input(prompt).split(' ', 1)
+
+                try:
+                    rest = command[1]
+                except IndexError:
+                    rest = ""
+                command = command[0]
+                if command not in ['', 'a']:
+                    cmd_func = commands.get(command, say_error)
+                    if hasattr(cmd_func, '__argstr__') and cmd_func.__argstr__ is not None:
+                        if cmd_func.__argstr__.startswith('<id>'):
+                            rest = str(IDS.to_local(toot['id'])) + " " + rest
+                        if cmd_func.__argstr__.startswith('<user>'):
+                            rest = "@" + toot['account']['username'] + " " + rest
+                    cmd_func(mastodon, rest)
+
+            if command == 'a':
+                break
+
+
+def toot_visibility(mastodon, flag_visibility=None, parent_visibility=None):
+    """ Return the visibility of a toot.
+    We use the following precedence for flagging the privacy of a toot:
+    flags > parent (if not public) > account settings
+    """
+
+    default_visibility = mastodon.account_verify_credentials()['source']['privacy']
+    if flag_visibility:
+        return flag_visibility
+
+    if parent_visibility and parent_visibility != 'public':
+        return parent_visibility
+
+    return default_visibility
 
 
 #####################################
@@ -616,7 +719,7 @@ def printToot(toot):
     out = []
     # if it's a boost, only output header line from toot
     # then get other data from toot['reblog']
-    if toot['reblog']:
+    if toot.get('reblog'):
         header = stylize("  Boosted by ", fg('yellow'))
         display_name = format_display_name(toot['account']['display_name'])
         name = " ".join(( display_name,
@@ -636,16 +739,23 @@ def printToot(toot):
 
     out.append( get_content(toot) )
 
-    if toot['media_attachments']:
+    if toot.get('media_attachments'):
         # simple version: output # of attachments. TODO: urls instead?
-        nsfw = ("NSFW " if toot['sensitive'] else "")
+        nsfw = ("CW " if toot['sensitive'] else "")
         out.append( stylize("  "+nsfw+"media: "+str(len(toot['media_attachments'])), fg('magenta')))
+        if show_media_links:
+            for media in toot['media_attachments']:
+                out.append(stylize("   " + nsfw + " " + media.url, fg('green')))
 
     print( '\n'.join(out) )
     print()
 
 
 def edittoot(text):
+    global is_streaming
+    if is_streaming:
+        cprint("Using the editor while streaming is unsupported at this time.", fg('red'))
+        return ''
     edited_message = click.edit(text)
     if edited_message:
         return edited_message
@@ -776,8 +886,9 @@ def toot(mastodon, rest):
     Options:
         -v     Prompt for visibility (public, unlisted, private, direct)
         -c     Prompt for Content Warning / spoiler text
-        -m     Prompt for media files and NSFW
+        -m     Prompt for media files and Sensitive Media
     """
+    global is_streaming
     posted = False
     # Fill in Content fields first.
     try:
@@ -786,6 +897,8 @@ def toot(mastodon, rest):
         # user abort, return to main prompt
         print('')
         return
+
+    kwargs['visibility'] = toot_visibility(mastodon, flag_visibility=kwargs['visibility'])
 
     if text == '':
         text = edittoot(text="")
@@ -801,7 +914,11 @@ def toot(mastodon, rest):
         except Exception as e:
             cprint("Received error: ", fg('red') + attr('bold'), end="")
             cprint(e, fg('magenta') + attr('bold') + attr('underlined'))
-        
+
+        # If we're streaming then we can't edit the toot, so assume that we posted.
+        if is_streaming is True:
+            posted = True
+
         if posted is False:
             retry = input("Edit toot and re-try? [Y/N]: ")
             if retry.lower() == 'y':
@@ -823,14 +940,14 @@ def rep(mastodon, rest):
     ex: 'rep 13 Hello again'
                   reply to toot 13 with 'Hello again'
         'rep -vc 13 Hello again'
-                  same but prompt for visibilitiy and spoiler changes
+                  same but prompt for visibility and spoiler changes
     If no text is given then this will run the default editor.
 
     Options:
         -v     Prompt for visibility (public, unlisted, private, direct)
         -c     Prompt for Content Warning / spoiler text
         -C     No Content Warning (do not use original's CW)
-        -m     Prompt for media files and NSFW
+        -m     Prompt for media files and Sensitive Media
 
     """
 
@@ -882,14 +999,15 @@ def rep(mastodon, rest):
     if kwargs['spoiler_text'] is None and parent_toot['spoiler_text'] != '':
         kwargs['spoiler_text'] = parent_toot['spoiler_text']
 
-    if kwargs['visibility'] == '' and parent_toot['visibility'] != 'public':
-        kwargs['visibility'] = parent_toot['visibility']
+    kwargs['visibility'] = toot_visibility(mastodon,
+                                           flag_visibility=kwargs['visibility'],
+                                           parent_visibility=parent_toot['visibility'])
 
     while posted is False:
         try:
             reply_toot = mastodon.status_post('%s %s' % (mentions, text),
-                                            in_reply_to_id=int(parent_id),
-                                            **kwargs)
+                                              in_reply_to_id=int(parent_id),
+                                              **kwargs)
             msg = "  Replied with: " + get_content(reply_toot)
             cprint(msg, fg('red'))
             posted = True
@@ -960,7 +1078,7 @@ def fav(mastodon, rest):
         return
     mastodon.status_favourite(rest)
     faved = mastodon.status(rest)
-    msg = "  Favorited: " + get_content(faved)
+    msg = "  Favorited:\n" + get_content(faved)
     cprint(msg, fg('red'))
 fav.__argstr__ = '<id>'
 fav.__section__ = 'Toots'
@@ -985,6 +1103,7 @@ def history(mastodon, rest):
     """Shows the history of the conversation for an ID.
 
     ex: history 23"""
+    stepper, rest = step_flag(rest)
     rest = IDS.to_global(rest)
     if rest is None:
         return
@@ -992,14 +1111,13 @@ def history(mastodon, rest):
     try:
         current_toot = mastodon.status(rest)
         conversation = mastodon.status_context(rest)
-        for toot in conversation['ancestors']:
-            printToot(toot)
-            completion_add(toot)
+        print_toots(mastodon, conversation['ancestors'], stepper, ctx_name="Previous toots", sort_toots=False)
 
-
-        cprint("Current Toot:", fg('yellow'))
-        printToot(current_toot)
-        completion_add(current_toot)
+        if stepper is False:
+            cprint("Current Toot:", fg('yellow'))
+        print_toots(mastodon, [current_toot], stepper, ctx_name="Current toot")
+        # printToot(current_toot)
+        # completion_add(current_toot)
     except Exception as e:
         cprint("{}: please try again later".format(
             type(e).__name__),
@@ -1017,6 +1135,7 @@ def thread(mastodon, rest):
 
     # Save the original "rest" so the history command can use it
     original_rest = rest
+    stepper, rest = step_flag(rest)
 
     rest = IDS.to_global(rest)
     if rest is None:
@@ -1027,13 +1146,12 @@ def thread(mastodon, rest):
         history(mastodon, original_rest)
 
         # Then display the rest
-        current_toot = mastodon.status(rest)
+        # current_toot = mastodon.status(rest)
         conversation = mastodon.status_context(rest)
-        for toot in conversation['descendants']:
-            printToot(toot)
-            completion_add(toot)
+        print_toots(mastodon, conversation['descendants'], stepper, sort_toots=False)
 
     except Exception as e:
+        raise e
         cprint("{}: please try again later".format(
             type(e).__name__),
             fg('red'))
@@ -1044,26 +1162,59 @@ thread.__section__ = 'Toots'
 
 @command
 def links(mastodon, rest):
-    """Show the urls of any links, hashtags, or mentions by ID.
+    """Show URLs or any links in a toot, optionally open in browser.
 
-    ex: links 23"""
+    Use `links <id> open` to open all link URLs or `links <id> open <number>` to
+    open a specific link.
 
-    status_id = IDS.to_global(rest)
+    Examples:
+        >>> links 23
+        >>> links 23 open
+        >>> links 23 open 1  # to open just the first link
+    """
+
+    args = rest.split(' ')
+    if len(args) < 1:
+        return
+
+    status_id = IDS.to_global(args[0])
     if status_id is None:
         return
 
     try:
         toot = mastodon.status(status_id)
         toot_parser.parse(toot['content'])
-        links = toot_parser.get_links()
-
-        for link in links:
-            print(link)
-
     except Exception as e:
         cprint("{}: please try again later".format(
             type(e).__name__),
             fg('red'))
+    else:
+        links = toot_parser.get_weblinks()
+        for media in toot.get('media_attachments'):
+            links.append(media.url)
+
+        if len(args) == 1:
+            # Print links
+            for i, link in enumerate(links):
+                print("{}: {}".format(i + 1, link))
+        else:
+            # Open links
+            link_num = None
+            if len(args) == 3 and args[1] == 'open' and len(args[2]) > 0:
+                # Parse requested link number
+                link_num = int(args[2])
+                if len(links) < link_num or link_num < 1:
+                    cprint("Cannot open link {}. Toot contains {} weblinks".format(
+                        link_num, len(links)), fg('red'))
+                else:
+                    webbrowser.open(links[link_num - 1])
+
+            elif args[1] == 'open':
+                    for link in links:
+                        webbrowser.open(link)
+            else:
+                cprint("Links argument was not correct. Please try again.", fg('red'))
+
 
 links.__argstr__ = '<id>'
 links.__section__ = 'Toots'
@@ -1072,9 +1223,8 @@ links.__section__ = 'Toots'
 @command
 def home(mastodon, rest):
     """Displays the Home timeline."""
-    for toot in reversed(mastodon.timeline_home()):
-        printToot(toot)
-        completion_add(toot)
+    stepper, rest = step_flag(rest)
+    print_toots(mastodon, mastodon.timeline_home(), stepper, ctx_name='home')
 
 home.__argstr__ = ''
 home.__section__ = 'Timeline'
@@ -1083,9 +1233,13 @@ home.__section__ = 'Timeline'
 @command
 def fed(mastodon, rest):
     """Displays the Federated timeline."""
-    for toot in reversed(mastodon.timeline_public()):
-        printToot(toot)
-        completion_add(toot)
+    stepper, rest = step_flag(rest)
+    print_toots(
+        mastodon,
+        mastodon.timeline_public(),
+        stepper,
+        ctx_name='federated timeline')
+
 fed.__argstr__ = ''
 fed.__section__ = 'Timeline'
 
@@ -1093,9 +1247,9 @@ fed.__section__ = 'Timeline'
 @command
 def local(mastodon, rest):
     """Displays the Local timeline."""
-    for toot in reversed(mastodon.timeline_local()):
-        printToot(toot)
-        completion_add(toot)
+    stepper, rest = step_flag(rest)
+    print_toots(mastodon, mastodon.timeline_local(), stepper, ctx_name='local timeline')
+
 local.__argstr__ = ''
 local.__section__ = 'Timeline'
 
@@ -1104,33 +1258,77 @@ local.__section__ = 'Timeline'
 def stream(mastodon, rest):
     """Streams a timeline. Specify home, fed, local, list, or a #hashtagname.
 
-Timeline 'list' requires a list name (ex: stream list listname).
+    Timeline 'list' requires a list name (ex: stream list listname).
 
-Use ctrl+C to end streaming"""
-    print("Use ctrl+C to end streaming")
+    Commands may be typed while streaming (ex: fav 23).
+
+    Only one stream may be running at a time.
+
+    Use ctrl+C to end streaming"""
+
+    global is_streaming
+    if is_streaming:
+        cprint("Already streaming. Press ctrl+c to end this stream.", fg('red'))
+        return
+
+    cprint("Initializing stream...", style=fg('magenta'))
+
+    def say_error(*args, **kwargs):
+        cprint("Invalid command. Use 'help' for a list of commands or press ctrl+c to end streaming.",
+        fg('white') + bg('red'))
+
     try:
         if rest == "home" or rest == "":
-            mastodon.stream_user(toot_listener)
+            handle = mastodon.stream_user(toot_listener, async=True)
         elif rest == "fed" or rest == "public":
-            mastodon.stream_public(toot_listener)
+            handle = mastodon.stream_public(toot_listener, async=True)
         elif rest == "local":
-            mastodon.stream_local(toot_listener)
+            handle = mastodon.stream_local(toot_listener, async=True)
         elif rest.startswith('list'):
-            items = rest.split(' ')
+            # Remove list from the rest string
+            items = rest.split('list ')
             if len(items) < 2:
                 print("list stream must have a list ID.")
                 return
             item = get_list_id(mastodon, items[-1])
-            mastodon.stream_list(item, toot_listener)
+            if not item or item == -1:
+                cprint("List {} is not found".format(items[-1]), fg('red'))
+                return
+
+            handle = mastodon.stream_list(item, toot_listener, async=True)
         elif rest.startswith('#'):
             tag = rest[1:]
-            mastodon.stream_hashtag(tag, toot_listener)
+            handle = mastodon.stream_hashtag(tag, toot_listener, async=True)
         else:
+            handle = None
             print("Only 'home', 'fed', 'local', 'list', and '#hashtag' streams are supported.")
     except KeyboardInterrupt:
-        pass
+        # Prevent the ^C from interfering with the prompt
+        print("\n")
     except Exception as e:
         cprint("Something went wrong: {}".format(e), fg('red'))
+    else:
+        print("Use 'help' for a list of commands or press ctrl+c to end streaming.")
+
+    if handle is not None:
+        is_streaming = True
+        command = None
+        while command != "abort":
+            try:
+                command = input().split(' ', 1)
+            except KeyboardInterrupt:
+                cprint("Wrapping up, this can take a couple of seconds...", style=fg('magenta'))
+                command = "abort"
+            else:
+                try:
+                    rest_ = command[1]
+                except IndexError:
+                    rest_ = ""
+                command = command[0]
+                cmd_func = commands.get(command, say_error)
+                cmd_func(mastodon, rest_)
+        handle.close()
+        is_streaming = False
 stream.__argstr__ = '<timeline>'
 stream.__section__ = 'Timeline'
 
@@ -1161,7 +1359,12 @@ def note(mastodon, rest):
         print('')
         return
 
-    for note in reversed(mastodon.notifications()):
+    notifications = mastodon.notifications()
+    if not(len(notifications) > 0):
+        cprint("You don't have any notifications yet.", fg('magenta'))
+        return
+
+    for note in reversed(notifications):
         display_name = "  " + format_display_name(note['account']['display_name'])
         username = format_username(note['account'])
         note_id = str(note['id'])
@@ -1395,6 +1598,7 @@ def search(mastodon, rest):
          search @user@instance.example.com"""
     usage = str( "  usage: search #tagname\n" +
                  "         search @username" )
+    stepper, rest = step_flag(rest)
     try:
         indicator = rest[:1]
         query = rest[1:]
@@ -1412,8 +1616,8 @@ def search(mastodon, rest):
 
     # # hashtag search
     elif indicator == "#" and not query == "":
-        for toot in reversed(mastodon.timeline_hashtag(query)):
-            printToot(toot)
+        print_toots(mastodon, mastodon.timeline_hashtag(query), stepper,
+            ctx_name='search for #{}'.format(query), add_completion=False)
     # end #
 
     else:
@@ -1454,9 +1658,9 @@ def view(mastodon, rest):
     elif userid == -1:
         cprint("  username not found", fg('red'))
     else:
-        for toot in reversed(mastodon.account_statuses(userid, limit=count)):
-            printToot(toot)
 
+        print_toots(mastodon, mastodon.account_statuses(userid, limit=count), 
+            ctx_name="user timeline", add_completion=False)
     return
 view.__argstr__ = '<user> [<N>]'
 view.__section__ = 'Discover'
@@ -1606,8 +1810,8 @@ reject.__section__ = 'Profile'
 @command
 def faves(mastodon, rest):
     """Displays posts you've favourited."""
-    for toot in reversed(mastodon.favourites()):
-        printToot(toot)
+    print_toots(mastodon, mastodon.favourites(), 
+        ctx_name='favourites', add_completion=False)
 faves.__argstr__ = ''
 faves.__section__ = 'Profile'
 
@@ -1735,6 +1939,7 @@ def listhome(mastodon, rest):
     if not rest:
         cprint("Argument required.", fg('red'))
         return
+    stepper, rest = step_flag(rest)
 
     try:
         item = get_list_id(mastodon, rest)
@@ -1742,9 +1947,8 @@ def listhome(mastodon, rest):
             cprint("List {} is not found".format(rest), fg('red'))
             return
         list_toots = mastodon.timeline_list(item)
-        for toot in reversed(list_toots):
-            printToot(toot)
-            completion_add(toot)
+        print_toots(mastodon, list_toots, stepper, ctx_name='list')
+
     except Exception as e:
         cprint("error while displaying list: {}".format(type(e).__name__), fg('red'))
 listhome.__argstr__ = '<list>'
@@ -1936,9 +2140,12 @@ def main(instance, config, profile):
             rest = command[1]
         except IndexError:
             pass
-        command = command[0]
-        cmd_func = commands.get(command, say_error)
-        cmd_func(mastodon, rest)
+        try:
+            command = command[0]
+            cmd_func = commands.get(command, say_error)
+            cmd_func(mastodon, rest)
+        except Exception as e:
+            cprint(e, fg('red'))
 
 
 if __name__ == '__main__':
