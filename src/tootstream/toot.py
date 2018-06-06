@@ -1279,11 +1279,11 @@ def stream(mastodon, rest):
 
     try:
         if rest == "home" or rest == "":
-            handle = mastodon.stream_user(toot_listener, async=True)
+            handle = mastodon.stream_user(toot_listener, run_async=True)
         elif rest == "fed" or rest == "public":
-            handle = mastodon.stream_public(toot_listener, async=True)
+            handle = mastodon.stream_public(toot_listener, run_async=True)
         elif rest == "local":
-            handle = mastodon.stream_local(toot_listener, async=True)
+            handle = mastodon.stream_local(toot_listener, run_async=True)
         elif rest.startswith('list'):
             # Remove list from the rest string
             items = rest.split('list ')
