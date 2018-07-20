@@ -1880,7 +1880,7 @@ listcreate.__section__ = 'List'
 def listrename(mastodon, rest):
     """Rename a list.
     ex:  listrename oldlist newlist"""
-    if not(list_supportmastodon()):
+    if not(list_support(mastodon)):
         return
     rest = rest.strip()
     if not rest:
