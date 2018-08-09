@@ -5,7 +5,17 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Release
-### [0.3.4] - TBD
+### [0.3.5] - 2018-08-08
+
+#### Added
+- Updated to Mastodon.py 1.3 (no additional features yet)
+
+#### Fixed
+- List renames did not work
+
+
+### Release
+### [0.3.4] - 2018-05-30
 
 #### Added
 - Added ability to execute commands while streaming (toot, fav, rep, etc.)
@@ -15,7 +25,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Display media links by default
 - Display message when no notifications are present
 
-### Fixed
+#### Fixed
 - Privacy settings now default to server privacy settings for toots
 - CTRL-C in streaming adds a linefeed to preserve prompt spacing
 - Streaming now supports lists with spaces
