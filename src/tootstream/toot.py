@@ -1295,10 +1295,10 @@ def stream(mastodon, rest):
                 cprint("List {} is not found".format(items[-1]), fg('red'))
                 return
 
-            handle = mastodon.stream_list(item, toot_listener, async=True)
+            handle = mastodon.stream_list(item, toot_listener, run_async=True)
         elif rest.startswith('#'):
             tag = rest[1:]
-            handle = mastodon.stream_hashtag(tag, toot_listener, async=True)
+            handle = mastodon.stream_hashtag(tag, toot_listener, run_async=True)
         else:
             handle = None
             print("Only 'home', 'fed', 'local', 'list', and '#hashtag' streams are supported.")
