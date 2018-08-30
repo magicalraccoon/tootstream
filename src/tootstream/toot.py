@@ -1058,7 +1058,7 @@ boost.__section__ = 'Toots'
 
 @command
 def unboost(mastodon, rest):
-    """Removes a boosted tweet by ID."""
+    """Removes a boosted toot by ID."""
     rest = IDS.to_global(rest)
     if rest is None:
         return
