@@ -1769,7 +1769,7 @@ def accept(mastodon, rest):
         try:
             mastodon.follow_request_authorize(userid)
         except:
-            cprint("  ... well, it *looked* like it was working ...", fg('red'))
+            cprint("  Error, unable to accept request.", fg('red'))
             return
 
         # assume it worked if no exception
@@ -1796,7 +1796,7 @@ def reject(mastodon, rest):
         try:
             mastodon.follow_request_reject(userid)
         except:
-            cprint("  ... well, it *looked* like it was working ...", fg('red'))
+            cprint("  Error, unable to reject request.", fg('red'))
             return
 
         # assume it worked if no exception
