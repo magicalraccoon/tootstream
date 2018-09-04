@@ -1,4 +1,4 @@
-oimport os.path
+import os.path
 import click
 import getpass
 import sys
