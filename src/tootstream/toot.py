@@ -1481,7 +1481,7 @@ def unblock(mastodon, rest):
             if not relations['blocking']:
                 cprint("  user " + str(userid) + " is now unblocked", fg('blue'))
         except:
-            cprint("  Error, unable to unblock", fg('red'))
+            cprint("  Error, unable to unblock.", fg('red'))
 unblock.__argstr__ = '<user>'
 unblock.__section__ = 'Users'
 
@@ -1508,7 +1508,7 @@ def follow(mastodon, rest):
                 if username not in completion_list:
                     bisect.insort(completion_list, username)
         except:
-            cprint("  ... well, it *looked* like it was working ...", fg('red'))
+            cprint("  Error, unable to follow.", fg('red'))
 follow.__argstr__ = '<user>'
 follow.__section__ = 'Users'
 
@@ -1535,7 +1535,7 @@ def unfollow(mastodon, rest):
             if username in completion_list:
                 completion_list.remove(username)
         except:
-            cprint("  ... well, it *looked* like it was working ...", fg('red'))
+            cprint("  Error, unable to unfollow.", fg('red'))
 unfollow.__argstr__ = '<user>'
 unfollow.__section__ = 'Users'
 
@@ -1559,7 +1559,7 @@ def mute(mastodon, rest):
             if relations['muting']:
                 cprint("  user " + str(userid) + " is now muted", fg('blue'))
         except:
-            cprint("  ... well, it *looked* like it was working ...", fg('red'))
+            cprint("  Error, unable to mute.", fg('red'))
 mute.__argstr__ = '<user>'
 mute.__section__ = 'Users'
 
@@ -1583,7 +1583,7 @@ def unmute(mastodon, rest):
             if not relations['muting']:
                 cprint("  user " + str(userid) + " is now unmuted", fg('blue'))
         except:
-            cprint("  ... well, it *looked* like it was working ...", fg('red'))
+            cprint("  Error, unable to unmute.", fg('red'))
 unmute.__argstr__ = '<user>'
 unmute.__section__ = 'Users'
 
