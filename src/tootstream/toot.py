@@ -1481,7 +1481,7 @@ def unblock(mastodon, rest):
             if not relations['blocking']:
                 cprint("  user " + str(userid) + " is now unblocked", fg('blue'))
         except:
-            cprint("  ... well, it *looked* like it was working ...", fg('red'))
+            cprint("  Error, unable to unblock", fg('red'))
 unblock.__argstr__ = '<user>'
 unblock.__section__ = 'Users'
 
