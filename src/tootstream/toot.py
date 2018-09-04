@@ -1,4 +1,4 @@
-import os.path
+oimport os.path
 import click
 import getpass
 import sys
@@ -22,7 +22,7 @@ import webbrowser
 import pkg_resources  # part of setuptools
 version = pkg_resources.require("tootstream")[0].version
 
-# placeholder variable for converting enoji to shortcodes until we get it in config
+# placeholder variable for converting emoji to shortcodes until we get it in config
 convert_emoji_to_shortcode = False
 
 # placeholder variable for showing media links until we get it in config
@@ -1659,7 +1659,7 @@ def view(mastodon, rest):
         cprint("  username not found", fg('red'))
     else:
 
-        print_toots(mastodon, mastodon.account_statuses(userid, limit=count), 
+        print_toots(mastodon, mastodon.account_statuses(userid, limit=count),
             ctx_name="user timeline", add_completion=False)
     return
 view.__argstr__ = '<user> [<N>]'
@@ -1810,7 +1810,7 @@ reject.__section__ = 'Profile'
 @command
 def faves(mastodon, rest):
     """Displays posts you've favourited."""
-    print_toots(mastodon, mastodon.favourites(), 
+    print_toots(mastodon, mastodon.favourites(),
         ctx_name='favourites', add_completion=False)
 faves.__argstr__ = ''
 faves.__section__ = 'Profile'
