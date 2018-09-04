@@ -39,7 +39,6 @@ GLYPHS = {
     'fave':          '\U00002665', # Black Heart Suit
     'boost':         '\U0000267a', # Recycling Symbol for generic materials
     'mentions':      '\U0000270e', # Lower Right Pencil
-    'pineapple':     '\U0001f34d', # pineapple
     'toots':         '\U0001f4ea', # mailbox (for toot counts)
     # next key matches key in user dict
     'locked':        '\U0001f512', # lock (masto web uses U+F023 from FontAwesome)
