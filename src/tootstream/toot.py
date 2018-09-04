@@ -1457,7 +1457,7 @@ def block(mastodon, rest):
             if relations['blocking']:
                 cprint("  user " + str(userid) + " is now blocked", fg('blue'))
         except:
-            cprint("  ... well, it *looked* like it was working ...", fg('red'))
+            cprint(" Error, unable to block.", fg('red'))
 block.__argstr__ = '<user>'
 block.__section__ = 'Users'
 
