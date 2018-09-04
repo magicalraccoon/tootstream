@@ -1263,7 +1263,7 @@ def stream(mastodon, rest):
 
     Only one stream may be running at a time.
 
-    Use ctrl+C to end streaming"""
+    Use ctrl+c to end streaming"""
 
     global is_streaming
     if is_streaming:
