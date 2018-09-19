@@ -1212,7 +1212,9 @@ def links(mastodon, rest):
         >>> links 23 open 1  # to open just the first link
     """
 
-    args = rest.split(' ')
+    # replace whitespace sequences with a single space
+    args = ' '.join(rest.split())
+    args = args.split()
     if len(args) < 1:
         return
 
