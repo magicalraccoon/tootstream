@@ -1160,6 +1160,46 @@ thread.__section__ = 'Toots'
 
 
 @command
+def puburl(mastodon, rest):
+    """Shows the public URL of a toot, optionally open in browser.
+
+    Example:
+        >>> puburl 29
+        >>> puburl 29 open
+    """
+
+    # replace whitespace sequences with a single space
+    args = ' '.join(rest.split())
+    args = args.split()
+    if len(args) < 1:
+        return
+
+    status_id = IDS.to_global(args[0])
+    if status_id is None:
+        return
+
+    try:
+        toot = mastodon.status(status_id)
+    except Exception as e:
+        cprint("{}: please try again later".format(
+            type(e).__name__),
+            fg('red'))
+    else:
+        url = toot.get('url')
+
+    if len(args) == 1:
+        # Print public url
+        print("{}".format(url))
+    elif len(args) == 2 and args[1] == 'open':
+        webbrowser.open(url)
+    else:
+        cprint("PubURL argument was not correct. Please try again.", fg('red'))
+
+puburl.__argstr__ = '<id>'
+puburl.__section__ = 'Toots'
+
+
+@command
 def links(mastodon, rest):
     """Show URLs or any links in a toot, optionally open in browser.
 
