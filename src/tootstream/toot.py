@@ -1164,8 +1164,8 @@ def puburl(mastodon, rest):
     """Shows the public URL of a toot, optionally open in browser.
 
     Example:
-        >>> puburl 29
-        >>> puburl 29 open
+        >>> puburl 29       # Shows url for toot 29
+        >>> puburl 29 open  # Opens toot 29 in your browser
     """
 
     # replace whitespace sequences with a single space
@@ -1207,9 +1207,9 @@ def links(mastodon, rest):
     open a specific link.
 
     Examples:
-        >>> links 23
-        >>> links 23 open
-        >>> links 23 open 1  # to open just the first link
+        >>> links 23         # Shows links for toot 23
+        >>> links 23 open    # opens all links for toot 23 in your browser
+        >>> links 23 open 1  # opens just the first link for toot 23 in your browser
     """
 
     # replace whitespace sequences with a single space
