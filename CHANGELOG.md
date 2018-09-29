@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 #### Fixed
 - Upgrade to Mastodon 1.3.1 fixes searching for users issue noted in 0.3.5
 - Spelling mistakes 
+- Added better error message for streaming support not supported on older mastodon instances
 
 ### Release
 ### [0.3.5] - 2018-08-08
