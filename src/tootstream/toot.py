@@ -1346,6 +1346,11 @@ def stream(mastodon, rest):
     except KeyboardInterrupt:
         # Prevent the ^C from interfering with the prompt
         print("\n")
+    except KeyError as e:
+        if getattr(e, 'args', None) == ('urls',):
+            cprint("The Mastodon instance is too old for this version of streaming support.", fg('red'))
+        else:
+            cprint("Something went wrong: {}".format(e), fg('red'))
     except Exception as e:
         cprint("Something went wrong: {}".format(e), fg('red'))
     else:
