@@ -5,6 +5,19 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Release
+### [0.3.6] - 2018-09-29
+
+#### Added
+- Updated to Mastodon 1.3.1 (No additional features yet)
+- Added links command to show links in a toot and optionally open them in a browser
+- Added puburl command to show the public URL of a toot
+
+#### Fixed
+- Upgrade to Mastodon 1.3.1 fixes searching for users issue noted in 0.3.5
+- Spelling mistakes 
+- Added better error message for streaming support not supported on older mastodon instances
+
+### Release
 ### [0.3.5] - 2018-08-08
 
 #### Added

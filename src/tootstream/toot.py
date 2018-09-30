@@ -22,7 +22,7 @@ import webbrowser
 import pkg_resources  # part of setuptools
 version = pkg_resources.require("tootstream")[0].version
 
-# placeholder variable for converting enoji to shortcodes until we get it in config
+# placeholder variable for converting emoji to shortcodes until we get it in config
 convert_emoji_to_shortcode = False
 
 # placeholder variable for showing media links until we get it in config
@@ -39,7 +39,6 @@ GLYPHS = {
     'fave':          '\U00002665', # Black Heart Suit
     'boost':         '\U0000267a', # Recycling Symbol for generic materials
     'mentions':      '\U0000270e', # Lower Right Pencil
-    'pineapple':     '\U0001f34d', # pineapple
     'toots':         '\U0001f4ea', # mailbox (for toot counts)
     # next key matches key in user dict
     'locked':        '\U0001f512', # lock (masto web uses U+F023 from FontAwesome)
@@ -1058,7 +1057,7 @@ boost.__section__ = 'Toots'
 
 @command
 def unboost(mastodon, rest):
-    """Removes a boosted tweet by ID."""
+    """Removes a boosted toot by ID."""
     rest = IDS.to_global(rest)
     if rest is None:
         return
@@ -1161,6 +1160,46 @@ thread.__section__ = 'Toots'
 
 
 @command
+def puburl(mastodon, rest):
+    """Shows the public URL of a toot, optionally open in browser.
+
+    Example:
+        >>> puburl 29       # Shows url for toot 29
+        >>> puburl 29 open  # Opens toot 29 in your browser
+    """
+
+    # replace whitespace sequences with a single space
+    args = ' '.join(rest.split())
+    args = args.split()
+    if len(args) < 1:
+        return
+
+    status_id = IDS.to_global(args[0])
+    if status_id is None:
+        return
+
+    try:
+        toot = mastodon.status(status_id)
+    except Exception as e:
+        cprint("{}: please try again later".format(
+            type(e).__name__),
+            fg('red'))
+    else:
+        url = toot.get('url')
+
+    if len(args) == 1:
+        # Print public url
+        print("{}".format(url))
+    elif len(args) == 2 and args[1] == 'open':
+        webbrowser.open(url)
+    else:
+        cprint("PubURL argument was not correct. Please try again.", fg('red'))
+
+puburl.__argstr__ = '<id>'
+puburl.__section__ = 'Toots'
+
+
+@command
 def links(mastodon, rest):
     """Show URLs or any links in a toot, optionally open in browser.
 
@@ -1168,12 +1207,14 @@ def links(mastodon, rest):
     open a specific link.
 
     Examples:
-        >>> links 23
-        >>> links 23 open
-        >>> links 23 open 1  # to open just the first link
+        >>> links 23         # Shows links for toot 23
+        >>> links 23 open    # opens all links for toot 23 in your browser
+        >>> links 23 open 1  # opens just the first link for toot 23 in your browser
     """
 
-    args = rest.split(' ')
+    # replace whitespace sequences with a single space
+    args = ' '.join(rest.split())
+    args = args.split()
     if len(args) < 1:
         return
 
@@ -1264,7 +1305,7 @@ def stream(mastodon, rest):
 
     Only one stream may be running at a time.
 
-    Use ctrl+C to end streaming"""
+    Use ctrl+c to end streaming"""
 
     global is_streaming
     if is_streaming:
@@ -1295,16 +1336,21 @@ def stream(mastodon, rest):
                 cprint("List {} is not found".format(items[-1]), fg('red'))
                 return
 
-            handle = mastodon.stream_list(item, toot_listener, async=True)
+            handle = mastodon.stream_list(item, toot_listener, run_async=True)
         elif rest.startswith('#'):
             tag = rest[1:]
-            handle = mastodon.stream_hashtag(tag, toot_listener, async=True)
+            handle = mastodon.stream_hashtag(tag, toot_listener, run_async=True)
         else:
             handle = None
             print("Only 'home', 'fed', 'local', 'list', and '#hashtag' streams are supported.")
     except KeyboardInterrupt:
         # Prevent the ^C from interfering with the prompt
         print("\n")
+    except KeyError as e:
+        if getattr(e, 'args', None) == ('urls',):
+            cprint("The Mastodon instance is too old for this version of streaming support.", fg('red'))
+        else:
+            cprint("Something went wrong: {}".format(e), fg('red'))
     except Exception as e:
         cprint("Something went wrong: {}".format(e), fg('red'))
     else:
@@ -1458,7 +1504,7 @@ def block(mastodon, rest):
             if relations['blocking']:
                 cprint("  user " + str(userid) + " is now blocked", fg('blue'))
         except:
-            cprint("  ... well, it *looked* like it was working ...", fg('red'))
+            cprint(" Error, unable to block.", fg('red'))
 block.__argstr__ = '<user>'
 block.__section__ = 'Users'
 
@@ -1482,7 +1528,7 @@ def unblock(mastodon, rest):
             if not relations['blocking']:
                 cprint("  user " + str(userid) + " is now unblocked", fg('blue'))
         except:
-            cprint("  ... well, it *looked* like it was working ...", fg('red'))
+            cprint("  Error, unable to unblock.", fg('red'))
 unblock.__argstr__ = '<user>'
 unblock.__section__ = 'Users'
 
@@ -1509,7 +1555,7 @@ def follow(mastodon, rest):
                 if username not in completion_list:
                     bisect.insort(completion_list, username)
         except:
-            cprint("  ... well, it *looked* like it was working ...", fg('red'))
+            cprint("  Error, unable to follow.", fg('red'))
 follow.__argstr__ = '<user>'
 follow.__section__ = 'Users'
 
@@ -1536,7 +1582,7 @@ def unfollow(mastodon, rest):
             if username in completion_list:
                 completion_list.remove(username)
         except:
-            cprint("  ... well, it *looked* like it was working ...", fg('red'))
+            cprint("  Error, unable to unfollow.", fg('red'))
 unfollow.__argstr__ = '<user>'
 unfollow.__section__ = 'Users'
 
@@ -1560,7 +1606,7 @@ def mute(mastodon, rest):
             if relations['muting']:
                 cprint("  user " + str(userid) + " is now muted", fg('blue'))
         except:
-            cprint("  ... well, it *looked* like it was working ...", fg('red'))
+            cprint("  Error, unable to mute.", fg('red'))
 mute.__argstr__ = '<user>'
 mute.__section__ = 'Users'
 
@@ -1584,7 +1630,7 @@ def unmute(mastodon, rest):
             if not relations['muting']:
                 cprint("  user " + str(userid) + " is now unmuted", fg('blue'))
         except:
-            cprint("  ... well, it *looked* like it was working ...", fg('red'))
+            cprint("  Error, unable to unmute.", fg('red'))
 unmute.__argstr__ = '<user>'
 unmute.__section__ = 'Users'
 
@@ -1659,7 +1705,7 @@ def view(mastodon, rest):
         cprint("  username not found", fg('red'))
     else:
 
-        print_toots(mastodon, mastodon.account_statuses(userid, limit=count), 
+        print_toots(mastodon, mastodon.account_statuses(userid, limit=count),
             ctx_name="user timeline", add_completion=False)
     return
 view.__argstr__ = '<user> [<N>]'
@@ -1770,7 +1816,7 @@ def accept(mastodon, rest):
         try:
             mastodon.follow_request_authorize(userid)
         except:
-            cprint("  ... well, it *looked* like it was working ...", fg('red'))
+            cprint("  Error, unable to accept request.", fg('red'))
             return
 
         # assume it worked if no exception
@@ -1797,7 +1843,7 @@ def reject(mastodon, rest):
         try:
             mastodon.follow_request_reject(userid)
         except:
-            cprint("  ... well, it *looked* like it was working ...", fg('red'))
+            cprint("  Error, unable to reject request.", fg('red'))
             return
 
         # assume it worked if no exception
@@ -1810,7 +1856,7 @@ reject.__section__ = 'Profile'
 @command
 def faves(mastodon, rest):
     """Displays posts you've favourited."""
-    print_toots(mastodon, mastodon.favourites(), 
+    print_toots(mastodon, mastodon.favourites(),
         ctx_name='favourites', add_completion=False)
 faves.__argstr__ = ''
 faves.__section__ = 'Profile'
