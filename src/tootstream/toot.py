@@ -1320,11 +1320,14 @@ def stream(mastodon, rest):
 
     try:
         if rest == "home" or rest == "":
-            handle = mastodon.stream_user(toot_listener, run_async=True)
+            handle = mastodon.stream_user(toot_listener, run_async=True,
+                                          reconnect_async=True)
         elif rest == "fed" or rest == "public":
-            handle = mastodon.stream_public(toot_listener, run_async=True)
+            handle = mastodon.stream_public(toot_listener, run_async=True,
+                                            reconnect_async=True)
         elif rest == "local":
-            handle = mastodon.stream_local(toot_listener, run_async=True)
+            handle = mastodon.stream_local(toot_listener, run_async=True,
+                                           reconnect_async=True)
         elif rest.startswith('list'):
             # Remove list from the rest string
             items = rest.split('list ')
@@ -1336,10 +1339,12 @@ def stream(mastodon, rest):
                 cprint("List {} is not found".format(items[-1]), fg('red'))
                 return
 
-            handle = mastodon.stream_list(item, toot_listener, run_async=True)
+            handle = mastodon.stream_list(item, toot_listener, run_async=True,
+                                          reconnect_async=True)
         elif rest.startswith('#'):
             tag = rest[1:]
-            handle = mastodon.stream_hashtag(tag, toot_listener, run_async=True)
+            handle = mastodon.stream_hashtag(tag, toot_listener, run_async=True,
+                                             reconnect_async=True)
         else:
             handle = None
             print("Only 'home', 'fed', 'local', 'list', and '#hashtag' streams are supported.")
