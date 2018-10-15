@@ -514,6 +514,7 @@ def register_app(instance):
     raises a Mastodon exception otherwise.
     """
     return Mastodon.create_app( 'tootstream',
+                                scopes=['read', 'write', 'follow'],
                                 api_base_url="https://" + instance )
 
 
@@ -533,11 +534,11 @@ def login(instance, client_id, client_secret):
     )
 
     print("Click the link to authorize login.")
-    print(mastodon.auth_request_url())
+    print(mastodon.auth_request_url(scopes=['read', 'write', 'follow']))
     print()
     code = input("Enter the code you received >")
 
-    return mastodon.log_in(code = code)
+    return mastodon.log_in(code = code, scopes=['read', 'write', 'follow'])
 
 
 def get_or_input_profile(config, profile, instance=None):
