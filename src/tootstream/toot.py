@@ -62,12 +62,13 @@ GLYPHS = {
 # reserved config sections (disallowed as profile names)
 RESERVED = ( "theme", "global" )
 
+# if the var `TOOTSTREAM_PROFILE` isn't defined, then none of the environment variables will be used!!
+PROFILE_OVERRIDE = 'TOOTSTREAM_PROFILE'
 ENVIRONMENT_OVERRIDES = {
-    'profile': "TOOTSTREAM_PROFILE",
-    'instance': "TOOTSTREAM_"+os.getenv("TOOTSTREAM_PROFILE", "").upper()+"_INSTANCE",
-    'client_id': "TOOTSTREAM_"+os.getenv("TOOTSTREAM_PROFILE", "").upper()+"_CLIENT_ID",
-    'client_secret': "TOOTSTREAM_"+os.getenv("TOOTSTREAM_PROFILE", "").upper()+"_CLIENT_SECRET",
-    'token': "TOOTSTREAM_"+os.getenv("TOOTSTREAM_PROFILE", "").upper()+"_TOKEN",
+    'instance': 'TOOTSTREAM_'+os.getenv(PROFILE_OVERRIDE,'').upper()+'_INSTANCE',
+    'client_id': 'TOOTSTREAM_'+os.getenv(PROFILE_OVERRIDE, '').upper()+'_CLIENT_ID',
+    'client_secret': 'TOOTSTREAM_'+os.getenv(PROFILE_OVERRIDE, '').upper()+'_CLIENT_SECRET',
+    'token': 'TOOTSTREAM_'+os.getenv(PROFILE_OVERRIDE, '').upper()+'_TOKEN',
 }
 
 
@@ -2155,7 +2156,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
                type=click.Path(exists=False, readable=True),
                default='~/.config/tootstream/tootstream.conf',
                help='Location of alternate configuration file to load' )
-@click.option( '--profile', '-P', metavar='<profile>', default=os.getenv('TOOTSTREAM_PROFILE', 'default'),
+@click.option( '--profile', '-P', metavar='<profile>', default=os.getenv(PROFILE_OVERRIDE, 'default'),
                help='Name of profile for saved credentials (default)' )
 def main(instance, config, profile):
     configpath = os.path.expanduser(config)
@@ -2189,7 +2190,6 @@ def main(instance, config, profile):
         api_base_url="https://" + instance)
 
 
-
     # update config before writing
     if "token" not in config[profile]:
         config[profile] = {
@@ -2199,7 +2199,7 @@ def main(instance, config, profile):
                 'token': token
         }
 
-    if not (os.getenv(ENVIRONMENT_OVERRIDES['profile']) == profile):
+    if not (os.getenv(PROFILE_OVERRIDE) == profile):
         save_config(configpath, config)
 
     say_error = lambda a, b: cprint("Invalid command. Use 'help' for a list of commands.",
