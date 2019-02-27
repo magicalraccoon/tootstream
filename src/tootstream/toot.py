@@ -551,21 +551,47 @@ def get_or_input_profile(config, profile, instance=None):
     client_id, client_secret, token.
     On failure, returns None, None, None, None.
     """
-    # shortcut for preexisting profiles
-    if config.has_section(profile):
-        try:
-            return  config[profile]['instance'], \
-                    config[profile]['client_id'], \
-                    config[profile]['client_secret'], \
-                    config[profile]['token']
-        except:
-            pass
-    else:
+
+    """
+    If there are any user-defined environment variables, then use those as
+    overrides to whatever is stored in the config file. This may be done to
+    ensure sensitive data does not get leaked in dot-files, as well as in
+    development work where you may want to a different user or env without
+    saving that to a config file.
+
+    With the exception of the `instance` varaible, all will default to "None"
+    if there is no suitable environment variable defined. The purpose is to
+    make these environment variables temporary overrides, rather than a holistic
+    solution, and any unprovided data will be filled in with the contents of the
+    config file.
+
+    The name of the profile is set on launch by `TOOTSTREAM_PROFILE` (if not
+    provided, will fall back to "default"). The value that variable contains
+    (if define) will dictate which profile to use. The data necessary for a
+    profile includes:
+        1. Instance address
+        2. Client Id
+        3. Client Secret
+        4. App Token
+    These bits of data are provided by (respectfully):
+        1. TOOTSTREAM_..._INSTANCE
+        2. TOOTSTREAM_..._CLIENT_ID
+        3. TOOTSTREAM_..._CLIENT_SECRET
+        4. TOOTSTREAM_..._TOKEN
+    Where the elipses are substituted with the uppercase value of the provided
+    profile name.
+    """
+    instance = os.getenv("TOOTSTREAM_"+profile.upper()+"_INSTANCE", instance)
+    client_id = os.getenv("TOOTSTREAM_"+profile.upper()+"_CLIENT_ID")
+    client_secret = os.getenv("TOOTSTREAM_"+profile.upper()+"_CLIENT_SECRET")
+    token = os.getenv("TOOTSTREAM_"+profile.upper()+"_TOKEN")
+
+    # if there is no section for this profile in the config, then make one
+    if not config.has_section(profile):
         config.add_section(profile)
 
     # no existing profile or it's incomplete
-    if (instance != None):
-        # Nothing to do, just use value passed on the command line
+    if instance:
         pass
     elif "instance" in config[profile]:
         instance = config[profile]['instance']
@@ -574,12 +600,14 @@ def get_or_input_profile(config, profile, instance=None):
         instance = input("  Instance: ")
 
 
-    client_id = None
-    if "client_id" in config[profile]:
+    if client_id:
+        pass
+    elif "client_id" in config[profile]:
         client_id = config[profile]['client_id']
 
-    client_secret = None
-    if "client_secret" in config[profile]:
+    if client_secret:
+        pass
+    elif "client_secret" in config[profile]:
         client_secret = config[profile]['client_secret']
 
     if (client_id == None or client_secret == None):
@@ -589,8 +617,9 @@ def get_or_input_profile(config, profile, instance=None):
             cprint("{}: please try again later".format(type(e).__name__), fg('red'))
             return None, None, None, None
 
-    token = None
-    if "token" in config[profile]:
+    if token:
+        pass
+    elif "token" in config[profile]:
         token = config[profile]['token']
 
     if (token == None):
@@ -2118,7 +2147,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
                type=click.Path(exists=False, readable=True),
                default='~/.config/tootstream/tootstream.conf',
                help='Location of alternate configuration file to load' )
-@click.option( '--profile', '-P', metavar='<profile>', default='default',
+@click.option( '--profile', '-P', metavar='<profile>', default=os.getenv('TOOTSTREAM_PROFILE', 'default'),
                help='Name of profile for saved credentials (default)' )
 def main(instance, config, profile):
     configpath = os.path.expanduser(config)
