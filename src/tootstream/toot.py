@@ -62,6 +62,14 @@ GLYPHS = {
 # reserved config sections (disallowed as profile names)
 RESERVED = ( "theme", "global" )
 
+ENVIRONMENT_OVERRIDES = {
+    'profile': "TOOTSTREAM_PROFILE",
+    'instance': "TOOTSTREAM_"+os.getenv("TOOTSTREAM_PROFILE", "").upper()+"_INSTANCE",
+    'client_id': "TOOTSTREAM_"+os.getenv("TOOTSTREAM_PROFILE", "").upper()+"_CLIENT_ID",
+    'client_secret': "TOOTSTREAM_"+os.getenv("TOOTSTREAM_PROFILE", "").upper()+"_CLIENT_SECRET",
+    'token': "TOOTSTREAM_"+os.getenv("TOOTSTREAM_PROFILE", "").upper()+"_TOKEN",
+}
+
 
 class IdDict:
     """Represents a mapping of local (tootstream) ID's to global
@@ -581,10 +589,10 @@ def get_or_input_profile(config, profile, instance=None):
     Where the elipses are substituted with the uppercase value of the provided
     profile name.
     """
-    instance = os.getenv("TOOTSTREAM_"+profile.upper()+"_INSTANCE", instance)
-    client_id = os.getenv("TOOTSTREAM_"+profile.upper()+"_CLIENT_ID")
-    client_secret = os.getenv("TOOTSTREAM_"+profile.upper()+"_CLIENT_SECRET")
-    token = os.getenv("TOOTSTREAM_"+profile.upper()+"_TOKEN")
+    instance = os.getenv(ENVIRONMENT_OVERRIDES['instance'], instance)
+    client_id = os.getenv(ENVIRONMENT_OVERRIDES['client_id'])
+    client_secret = os.getenv(ENVIRONMENT_OVERRIDES['client_secret'])
+    token = os.getenv(ENVIRONMENT_OVERRIDES['token'])
 
     # if there is no section for this profile in the config, then make one
     if not config.has_section(profile):
@@ -2181,6 +2189,7 @@ def main(instance, config, profile):
         api_base_url="https://" + instance)
 
 
+
     # update config before writing
     if "token" not in config[profile]:
         config[profile] = {
@@ -2190,7 +2199,8 @@ def main(instance, config, profile):
                 'token': token
         }
 
-    save_config(configpath, config)
+    if not (os.getenv(ENVIRONMENT_OVERRIDES['profile']) == profile):
+        save_config(configpath, config)
 
     say_error = lambda a, b: cprint("Invalid command. Use 'help' for a list of commands.",
             fg('white') + bg('red'))
