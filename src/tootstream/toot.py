@@ -72,7 +72,6 @@ class IdDict:
     def to_local(self, global_id):
         """Returns the local ID for a global ID"""
         try:
-            global_id = int(global_id) # In case a string gets passed
             return self._map.index(global_id)
         except ValueError:
             self._map.append(global_id)
@@ -1006,7 +1005,7 @@ def rep(mastodon, rest):
     while posted is False:
         try:
             reply_toot = mastodon.status_post('%s %s' % (mentions, text),
-                                              in_reply_to_id=int(parent_id),
+                                              in_reply_to_id=parent_id,
                                               **kwargs)
             msg = "  Replied with: " + get_content(reply_toot)
             cprint(msg, fg('red'))
