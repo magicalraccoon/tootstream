@@ -1465,8 +1465,8 @@ def note(mastodon, rest):
                 cprint(" favorited your status:", fg('yellow'))
                 print("  "+countsline + stylize(time, attr('dim')))
                 cprint(content, attr('dim'))
-                poll = get_poll(note['status'])
                 if getattr(note['status'], 'poll', None):
+                    poll = get_poll(note['status'])
                     cprint(poll, attr('dim'))
 
             # Boosts
@@ -1474,6 +1474,7 @@ def note(mastodon, rest):
                 cprint(display_name + username + " boosted your status:", fg('yellow'))
                 cprint(get_content(note['status']), attr('dim'))
                 if getattr(note['status'], 'poll', None):
+                    poll = get_poll(note['status'])
                     cprint(poll, attr('dim'))
 
             # Follows
