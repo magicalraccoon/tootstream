@@ -139,6 +139,13 @@ def get_content(toot):
     return toot_parser.get_text()
 
 
+def get_poll(toot):
+    poll = getattr(toot, 'poll', None)
+    if poll:
+        uri = toot['uri']
+        return "  [poll]: {}".format(uri)
+
+
 def get_userid(mastodon, rest):
     # we got some user input.  we need a userid (int).
     # returns userid as int, -1 on error, or list of users if ambiguous.
@@ -204,15 +211,17 @@ def flaghandler_note(mastodon, rest):
     kwargs = {'mention': True,
               'favourite': True,
               'reblog': True,
-              'follow': True}
+              'follow': True,
+              'poll': True}
 
     flags = {'m': False,
              'f': False,
              'b': False,
-             'F': False}
+             'F': False,
+             'p': False}
 
     # token-grabbing loop
-    # recognize `note -m -f -b -F` as well as `note -mfbF`
+    # recognize `note -m -f -b -F -p` as well as `note -mfbFp`
     while rest.startswith('-'):
         # get the next token
         (args, _, rest) = rest.partition(' ')
@@ -227,6 +236,8 @@ def flaghandler_note(mastodon, rest):
             kwargs['reblog'] = False
         if 'F' in args:
             kwargs['follow'] = False
+        if 'p' in args:
+            kwargs['poll'] = False
 
     return (rest, kwargs)
 
@@ -745,6 +756,9 @@ def printToot(toot):
         if show_media_links:
             for media in toot['media_attachments']:
                 out.append(stylize("   " + nsfw + " " + media.url, fg('green')))
+
+    if toot.get('poll'):
+        out.append("  [poll]")  # if there's a poll then just show that it exists for now
 
     print( '\n'.join(out) )
     print()
@@ -1447,17 +1461,27 @@ def note(mastodon, rest):
                 cprint(" favorited your status:", fg('yellow'))
                 print("  "+countsline + stylize(time, attr('dim')))
                 cprint(content, attr('dim'))
-
+                poll = get_poll(note['status'])
+                if poll:
+                    cprint(poll, attr('dim'))
 
             # Boosts
             elif note['type'] == 'reblog':
                 cprint(display_name + username + " boosted your status:", fg('yellow'))
                 cprint(get_content(note['status']), attr('dim'))
+                if poll:
+                    cprint(poll, attr('dim'))
 
             # Follows
             elif note['type'] == 'follow':
                 print("  ", end="")
                 cprint(display_name + username + " followed you!", fg('yellow'))
+
+            # Poll
+            elif note['type'] == 'poll':
+                cprint(get_content(note['status']), attr('dim'))
+                cprint(get_poll(note['status']), attr('dim'))
+
 
             # blank line
             print()
