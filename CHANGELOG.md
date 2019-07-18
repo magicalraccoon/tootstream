@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Rudimentary support for polls (shows links to polls)
 - Update colored minimum version to 1.3.93 (Fixes GPL license incompatibility)
 - Support Pleroma FlakeIDs
+- Minor fix for stream command being closed without receiving a toot getting a Nonetype for handle
 
 ### Release
 ### [0.3.6] - 2018-09-29
