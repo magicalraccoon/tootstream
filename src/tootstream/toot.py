@@ -1462,14 +1462,14 @@ def note(mastodon, rest):
                 print("  "+countsline + stylize(time, attr('dim')))
                 cprint(content, attr('dim'))
                 poll = get_poll(note['status'])
-                if poll:
+                if getattr(note['status'], 'poll', None):
                     cprint(poll, attr('dim'))
 
             # Boosts
             elif note['type'] == 'reblog':
                 cprint(display_name + username + " boosted your status:", fg('yellow'))
                 cprint(get_content(note['status']), attr('dim'))
-                if poll:
+                if getattr(note['status'], 'poll', None):
                     cprint(poll, attr('dim'))
 
             # Follows
