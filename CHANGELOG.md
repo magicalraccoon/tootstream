@@ -5,15 +5,25 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Release
+### [0.3.7] - TBD
+
+#### Fixed
+- Upgrade to Mastodon.py 1.4.5
+- Rudimentary support for polls (shows links to polls)
+- Update colored minimum version to 1.3.93 (Fixes GPL license incompatibility)
+- Support Pleroma FlakeIDs
+- Minor fix for stream command being closed without receiving a toot getting a Nonetype for handle
+
+### Release
 ### [0.3.6] - 2018-09-29
 
 #### Added
-- Updated to Mastodon 1.3.1 (No additional features yet)
+- Updated to Mastodon.py 1.3.1 (No additional features yet)
 - Added links command to show links in a toot and optionally open them in a browser
 - Added puburl command to show the public URL of a toot
 
 #### Fixed
-- Upgrade to Mastodon 1.3.1 fixes searching for users issue noted in 0.3.5
+- Upgrade to Mastodon.py 1.3.1 fixes searching for users issue noted in 0.3.5
 - Spelling mistakes 
 - Added better error message for streaming support not supported on older mastodon instances
 

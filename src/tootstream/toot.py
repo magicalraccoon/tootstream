@@ -1392,7 +1392,11 @@ def stream(mastodon, rest):
                 command = command[0]
                 cmd_func = commands.get(command, say_error)
                 cmd_func(mastodon, rest_)
-        handle.close()
+        try:
+            handle.close()
+        except AttributeError:
+            handle.running = False
+            pass  # Trap for handle not getting set if no toots were received while streaming
         is_streaming = False
 stream.__argstr__ = '<timeline>'
 stream.__section__ = 'Timeline'
@@ -1461,15 +1465,16 @@ def note(mastodon, rest):
                 cprint(" favorited your status:", fg('yellow'))
                 print("  "+countsline + stylize(time, attr('dim')))
                 cprint(content, attr('dim'))
-                poll = get_poll(note['status'])
-                if poll:
+                if getattr(note['status'], 'poll', None):
+                    poll = get_poll(note['status'])
                     cprint(poll, attr('dim'))
 
             # Boosts
             elif note['type'] == 'reblog':
                 cprint(display_name + username + " boosted your status:", fg('yellow'))
                 cprint(get_content(note['status']), attr('dim'))
-                if poll:
+                if getattr(note['status'], 'poll', None):
+                    poll = get_poll(note['status'])
                     cprint(poll, attr('dim'))
 
             # Follows
