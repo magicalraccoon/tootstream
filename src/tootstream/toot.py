@@ -72,7 +72,6 @@ class IdDict:
     def to_local(self, global_id):
         """Returns the local ID for a global ID"""
         try:
-            global_id = int(global_id) # In case a string gets passed
             return self._map.index(global_id)
         except ValueError:
             self._map.append(global_id)
@@ -140,6 +139,13 @@ def get_content(toot):
     return toot_parser.get_text()
 
 
+def get_poll(toot):
+    poll = getattr(toot, 'poll', None)
+    if poll:
+        uri = toot['uri']
+        return "  [poll]: {}".format(uri)
+
+
 def get_userid(mastodon, rest):
     # we got some user input.  we need a userid (int).
     # returns userid as int, -1 on error, or list of users if ambiguous.
@@ -205,15 +211,17 @@ def flaghandler_note(mastodon, rest):
     kwargs = {'mention': True,
               'favourite': True,
               'reblog': True,
-              'follow': True}
+              'follow': True,
+              'poll': True}
 
     flags = {'m': False,
              'f': False,
              'b': False,
-             'F': False}
+             'F': False,
+             'p': False}
 
     # token-grabbing loop
-    # recognize `note -m -f -b -F` as well as `note -mfbF`
+    # recognize `note -m -f -b -F -p` as well as `note -mfbFp`
     while rest.startswith('-'):
         # get the next token
         (args, _, rest) = rest.partition(' ')
@@ -228,6 +236,8 @@ def flaghandler_note(mastodon, rest):
             kwargs['reblog'] = False
         if 'F' in args:
             kwargs['follow'] = False
+        if 'p' in args:
+            kwargs['poll'] = False
 
     return (rest, kwargs)
 
@@ -514,6 +524,7 @@ def register_app(instance):
     raises a Mastodon exception otherwise.
     """
     return Mastodon.create_app( 'tootstream',
+                                scopes=['read', 'write', 'follow'],
                                 api_base_url="https://" + instance )
 
 
@@ -533,11 +544,11 @@ def login(instance, client_id, client_secret):
     )
 
     print("Click the link to authorize login.")
-    print(mastodon.auth_request_url())
+    print(mastodon.auth_request_url(scopes=['read', 'write', 'follow']))
     print()
     code = input("Enter the code you received >")
 
-    return mastodon.log_in(code = code)
+    return mastodon.log_in(code = code, scopes=['read', 'write', 'follow'])
 
 
 def get_or_input_profile(config, profile, instance=None):
@@ -745,6 +756,9 @@ def printToot(toot):
         if show_media_links:
             for media in toot['media_attachments']:
                 out.append(stylize("   " + nsfw + " " + media.url, fg('green')))
+
+    if toot.get('poll'):
+        out.append("  [poll]")  # if there's a poll then just show that it exists for now
 
     print( '\n'.join(out) )
     print()
@@ -1005,7 +1019,7 @@ def rep(mastodon, rest):
     while posted is False:
         try:
             reply_toot = mastodon.status_post('%s %s' % (mentions, text),
-                                              in_reply_to_id=int(parent_id),
+                                              in_reply_to_id=parent_id,
                                               **kwargs)
             msg = "  Replied with: " + get_content(reply_toot)
             cprint(msg, fg('red'))
@@ -1320,11 +1334,14 @@ def stream(mastodon, rest):
 
     try:
         if rest == "home" or rest == "":
-            handle = mastodon.stream_user(toot_listener, run_async=True)
+            handle = mastodon.stream_user(toot_listener, run_async=True,
+                                          reconnect_async=True)
         elif rest == "fed" or rest == "public":
-            handle = mastodon.stream_public(toot_listener, run_async=True)
+            handle = mastodon.stream_public(toot_listener, run_async=True,
+                                            reconnect_async=True)
         elif rest == "local":
-            handle = mastodon.stream_local(toot_listener, run_async=True)
+            handle = mastodon.stream_local(toot_listener, run_async=True,
+                                           reconnect_async=True)
         elif rest.startswith('list'):
             # Remove list from the rest string
             items = rest.split('list ')
@@ -1336,10 +1353,12 @@ def stream(mastodon, rest):
                 cprint("List {} is not found".format(items[-1]), fg('red'))
                 return
 
-            handle = mastodon.stream_list(item, toot_listener, run_async=True)
+            handle = mastodon.stream_list(item, toot_listener, run_async=True,
+                                          reconnect_async=True)
         elif rest.startswith('#'):
             tag = rest[1:]
-            handle = mastodon.stream_hashtag(tag, toot_listener, run_async=True)
+            handle = mastodon.stream_hashtag(tag, toot_listener, run_async=True,
+                                             reconnect_async=True)
         else:
             handle = None
             print("Only 'home', 'fed', 'local', 'list', and '#hashtag' streams are supported.")
@@ -1373,7 +1392,11 @@ def stream(mastodon, rest):
                 command = command[0]
                 cmd_func = commands.get(command, say_error)
                 cmd_func(mastodon, rest_)
-        handle.close()
+        try:
+            handle.close()
+        except AttributeError:
+            handle.running = False
+            pass  # Trap for handle not getting set if no toots were received while streaming
         is_streaming = False
 stream.__argstr__ = '<timeline>'
 stream.__section__ = 'Timeline'
@@ -1442,17 +1465,28 @@ def note(mastodon, rest):
                 cprint(" favorited your status:", fg('yellow'))
                 print("  "+countsline + stylize(time, attr('dim')))
                 cprint(content, attr('dim'))
-
+                if getattr(note['status'], 'poll', None):
+                    poll = get_poll(note['status'])
+                    cprint(poll, attr('dim'))
 
             # Boosts
             elif note['type'] == 'reblog':
                 cprint(display_name + username + " boosted your status:", fg('yellow'))
                 cprint(get_content(note['status']), attr('dim'))
+                if getattr(note['status'], 'poll', None):
+                    poll = get_poll(note['status'])
+                    cprint(poll, attr('dim'))
 
             # Follows
             elif note['type'] == 'follow':
                 print("  ", end="")
                 cprint(display_name + username + " followed you!", fg('yellow'))
+
+            # Poll
+            elif note['type'] == 'poll':
+                cprint(get_content(note['status']), attr('dim'))
+                cprint(get_poll(note['status']), attr('dim'))
+
 
             # blank line
             print()
