@@ -5,7 +5,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Release
-### [0.3.7] - TBD
+### [0.3.7] - 2019-07-20
 
 #### Fixed
 - Upgrade to Mastodon.py 1.4.5
