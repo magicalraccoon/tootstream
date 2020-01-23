@@ -31,41 +31,46 @@ show_media_links = True
 # Flag for whether we're streaming or not
 is_streaming = False
 
-#Looks best with black background.
-#TODO: Set color list in config file
-COLORS = list(range(19,231))
+# Looks best with black background.
+# TODO: Set color list in config file
+COLORS = list(range(19, 231))
 GLYPHS = {
     # general icons, keys don't match any Mastodon dict keys
-    'fave':          '\U00002665', # Black Heart Suit
-    'boost':         '\U0000267a', # Recycling Symbol for generic materials
-    'mentions':      '\U0000270e', # Lower Right Pencil
-    'toots':         '\U0001f4ea', # mailbox (for toot counts)
+    'fave':          '\U00002665',  # Black Heart Suit
+    'boost':         '\U0000267a',  # Recycling Symbol for generic materials
+    'mentions':      '\U0000270e',  # Lower Right Pencil
+    'toots':         '\U0001f4ea',  # mailbox (for toot counts)
     # next key matches key in user dict
-    'locked':        '\U0001f512', # lock (masto web uses U+F023 from FontAwesome)
+    # lock (masto web uses U+F023 from FontAwesome)
+    'locked':        '\U0001f512',
     # next 2 keys match keys in toot dict indicating user has already faved/boosted
-    'favourited':    '\U00002605', # star '\U0001f31f' '\U00002b50' '\U00002605'
-    'reblogged':     '\U0001f1e7', # reginal-B '\U0001f1e7' (or reuse ♺?)
+    'favourited':    '\U00002605',  # star '\U0001f31f' '\U00002b50' '\U00002605'
+    'reblogged':     '\U0001f1e7',  # reginal-B '\U0001f1e7' (or reuse ♺?)
     # next 4 keys match possible values for toot['visibility']
-    'public':        '\U0001f30e', # globe
-    'unlisted':      '\U0001f47b', # ghost '\U0001f47b' ... mute '\U0001f507' ??
-    'private':       '\U0001f512', # lock
-    'direct':        '\U0001f4e7', # envelopes: '\U0001f4e7' '\U0001f4e9' '\U0001f48c' '\U00002709'
+    'public':        '\U0001f30e',  # globe
+    'unlisted':      '\U0001f47b',  # ghost '\U0001f47b' ... mute '\U0001f507' ??
+    'private':       '\U0001f512',  # lock
+    # envelopes: '\U0001f4e7' '\U0001f4e9' '\U0001f48c' '\U00002709'
+    'direct':        '\U0001f4e7',
     # next 5 keys match keys in relationship{}
-    'followed_by':   '\U0001f43e', # pawprints '\U0001f43e'
-    'following':     '\U0001f463', # footprints '\U0001f463'
-    'blocking':      '\U0000274c', # thumbsdown '\U0001f44e', big X '\U0000274c', stopsign '\U0001f6d1'
-    'muting':        '\U0001f6ab', # mute-spkr '\U0001f507', mute-bell '\U0001f515', prohibited '\U0001f6ab'
-    'requested':     '\U00002753', # hourglass '\U0000231b', question '\U00002753'
+    'followed_by':   '\U0001f43e',  # pawprints '\U0001f43e'
+    'following':     '\U0001f463',  # footprints '\U0001f463'
+    # thumbsdown '\U0001f44e', big X '\U0000274c', stopsign '\U0001f6d1'
+    'blocking':      '\U0000274c',
+    # mute-spkr '\U0001f507', mute-bell '\U0001f515', prohibited '\U0001f6ab'
+    'muting':        '\U0001f6ab',
+    'requested':     '\U00002753',  # hourglass '\U0000231b', question '\U00002753'
     # catchall
-    'unknown':       '\U0001f34d' }
+    'unknown':       '\U0001f34d'}
 
 # reserved config sections (disallowed as profile names)
-RESERVED = ( "theme", "global" )
+RESERVED = ("theme", "global")
 
 
 class IdDict:
     """Represents a mapping of local (tootstream) ID's to global
     (mastodon) IDs."""
+
     def __init__(self):
         self._map = []
 
@@ -83,7 +88,7 @@ class IdDict:
         try:
             local_id = int(local_id)
             return self._map[local_id]
-        except:
+        except Exception:
             cprint('Invalid ID.', fg('red'))
             return None
 
@@ -101,7 +106,7 @@ class TootListener(StreamListener):
         redisplay_prompt()
 
 
-IDS = IdDict();
+IDS = IdDict()
 
 # Get the current width of the terminal
 terminal_size = shutil.get_terminal_size((80, 20))
@@ -203,7 +208,6 @@ def get_list_id(mastodon, rest):
             return item['id']
 
 
-
 def flaghandler_note(mastodon, rest):
     """Parse input for flagsr. """
 
@@ -249,14 +253,14 @@ def flaghandler_tootreply(mastodon, rest):
     (None, None)."""
 
     # initialize kwargs to default values
-    kwargs = { 'sensitive': False,
-               'media_ids': None,
-               'spoiler_text': None,
-               'visibility': '' }
-    flags = { 'm': False,
-              'c': False,
-              'C': False,
-              'v': False }
+    kwargs = {'sensitive': False,
+              'media_ids': None,
+              'spoiler_text': None,
+              'visibility': ''}
+    flags = {'m': False,
+             'c': False,
+             'C': False,
+             'v': False}
 
     # token-grabbing loop
     # recognize `toot -v -m -c` as well as `toot -vmc`
@@ -265,11 +269,16 @@ def flaghandler_tootreply(mastodon, rest):
         # get the next token
         (args, _, rest) = rest.partition(' ')
         # traditional unix "ignore flags after this" syntax
-        if args == '--': break
-        if 'v' in args: flags['v'] = True
-        if 'c' in args: flags['c'] = True
-        if 'C' in args: flags['C'] = True
-        if 'm' in args: flags['m'] = True
+        if args == '--':
+            break
+        if 'v' in args:
+            flags['v'] = True
+        if 'c' in args:
+            flags['c'] = True
+        if 'C' in args:
+            flags['C'] = True
+        if 'm' in args:
+            flags['m'] = True
 
     # if any flag is true, print a general usage message
     if True in flags.values():
@@ -277,19 +286,26 @@ def flaghandler_tootreply(mastodon, rest):
 
     # visibility flag
     if flags['v']:
-        vis = input("Set visibility [(p)ublic/(u)nlisted/(pr)ivate/(d)irect/None]: ")
+        vis = input(
+            "Set visibility [(p)ublic/(u)nlisted/(pr)ivate/(d)irect/None]: ")
         vis = vis.lower()
 
         # default case; pass on through
-        if vis == '' or vis.startswith('n'): pass
+        if vis == '' or vis.startswith('n'):
+            pass
         # other cases: allow abbreviations
-        elif vis.startswith('d'):  kwargs['visibility'] = 'direct'
-        elif vis.startswith('u'):  kwargs['visibility'] = 'unlisted'
-        elif vis.startswith('pr'): kwargs['visibility'] = 'private'
-        elif vis.startswith('p'):  kwargs['visibility'] = 'public'
+        elif vis.startswith('d'):
+            kwargs['visibility'] = 'direct'
+        elif vis.startswith('u'):
+            kwargs['visibility'] = 'unlisted'
+        elif vis.startswith('pr'):
+            kwargs['visibility'] = 'private'
+        elif vis.startswith('p'):
+            kwargs['visibility'] = 'public'
         # unrecognized: abort
         else:
-            cprint("error: only 'public', 'unlisted', 'private', 'direct' are allowed", fg('red'))
+            cprint(
+                "error: only 'public', 'unlisted', 'private', 'direct' are allowed", fg('red'))
             return (None, None)
     # end vis
 
@@ -336,9 +352,10 @@ def flaghandler_tootreply(mastodon, rest):
             kwargs['media_ids'] = []
             for m in media:
                 try:
-                    kwargs['media_ids'].append( mastodon.media_post(m) )
+                    kwargs['media_ids'].append(mastodon.media_post(m))
                 except Exception as e:
-                    cprint("{}: API error uploading file {}".format(type(e).__name__, m), fg('red'))
+                    cprint("{}: API error uploading file {}".format(
+                        type(e).__name__, m), fg('red'))
                     return (None, None)
                 print("    {}: {}".format(c, m))
                 c += 1
@@ -377,9 +394,10 @@ def print_toots(mastodon, listing, stepper=False, ctx_name=None, add_completion=
     """
     user = mastodon.account_verify_credentials()
     ctx = '' if ctx_name is None else ' in {}'.format(ctx_name)
+
     def say_error(*args, **kwargs):
         cprint("Invalid command. Use 'help' for a list of commands or press [enter] for next toot, [a] to abort.",
-            fg('white') + bg('red'))
+               fg('white') + bg('red'))
 
     if sort_toots:
         toot_list = enumerate(reversed(listing))
@@ -409,7 +427,8 @@ def print_toots(mastodon, listing, stepper=False, ctx_name=None, add_completion=
                         if cmd_func.__argstr__.startswith('<id>'):
                             rest = str(IDS.to_local(toot['id'])) + " " + rest
                         if cmd_func.__argstr__.startswith('<user>'):
-                            rest = "@" + toot['account']['username'] + " " + rest
+                            rest = "@" + \
+                                toot['account']['username'] + " " + rest
                     cmd_func(mastodon, rest)
 
             if command == 'a':
@@ -438,6 +457,7 @@ def toot_visibility(mastodon, flag_visibility=None, parent_visibility=None):
 
 completion_list = []
 
+
 def complete(text, state):
     """Return the state-th potential completion for the name-fragment, text"""
     options = [name for name in completion_list if name.startswith(text)]
@@ -445,6 +465,7 @@ def complete(text, state):
         return options[state] + ' '
     else:
         return None
+
 
 def completion_add(toot):
     """Add usernames (original author, mentions, booster) co completion_list"""
@@ -462,6 +483,8 @@ def completion_add(toot):
 #####################################
 ######## CONFIG FUNCTIONS    ########
 #####################################
+
+
 def parse_config(filename):
     """
     Reads configuration from the specified file.
@@ -503,7 +526,7 @@ def save_config(filename, config):
     # create as user-rw-only if possible
     if not os.path.exists(filename):
         try:
-            os.open(filename, flags=os.O_CREAT|os.O_APPEND, mode=0o600)
+            os.open(filename, flags=os.O_CREAT | os.O_APPEND, mode=0o600)
         except Exception as e:
             cprint("Unable to create file {}: {}".format(filename, e), fg('red'))
 
@@ -515,7 +538,6 @@ def save_config(filename, config):
     return
 
 
-
 def register_app(instance):
     """
     Registers this client with a Mastodon instance.
@@ -523,9 +545,9 @@ def register_app(instance):
     Returns valid credentials if success, likely
     raises a Mastodon exception otherwise.
     """
-    return Mastodon.create_app( 'tootstream',
-                                scopes=['read', 'write', 'follow'],
-                                api_base_url="https://" + instance )
+    return Mastodon.create_app('tootstream',
+                               scopes=['read', 'write', 'follow'],
+                               api_base_url="https://" + instance)
 
 
 def login(instance, client_id, client_secret):
@@ -548,7 +570,7 @@ def login(instance, client_id, client_secret):
     print()
     code = input("Enter the code you received >")
 
-    return mastodon.log_in(code = code, scopes=['read', 'write', 'follow'])
+    return mastodon.log_in(code=code, scopes=['read', 'write', 'follow'])
 
 
 def get_or_input_profile(config, profile, instance=None):
@@ -564,17 +586,17 @@ def get_or_input_profile(config, profile, instance=None):
     # shortcut for preexisting profiles
     if config.has_section(profile):
         try:
-            return  config[profile]['instance'], \
-                    config[profile]['client_id'], \
-                    config[profile]['client_secret'], \
-                    config[profile]['token']
-        except:
+            return config[profile]['instance'], \
+                config[profile]['client_id'], \
+                config[profile]['client_secret'], \
+                config[profile]['token']
+        except Exception:
             pass
     else:
         config.add_section(profile)
 
     # no existing profile or it's incomplete
-    if (instance != None):
+    if (instance is not None):
         # Nothing to do, just use value passed on the command line
         pass
     elif "instance" in config[profile]:
@@ -582,7 +604,6 @@ def get_or_input_profile(config, profile, instance=None):
     else:
         cprint("  Which instance would you like to connect to? eg: 'mastodon.social'", fg('blue'))
         instance = input("  Instance: ")
-
 
     client_id = None
     if "client_id" in config[profile]:
@@ -592,24 +613,27 @@ def get_or_input_profile(config, profile, instance=None):
     if "client_secret" in config[profile]:
         client_secret = config[profile]['client_secret']
 
-    if (client_id == None or client_secret == None):
+    if (client_id is None or client_secret == None):
         try:
             client_id, client_secret = register_app(instance)
         except Exception as e:
-            cprint("{}: please try again later".format(type(e).__name__), fg('red'))
+            cprint("{}: please try again later".format(
+                type(e).__name__), fg('red'))
             return None, None, None, None
 
     token = None
     if "token" in config[profile]:
         token = config[profile]['token']
 
-    if (token == None):
+    if (token is None):
         for i in [1, 2, 3]:
             try:
                 token = login(instance, client_id, client_secret)
             except Exception as e:
-                cprint("Error authorizing app. Did you enter the code correctly?", fg('red'))
-            if token: break
+                cprint(
+                    "Error authorizing app. Did you enter the code correctly?", fg('red'))
+            if token:
+                break
 
         if not token:
             cprint("Giving up after 3 failed login attempts", fg('red'))
@@ -628,15 +652,16 @@ def cprint(text, style, end="\n"):
 def format_username(user):
     """Get a user's account name including lock indicator."""
     return ''.join(("@", user['acct'],
-                   (" {}".format(GLYPHS['locked']) if user['locked'] else "")))
+                    (" {}".format(GLYPHS['locked']) if user['locked'] else "")))
 
 
 def format_user_counts(user):
     """Get a user's toot/following/follower counts."""
     countfmt = "{} :{}"
-    return ' '.join(( countfmt.format(GLYPHS['toots'], user['statuses_count']),
-                      countfmt.format(GLYPHS['following'], user['following_count']),
-                      countfmt.format(GLYPHS['followed_by'], user['followers_count']) ))
+    return ' '.join((countfmt.format(GLYPHS['toots'], user['statuses_count']),
+                     countfmt.format(GLYPHS['following'],
+                                     user['following_count']),
+                     countfmt.format(GLYPHS['followed_by'], user['followers_count'])))
 
 
 def format_display_name(name):
@@ -659,7 +684,8 @@ def printUser(user):
 
 def printUsersShort(users):
     for user in users:
-        if not user: continue
+        if not user:
+            continue
         userid = "(id:"+str(user['id'])+")"
         display_name = format_display_name(user['display_name'])
         userdisp = "'"+str(display_name)+"'"
@@ -689,7 +715,8 @@ def format_toot_nameline(toot, dnamestyle):
 
     dnamestyle: a fg/bg/attr set applied to the display name with stylize()"""
     # name line: display name, user@instance, lock if locked, timestamp
-    if not toot: return ''
+    if not toot:
+        return ''
     formatted_time = format_time(toot['created_at'])
 
     display_name = format_display_name(toot['account']['display_name'])
@@ -703,16 +730,18 @@ def format_toot_idline(toot):
     """Get boost/faves counts, toot ID, visibility, and
     already-faved/boosted indicators for a typical toot printout."""
     # id-and-counts line: boosted count, faved count, tootid, visibility, favourited-already, boosted-already
-    if not toot: return ''
-    out = [ stylize(GLYPHS['boost']+":"+str(toot['reblogs_count']), fg('cyan')),
-            stylize(GLYPHS['fave']+":"+str(toot['favourites_count']), fg('yellow')),
-            stylize("id:"+str(IDS.to_local(toot['id'])), fg('red')),
-            stylize("vis:"+GLYPHS[toot['visibility']], fg('blue')) ]
+    if not toot:
+        return ''
+    out = [stylize(GLYPHS['boost']+":"+str(toot['reblogs_count']), fg('cyan')),
+           stylize(GLYPHS['fave']+":" +
+                   str(toot['favourites_count']), fg('yellow')),
+           stylize("id:"+str(IDS.to_local(toot['id'])), fg('red')),
+           stylize("vis:"+GLYPHS[toot['visibility']], fg('blue'))]
 
     # app used to post. frequently empty
     if toot.get('application') and toot.get('application').get('name'):
-        out.append( ''.join(( stylize("via ", fg('white')),
-                              stylize(toot['application']['name'], fg('blue')) )))
+        out.append(''.join((stylize("via ", fg('white')),
+                            stylize(toot['application']['name'], fg('blue')))))
     # some toots lack these next keys, use get() to avoid KeyErrors
     if toot.get('favourited'):
         out.append(stylize(GLYPHS['favourited'], fg('magenta')))
@@ -732,35 +761,38 @@ def printToot(toot):
     if toot.get('reblog'):
         header = stylize("  Boosted by ", fg('yellow'))
         display_name = format_display_name(toot['account']['display_name'])
-        name = " ".join(( display_name,
-                          format_username(toot['account'])+":" ))
+        name = " ".join((display_name,
+                         format_username(toot['account'])+":"))
         out.append(header + stylize(name, fg('blue')))
         toot = toot['reblog']
 
     # get the first two lines
     random.seed(toot['account']['display_name'])
-    out += [ "  "+format_toot_nameline(toot, fg(random.choice(COLORS))),
-             "  "+format_toot_idline(toot) ]
+    out += ["  "+format_toot_nameline(toot, fg(random.choice(COLORS))),
+            "  "+format_toot_idline(toot)]
 
     if toot['spoiler_text'] != '':
         # pass CW through get_content for wrapping/indenting
-        faketoot = { 'content': "[CW: "+toot['spoiler_text']+"]" }
-        out.append( stylize(get_content(faketoot), fg('red')))
+        faketoot = {'content': "[CW: "+toot['spoiler_text']+"]"}
+        out.append(stylize(get_content(faketoot), fg('red')))
 
-    out.append( get_content(toot) )
+    out.append(get_content(toot))
 
     if toot.get('media_attachments'):
         # simple version: output # of attachments. TODO: urls instead?
         nsfw = ("CW " if toot['sensitive'] else "")
-        out.append( stylize("  "+nsfw+"media: "+str(len(toot['media_attachments'])), fg('magenta')))
+        out.append(stylize("  "+nsfw+"media: " +
+                           str(len(toot['media_attachments'])), fg('magenta')))
         if show_media_links:
             for media in toot['media_attachments']:
-                out.append(stylize("   " + nsfw + " " + media.url, fg('green')))
+                out.append(
+                    stylize("   " + nsfw + " " + media.url, fg('green')))
 
     if toot.get('poll'):
-        out.append("  [poll]")  # if there's a poll then just show that it exists for now
+        # if there's a poll then just show that it exists for now
+        out.append("  [poll]")
 
-    print( '\n'.join(out) )
+    print('\n'.join(out))
     print()
 
 
@@ -786,11 +818,13 @@ def printList(list_item):
 #####################################
 commands = OrderedDict()
 
+
 def command(func):
     """Adds the function to the command list."""
     commands[func.__name__] = func
     bisect.insort(completion_list, func.__name__)
     return func
+
 
 #####################################
 ######## BEGIN COMMAND BLOCK ########
@@ -834,7 +868,7 @@ def help(mastodon, rest):
 
             try:
                 cmd_args = cmd_func.__argstr__
-            except:
+            except Exception:
                 cmd_args = ''
             # print a friendly header and the detailed help
             print(__friendly_help_header__.format(cmd_func.__name__,
@@ -859,7 +893,7 @@ def help(mastodon, rest):
         (cmd_doc, *_) = cmd_func.__doc__.partition('\n')
         try:
             cmd_args = cmd_func.__argstr__
-        except:
+        except Exception:
             cmd_args = ''
 
         if cmd_func.__section__ != section:
@@ -875,6 +909,7 @@ def help(mastodon, rest):
                 new_section = False
 
             print("{:>12} {:<15}  {:<}".format(command, cmd_args, cmd_doc))
+
 
 help.__argstr__ = '[<cmd>]'
 help.__section__ = 'Help'
@@ -911,7 +946,8 @@ def toot(mastodon, rest):
         print('')
         return
 
-    kwargs['visibility'] = toot_visibility(mastodon, flag_visibility=kwargs['visibility'])
+    kwargs['visibility'] = toot_visibility(
+        mastodon, flag_visibility=kwargs['visibility'])
 
     if text == '':
         text = edittoot(text="")
@@ -938,6 +974,7 @@ def toot(mastodon, rest):
                 text = edittoot(text=text)
             else:
                 posted = True
+
 
 toot.__argstr__ = '[<text>]'
 toot.__section__ = 'Toots'
@@ -1025,7 +1062,8 @@ def rep(mastodon, rest):
             cprint(msg, fg('red'))
             posted = True
         except Exception as e:
-            cprint("error while posting: {}".format(type(e).__name__), fg('red'))
+            cprint("error while posting: {}".format(
+                type(e).__name__), fg('red'))
 
         if posted is False:
             retry = input("Edit toot and re-try? [Y/N]: ")
@@ -1033,6 +1071,7 @@ def rep(mastodon, rest):
                 text = edittoot(text=text)
             else:
                 posted = True
+
 
 rep.__argstr__ = '<id> [<text>]'
 rep.__section__ = 'Toots'
@@ -1046,6 +1085,8 @@ def delete(mastodon, rest):
         return
     mastodon.status_delete(rest)
     print("Poof! It's gone.")
+
+
 delete.__argstr__ = '<id>'
 delete.__section__ = 'Toots'
 
@@ -1065,6 +1106,7 @@ def boost(mastodon, rest):
         cprint("Received error: ", fg('red') + attr('bold'), end="")
         cprint(e, fg('magenta') + attr('bold') + attr('underlined'))
 
+
 boost.__argstr__ = '<id>'
 boost.__section__ = 'Toots'
 
@@ -1079,6 +1121,8 @@ def unboost(mastodon, rest):
     unboosted = mastodon.status(rest)
     msg = "  Removed boost: " + get_content(unboosted)
     cprint(msg, fg('red'))
+
+
 unboost.__argstr__ = '<id>'
 unboost.__section__ = 'Toots'
 
@@ -1093,6 +1137,8 @@ def fav(mastodon, rest):
     faved = mastodon.status(rest)
     msg = "  Favorited:\n" + get_content(faved)
     cprint(msg, fg('red'))
+
+
 fav.__argstr__ = '<id>'
 fav.__section__ = 'Toots'
 
@@ -1107,6 +1153,8 @@ def unfav(mastodon, rest):
     unfaved = mastodon.status(rest)
     msg = "  Removed favorite: " + get_content(unfaved)
     cprint(msg, fg('yellow'))
+
+
 unfav.__argstr__ = '<id>'
 unfav.__section__ = 'Toots'
 
@@ -1124,7 +1172,8 @@ def history(mastodon, rest):
     try:
         current_toot = mastodon.status(rest)
         conversation = mastodon.status_context(rest)
-        print_toots(mastodon, conversation['ancestors'], stepper, ctx_name="Previous toots", sort_toots=False)
+        print_toots(mastodon, conversation['ancestors'],
+                    stepper, ctx_name="Previous toots", sort_toots=False)
 
         if stepper is False:
             cprint("Current Toot:", fg('yellow'))
@@ -1135,6 +1184,7 @@ def history(mastodon, rest):
         cprint("{}: please try again later".format(
             type(e).__name__),
             fg('red'))
+
 
 history.__argstr__ = '<id>'
 history.__section__ = 'Toots'
@@ -1161,13 +1211,15 @@ def thread(mastodon, rest):
         # Then display the rest
         # current_toot = mastodon.status(rest)
         conversation = mastodon.status_context(rest)
-        print_toots(mastodon, conversation['descendants'], stepper, sort_toots=False)
+        print_toots(
+            mastodon, conversation['descendants'], stepper, sort_toots=False)
 
     except Exception as e:
         raise e
         cprint("{}: please try again later".format(
             type(e).__name__),
             fg('red'))
+
 
 thread.__argstr__ = '<id>'
 thread.__section__ = 'Toots'
@@ -1208,6 +1260,7 @@ def puburl(mastodon, rest):
         webbrowser.open(url)
     else:
         cprint("PubURL argument was not correct. Please try again.", fg('red'))
+
 
 puburl.__argstr__ = '<id>'
 puburl.__section__ = 'Toots'
@@ -1265,8 +1318,8 @@ def links(mastodon, rest):
                     webbrowser.open(links[link_num - 1])
 
             elif args[1] == 'open':
-                    for link in links:
-                        webbrowser.open(link)
+                for link in links:
+                    webbrowser.open(link)
             else:
                 cprint("Links argument was not correct. Please try again.", fg('red'))
 
@@ -1280,6 +1333,7 @@ def home(mastodon, rest):
     """Displays the Home timeline."""
     stepper, rest = step_flag(rest)
     print_toots(mastodon, mastodon.timeline_home(), stepper, ctx_name='home')
+
 
 home.__argstr__ = ''
 home.__section__ = 'Timeline'
@@ -1295,6 +1349,7 @@ def fed(mastodon, rest):
         stepper,
         ctx_name='federated timeline')
 
+
 fed.__argstr__ = ''
 fed.__section__ = 'Timeline'
 
@@ -1303,7 +1358,9 @@ fed.__section__ = 'Timeline'
 def local(mastodon, rest):
     """Displays the Local timeline."""
     stepper, rest = step_flag(rest)
-    print_toots(mastodon, mastodon.timeline_local(), stepper, ctx_name='local timeline')
+    print_toots(mastodon, mastodon.timeline_local(),
+                stepper, ctx_name='local timeline')
+
 
 local.__argstr__ = ''
 local.__section__ = 'Timeline'
@@ -1330,7 +1387,7 @@ def stream(mastodon, rest):
 
     def say_error(*args, **kwargs):
         cprint("Invalid command. Use 'help' for a list of commands or press ctrl+c to end streaming.",
-        fg('white') + bg('red'))
+               fg('white') + bg('red'))
 
     try:
         if rest == "home" or rest == "":
@@ -1361,13 +1418,15 @@ def stream(mastodon, rest):
                                              reconnect_async=True)
         else:
             handle = None
-            print("Only 'home', 'fed', 'local', 'list', and '#hashtag' streams are supported.")
+            print(
+                "Only 'home', 'fed', 'local', 'list', and '#hashtag' streams are supported.")
     except KeyboardInterrupt:
         # Prevent the ^C from interfering with the prompt
         print("\n")
     except KeyError as e:
         if getattr(e, 'args', None) == ('urls',):
-            cprint("The Mastodon instance is too old for this version of streaming support.", fg('red'))
+            cprint(
+                "The Mastodon instance is too old for this version of streaming support.", fg('red'))
         else:
             cprint("Something went wrong: {}".format(e), fg('red'))
     except Exception as e:
@@ -1382,7 +1441,8 @@ def stream(mastodon, rest):
             try:
                 command = input().split(' ', 1)
             except KeyboardInterrupt:
-                cprint("Wrapping up, this can take a couple of seconds...", style=fg('magenta'))
+                cprint("Wrapping up, this can take a couple of seconds...",
+                       style=fg('magenta'))
                 command = "abort"
             else:
                 try:
@@ -1398,6 +1458,8 @@ def stream(mastodon, rest):
             handle.running = False
             pass  # Trap for handle not getting set if no toots were received while streaming
         is_streaming = False
+
+
 stream.__argstr__ = '<timeline>'
 stream.__section__ = 'Timeline'
 
@@ -1434,7 +1496,8 @@ def note(mastodon, rest):
         return
 
     for note in reversed(notifications):
-        display_name = "  " + format_display_name(note['account']['display_name'])
+        display_name = "  " + \
+            format_display_name(note['account']['display_name'])
         username = format_username(note['account'])
         note_id = str(note['id'])
 
@@ -1447,7 +1510,9 @@ def note(mastodon, rest):
 
             # Mentions
             if note['type'] == 'mention':
-                time = " " + stylize(format_time(note['status']['created_at']), attr('dim'))
+                time = " " + \
+                    stylize(format_time(note['status']
+                                        ['created_at']), attr('dim'))
                 cprint(display_name + username, fg('magenta'))
                 print("  " + format_toot_idline(note['status']) + "  " + time)
                 cprint(get_content(note['status']), attr('bold'), fg('white'))
@@ -1456,12 +1521,16 @@ def note(mastodon, rest):
             # Favorites
             elif note['type'] == 'favourite':
                 tz_info = note['status']['created_at'].tzinfo
-                note_time_diff = datetime.datetime.now(tz_info) - note['status']['created_at']
+                note_time_diff = datetime.datetime.now(
+                    tz_info) - note['status']['created_at']
                 countsline = format_toot_idline(note['status'])
                 format_time(note['status']['created_at'])
-                time = " " + stylize(format_time(note['status']['created_at']), attr('dim'))
+                time = " " + \
+                    stylize(format_time(note['status']
+                                        ['created_at']), attr('dim'))
                 content = get_content(note['status'])
-                cprint(display_name + username, fg(random.choice(COLORS)), end="")
+                cprint(display_name + username,
+                       fg(random.choice(COLORS)), end="")
                 cprint(" favorited your status:", fg('yellow'))
                 print("  "+countsline + stylize(time, attr('dim')))
                 cprint(content, attr('dim'))
@@ -1471,7 +1540,8 @@ def note(mastodon, rest):
 
             # Boosts
             elif note['type'] == 'reblog':
-                cprint(display_name + username + " boosted your status:", fg('yellow'))
+                cprint(display_name + username +
+                       " boosted your status:", fg('yellow'))
                 cprint(get_content(note['status']), attr('dim'))
                 if getattr(note['status'], 'poll', None):
                     poll = get_poll(note['status'])
@@ -1480,18 +1550,21 @@ def note(mastodon, rest):
             # Follows
             elif note['type'] == 'follow':
                 print("  ", end="")
-                cprint(display_name + username + " followed you!", fg('yellow'))
+                cprint(display_name + username +
+                       " followed you!", fg('yellow'))
 
             # Poll
             elif note['type'] == 'poll':
                 cprint(get_content(note['status']), attr('dim'))
                 cprint(get_poll(note['status']), attr('dim'))
 
-
             # blank line
             print()
+
+
 note.__argstr__ = '[<filter>]'
 note.__section__ = 'Timeline'
+
 
 @command
 def dismiss(mastodon, rest):
@@ -1516,8 +1589,10 @@ def dismiss(mastodon, rest):
     except Exception as e:
         cprint("Something went wrong: {}".format(e), fg('red'))
 
+
 dismiss.__argstr__ = '[<note_id>]'
 dismiss.__section__ = 'Timeline'
+
 
 @command
 def block(mastodon, rest):
@@ -1539,6 +1614,8 @@ def block(mastodon, rest):
                 cprint("  user " + str(userid) + " is now blocked", fg('blue'))
         except:
             cprint(" Error, unable to block.", fg('red'))
+
+
 block.__argstr__ = '<user>'
 block.__section__ = 'Users'
 
@@ -1560,9 +1637,12 @@ def unblock(mastodon, rest):
         try:
             relations = mastodon.account_unblock(userid)
             if not relations['blocking']:
-                cprint("  user " + str(userid) + " is now unblocked", fg('blue'))
+                cprint("  user " + str(userid) +
+                       " is now unblocked", fg('blue'))
         except:
             cprint("  Error, unable to unblock.", fg('red'))
+
+
 unblock.__argstr__ = '<user>'
 unblock.__section__ = 'Users'
 
@@ -1584,12 +1664,15 @@ def follow(mastodon, rest):
         try:
             relations = mastodon.account_follow(userid)
             if relations['following']:
-                cprint("  user " + str(userid) + " is now followed", fg('blue'))
+                cprint("  user " + str(userid) +
+                       " is now followed", fg('blue'))
                 username = '@' + mastodon.account(userid)['acct']
                 if username not in completion_list:
                     bisect.insort(completion_list, username)
         except:
             cprint("  Error, unable to follow.", fg('red'))
+
+
 follow.__argstr__ = '<user>'
 follow.__section__ = 'Users'
 
@@ -1611,12 +1694,15 @@ def unfollow(mastodon, rest):
         try:
             relations = mastodon.account_unfollow(userid)
             if not relations['following']:
-                cprint("  user " + str(userid) + " is now unfollowed", fg('blue'))
+                cprint("  user " + str(userid) +
+                       " is now unfollowed", fg('blue'))
             username = '@' + mastodon.account(userid)['acct']
             if username in completion_list:
                 completion_list.remove(username)
         except:
             cprint("  Error, unable to unfollow.", fg('red'))
+
+
 unfollow.__argstr__ = '<user>'
 unfollow.__section__ = 'Users'
 
@@ -1641,6 +1727,8 @@ def mute(mastodon, rest):
                 cprint("  user " + str(userid) + " is now muted", fg('blue'))
         except:
             cprint("  Error, unable to mute.", fg('red'))
+
+
 mute.__argstr__ = '<user>'
 mute.__section__ = 'Users'
 
@@ -1665,6 +1753,8 @@ def unmute(mastodon, rest):
                 cprint("  user " + str(userid) + " is now unmuted", fg('blue'))
         except:
             cprint("  Error, unable to unmute.", fg('red'))
+
+
 unmute.__argstr__ = '<user>'
 unmute.__section__ = 'Users'
 
@@ -1676,8 +1766,8 @@ def search(mastodon, rest):
     ex:  search #tagname
          search @user
          search @user@instance.example.com"""
-    usage = str( "  usage: search #tagname\n" +
-                 "         search @username" )
+    usage = str("  usage: search #tagname\n" +
+                "         search @username")
     stepper, rest = step_flag(rest)
     try:
         indicator = rest[:1]
@@ -1697,13 +1787,15 @@ def search(mastodon, rest):
     # # hashtag search
     elif indicator == "#" and not query == "":
         print_toots(mastodon, mastodon.timeline_hashtag(query), stepper,
-            ctx_name='search for #{}'.format(query), add_completion=False)
+                    ctx_name='search for #{}'.format(query), add_completion=False)
     # end #
 
     else:
         cprint("  Invalid format. (General search coming soon.)\n"+usage, fg('red'))
 
     return
+
+
 search.__argstr__ = '<query>'
 search.__section__ = 'Discover'
 
@@ -1740,8 +1832,10 @@ def view(mastodon, rest):
     else:
 
         print_toots(mastodon, mastodon.account_statuses(userid, limit=count),
-            ctx_name="user timeline", add_completion=False)
+                    ctx_name="user timeline", add_completion=False)
     return
+
+
 view.__argstr__ = '<user> [<N>]'
 view.__section__ = 'Discover'
 
@@ -1751,6 +1845,8 @@ def info(mastodon, rest):
     """Prints your user info."""
     user = mastodon.account_verify_credentials()
     printUser(user)
+
+
 info.__argstr__ = ''
 info.__section__ = 'Profile'
 
@@ -1766,8 +1862,11 @@ def followers(mastodon, rest):
     if not users:
         cprint("  Nobody follows you", fg('red'))
     else:
-        cprint("  People who follow you ({}):".format(len(users)), fg('magenta'))
+        cprint("  People who follow you ({}):".format(
+            len(users)), fg('magenta'))
         printUsersShort(users)
+
+
 followers.__argstr__ = ''
 followers.__section__ = 'Profile'
 
@@ -1785,6 +1884,8 @@ def following(mastodon, rest):
     else:
         cprint("  People you follow ({}):".format(len(users)), fg('magenta'))
         printUsersShort(users)
+
+
 following.__argstr__ = ''
 following.__section__ = 'Profile'
 
@@ -1798,6 +1899,8 @@ def blocks(mastodon, rest):
     else:
         cprint("  You have blocked:", fg('magenta'))
         printUsersShort(users)
+
+
 blocks.__argstr__ = ''
 blocks.__section__ = 'Profile'
 
@@ -1811,6 +1914,8 @@ def mutes(mastodon, rest):
     else:
         cprint("  You have muted:", fg('magenta'))
         printUsersShort(users)
+
+
 mutes.__argstr__ = ''
 mutes.__section__ = 'Profile'
 
@@ -1829,6 +1934,8 @@ def requests(mastodon, rest):
         printUsersShort(users)
         cprint("  run 'accept <id>' to accept", fg('magenta'))
         cprint("   or 'reject <id>' to reject", fg('magenta'))
+
+
 requests.__argstr__ = ''
 requests.__section__ = 'Profile'
 
@@ -1856,6 +1963,8 @@ def accept(mastodon, rest):
         # assume it worked if no exception
         cprint("  user {}'s request is accepted".format(userid), fg('blue'))
     return
+
+
 accept.__argstr__ = '<user>'
 accept.__section__ = 'Profile'
 
@@ -1883,6 +1992,8 @@ def reject(mastodon, rest):
         # assume it worked if no exception
         cprint("  user {}'s request is rejected".format(userid), fg('blue'))
     return
+
+
 reject.__argstr__ = '<user>'
 reject.__section__ = 'Profile'
 
@@ -1891,7 +2002,9 @@ reject.__section__ = 'Profile'
 def faves(mastodon, rest):
     """Displays posts you've favourited."""
     print_toots(mastodon, mastodon.favourites(),
-        ctx_name='favourites', add_completion=False)
+                ctx_name='favourites', add_completion=False)
+
+
 faves.__argstr__ = ''
 faves.__section__ = 'Profile'
 
@@ -1905,8 +2018,11 @@ def me(mastodon, rest):
     # no specific API for user's own timeline
     # let view() do the work
     view(mastodon, "{} {}".format(itme['id'], rest))
+
+
 me.__argstr__ = '[<N>]'
 me.__section__ = "Profile"
+
 
 @command
 def about(mastodon, rest):
@@ -1914,6 +2030,8 @@ def about(mastodon, rest):
     print("Tootstream version: %s" % version)
     print("You are connected to ", end="")
     cprint(mastodon.api_base_url, fg('green') + attr('bold'))
+
+
 about.__argstr__ = ''
 about.__section__ = 'Profile'
 
@@ -1922,6 +2040,8 @@ about.__section__ = 'Profile'
 def quit(mastodon, rest):
     """Ends the program."""
     sys.exit("Goodbye!")
+
+
 quit.__argstr__ = ''
 quit.__section__ = 'Profile'
 
@@ -1937,6 +2057,8 @@ def lists(mastodon, rest):
         return
     for list_item in user_lists:
         printList(list_item)
+
+
 lists.__argstr__ = ''
 lists.__section__ = 'List'
 
@@ -1950,8 +2072,11 @@ def listcreate(mastodon, rest):
         mastodon.list_create(rest)
         cprint("List {} created.".format(rest), fg('green'))
     except Exception as e:
-        cprint("error while creating list: {}".format(type(e).__name__), fg('red'))
+        cprint("error while creating list: {}".format(
+            type(e).__name__), fg('red'))
     return
+
+
 listcreate.__argstr__ = '<list>'
 listcreate.__section__ = 'List'
 
@@ -1982,7 +2107,10 @@ def listrename(mastodon, rest):
         mastodon.list_update(list_id, updated_name)
         cprint("Renamed {} to {}.".format(items[1], items[0]), fg('green'))
     except Exception as e:
-        cprint("error while updating list: {}".format(type(e).__name__), fg('red'))
+        cprint("error while updating list: {}".format(
+            type(e).__name__), fg('red'))
+
+
 listrename.__argstr__ = '<list> <list>'
 listrename.__section__ = 'List'
 
@@ -2003,8 +2131,11 @@ def listdestroy(mastodon, rest):
         cprint("List {} deleted.".format(rest), fg('green'))
 
     except Exception as e:
-        cprint("error while creating list: {}".format(type(e).__name__), fg('red'))
+        cprint("error while creating list: {}".format(
+            type(e).__name__), fg('red'))
     return
+
+
 listdestroy.__argstr__ = '<list>'
 listdestroy.__section__ = 'List'
 
@@ -2030,7 +2161,10 @@ def listhome(mastodon, rest):
         print_toots(mastodon, list_toots, stepper, ctx_name='list')
 
     except Exception as e:
-        cprint("error while displaying list: {}".format(type(e).__name__), fg('red'))
+        cprint("error while displaying list: {}".format(
+            type(e).__name__), fg('red'))
+
+
 listhome.__argstr__ = '<list>'
 listhome.__section__ = 'List'
 
@@ -2051,6 +2185,7 @@ def listaccounts(mastodon, rest):
     cprint("List: %s" % rest, fg('green'))
     for user in list_accounts:
         printUser(user)
+
 
 listaccounts.__argstr__ = '<list>'
 listaccounts.__section__ = 'List'
@@ -2086,7 +2221,10 @@ def listadd(mastodon, rest):
         mastodon.list_accounts_add(list_id, account_id)
         cprint("Added {} to list {}.".format(items[1], items[0]), fg('green'))
     except Exception as e:
-        cprint("error while adding to list: {}".format(type(e).__name__), fg('red'))
+        cprint("error while adding to list: {}".format(
+            type(e).__name__), fg('red'))
+
+
 listadd.__argstr__ = '<list> <user>'
 listadd.__section__ = 'List'
 
@@ -2120,9 +2258,13 @@ def listremove(mastodon, rest):
 
     try:
         mastodon.list_accounts_delete(list_id, account_id)
-        cprint("Removed {} from list {}.".format(items[1], items[0]), fg('green'))
+        cprint("Removed {} from list {}.".format(
+            items[1], items[0]), fg('green'))
     except Exception as e:
-        cprint("error while deleting from list: {}".format(type(e).__name__), fg('red'))
+        cprint("error while deleting from list: {}".format(
+            type(e).__name__), fg('red'))
+
+
 listremove.__argstr__ = '<list> <user>'
 listremove.__section__ = 'List'
 #####################################
@@ -2140,19 +2282,20 @@ def authenticated(mastodon):
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.option( '--instance', '-i', metavar='<string>',
-               help='Hostname of the instance to connect' )
-@click.option( '--config', '-c', metavar='<file>',
-               type=click.Path(exists=False, readable=True),
-               default='~/.config/tootstream/tootstream.conf',
-               help='Location of alternate configuration file to load' )
-@click.option( '--profile', '-P', metavar='<profile>', default='default',
-               help='Name of profile for saved credentials (default)' )
+@click.option('--instance', '-i', metavar='<string>',
+              help='Hostname of the instance to connect')
+@click.option('--config', '-c', metavar='<file>',
+              type=click.Path(exists=False, readable=True),
+              default='~/.config/tootstream/tootstream.conf',
+              help='Location of alternate configuration file to load')
+@click.option('--profile', '-P', metavar='<profile>', default='default',
+              help='Name of profile for saved credentials (default)')
 def main(instance, config, profile):
     configpath = os.path.expanduser(config)
     if os.path.isfile(configpath) and not os.access(configpath, os.W_OK):
         # warn the user before they're asked for input
-        cprint("Config file does not appear to be writable: {}".format(configpath), fg('red'))
+        cprint("Config file does not appear to be writable: {}".format(
+            configpath), fg('red'))
 
     config = parse_config(configpath)
 
@@ -2179,20 +2322,19 @@ def main(instance, config, profile):
         access_token=token,
         api_base_url="https://" + instance)
 
-
     # update config before writing
     if "token" not in config[profile]:
         config[profile] = {
-                'instance': instance,
-                'client_id': client_id,
-                'client_secret': client_secret,
-                'token': token
+            'instance': instance,
+            'client_id': client_id,
+            'client_secret': client_secret,
+            'token': token
         }
 
     save_config(configpath, config)
 
-    say_error = lambda a, b: cprint("Invalid command. Use 'help' for a list of commands.",
-            fg('white') + bg('red'))
+    def say_error(a, b): return cprint("Invalid command. Use 'help' for a list of commands.",
+                                       fg('white') + bg('red'))
 
     about(mastodon, '')
 

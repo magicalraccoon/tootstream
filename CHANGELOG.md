@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+
+### Release
+### [0.3.8] - 2020-01-22
+
+#### Fixed
+- Upgrade to Mastodon.py 1.5.0
+- PEP8 code formatting
+
 ### Release
 ### [0.3.7] - 2019-07-20
 
