@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 
 ### Release
-### [0.3.8] - 2020-01-22
+### [0.3.8.1] - 2020-01-22
 
 #### Fixed
 - Upgrade to Mastodon.py 1.5.0
