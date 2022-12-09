@@ -2011,6 +2011,39 @@ def listdifference(mastodon, rest):
                 type(e).__name__), fg('red'))
 
 
+@command("<list> <list>", "List")
+def listunion(mastodon, rest):
+    """Add users in the second list to the first list.
+    ex:  listunion list_to_add_to list_of_what_to_add"""
+    if not(list_support(mastodon)):
+        return
+    if not rest:
+        cprint("Argument required.", fg('red'))
+        return
+    items = rest.split(' ')
+    if len(items) < 2:
+        cprint("Not enough arguments.", fg('red'))
+        return
+    list_id = get_list_id(mastodon, items[0])
+    if not list_id:
+        cprint("List {} is not found".format(items[0]), fg('red'))
+        return
+    union_list_id = get_list_id(mastodon, items[1])
+    if not union_list_id:
+        cprint("List {} is not found".format(items[1]), fg('red'))
+        return
+
+    list_accounts = mastodon.list_accounts(union_list_id)
+    for user in list_accounts:
+        try:
+            mastodon.list_accounts_add(list_id, user['id'])
+            cprint("Added {} to list {}.".format(
+                format_username(user), items[0]), fg('green'))
+        except Exception as e:
+            cprint("error while adding to list: {}".format(
+                type(e).__name__), fg('red'))
+
+
 @command("<list> <user>", "List")
 def listadd(mastodon, rest):
     """Add user to list.
