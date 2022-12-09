@@ -1978,6 +1978,39 @@ def listaccounts(mastodon, rest):
         printUser(user)
 
 
+@command("<list> <list>", "List")
+def listdifference(mastodon, rest):
+    """Remove users in the second list from the first list.
+    ex:  listdifference list_to_remove_from list_of_what_to_remove"""
+    if not(list_support(mastodon)):
+        return
+    if not rest:
+        cprint("Argument required.", fg('red'))
+        return
+    items = rest.split(' ')
+    if len(items) < 2:
+        cprint("Not enough arguments.", fg('red'))
+        return
+    list_id = get_list_id(mastodon, items[0])
+    if not list_id:
+        cprint("List {} is not found".format(items[0]), fg('red'))
+        return
+    diff_list_id = get_list_id(mastodon, items[1])
+    if not diff_list_id:
+        cprint("List {} is not found".format(items[1]), fg('red'))
+        return
+
+    list_accounts = mastodon.list_accounts(diff_list_id)
+    for user in list_accounts:
+        try:
+            mastodon.list_accounts_delete(list_id, user['id'])
+            cprint("Removed {} from list {}.".format(
+                format_username(user), items[0]), fg('green'))
+        except Exception as e:
+            cprint("error while deleting from list: {}".format(
+                type(e).__name__), fg('red'))
+
+
 @command("<list> <user>", "List")
 def listadd(mastodon, rest):
     """Add user to list.
