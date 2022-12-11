@@ -2030,7 +2030,7 @@ def listunion(mastodon, rest):
         return
     if items[1] == "[following]":
         user = mastodon.account_verify_credentials()
-        list_accounts = mastodon.account_following(user['id'])
+        list_accounts = mastodon.fetch_remaining(mastodon.account_following(user['id']))
     else:
         union_list_id = get_list_id(mastodon, items[1])
         if not union_list_id:
