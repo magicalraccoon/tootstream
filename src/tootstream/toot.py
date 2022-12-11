@@ -2028,12 +2028,17 @@ def listunion(mastodon, rest):
     if not list_id:
         cprint("List {} is not found".format(items[0]), fg('red'))
         return
-    union_list_id = get_list_id(mastodon, items[1])
-    if not union_list_id:
-        cprint("List {} is not found".format(items[1]), fg('red'))
-        return
+    if items[1] == "[following]":
+        user = mastodon.account_verify_credentials()
+        list_accounts = mastodon.account_following(user['id'])
+    else:
+        union_list_id = get_list_id(mastodon, items[1])
+        if not union_list_id:
+            cprint("List {} is not found".format(items[1]), fg('red'))
+            return
 
-    list_accounts = mastodon.list_accounts(union_list_id)
+        list_accounts = mastodon.list_accounts(union_list_id)
+
     for user in list_accounts:
         try:
             mastodon.list_accounts_add(list_id, user['id'])
