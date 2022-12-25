@@ -2000,15 +2000,21 @@ def listdifference(mastodon, rest):
         cprint("List {} is not found".format(items[1]), fg('red'))
         return
 
-    list_accounts = mastodon.list_accounts(diff_list_id)
+    list_accounts = mastodon.fetch_remaining(mastodon.list_accounts(diff_list_id))
+    existing_ids = [x['id'] for x in mastodon.fetch_remaining(mastodon.list_accounts(list_id))]
+
     for user in list_accounts:
-        try:
-            mastodon.list_accounts_delete(list_id, user['id'])
-            cprint("Removed {} from list {}.".format(
+        if user['id'] in existing_ids:
+            cprint("User {} already missing from list {}.".format(
                 format_username(user), items[0]), fg('green'))
-        except Exception as e:
-            cprint("error while deleting from list: {}".format(
-                type(e).__name__), fg('red'))
+        else:
+            try:
+                mastodon.list_accounts_delete(list_id, user['id'])
+                cprint("Removed {} from list {}.".format(
+                    format_username(user), items[0]), fg('green'))
+            except Exception as e:
+                cprint("error while deleting from list: {}".format(
+                    type(e).__name__), fg('red'))
 
 
 @command("<list> <list>", "List")
@@ -2037,16 +2043,22 @@ def listunion(mastodon, rest):
             cprint("List {} is not found".format(items[1]), fg('red'))
             return
 
-        list_accounts = mastodon.list_accounts(union_list_id)
+        list_accounts = mastodon.fetch_remaining(mastodon.list_accounts(union_list_id))
+
+    existing_ids = [x['id'] for x in mastodon.fetch_remaining(mastodon.list_accounts(list_id))]
 
     for user in list_accounts:
-        try:
-            mastodon.list_accounts_add(list_id, user['id'])
-            cprint("Added {} to list {}.".format(
+        if user['id'] in existing_ids:
+            cprint("User {} already on list {}.".format(
                 format_username(user), items[0]), fg('green'))
-        except Exception as e:
-            cprint("error while adding to list: {}".format(
-                type(e).__name__), fg('red'))
+        else:
+            try:
+                mastodon.list_accounts_add(list_id, user['id'])
+                cprint("Added {} to list {}.".format(
+                    format_username(user), items[0]), fg('green'))
+            except Exception as e:
+                cprint("error while adding to list: {}".format(
+                    type(e).__name__), fg('red'))
 
 
 @command("<list> <user>", "List")
