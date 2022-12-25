@@ -2068,13 +2068,8 @@ def listcreate(mastodon, rest):
     """Creates a list."""
     if not(list_support(mastodon)):
         return
-    try:
-        mastodon.list_create(rest)
-        cprint("List {} created.".format(rest), fg('green'))
-    except Exception as e:
-        cprint("error while creating list: {}".format(
-            type(e).__name__), fg('red'))
-    return
+    mastodon.list_create(rest)
+    cprint("List {} created.".format(rest), fg('green'))
 
 
 listcreate.__argstr__ = '<list>'
@@ -2103,12 +2098,8 @@ def listrename(mastodon, rest):
         cprint("List {} is not found".format(items[0]), fg('red'))
         return
 
-    try:
-        mastodon.list_update(list_id, updated_name)
-        cprint("Renamed {} to {}.".format(items[1], items[0]), fg('green'))
-    except Exception as e:
-        cprint("error while updating list: {}".format(
-            type(e).__name__), fg('red'))
+    mastodon.list_update(list_id, updated_name)
+    cprint("Renamed {} to {}.".format(items[1], items[0]), fg('green'))
 
 
 listrename.__argstr__ = '<list> <list>'
@@ -2126,14 +2117,10 @@ def listdestroy(mastodon, rest):
     if not item or item == -1:
         cprint("List {} is not found".format(rest), fg('red'))
         return
-    try:
-        mastodon.list_delete(item)
-        cprint("List {} deleted.".format(rest), fg('green'))
 
-    except Exception as e:
-        cprint("error while creating list: {}".format(
-            type(e).__name__), fg('red'))
-    return
+    mastodon.list_delete(item)
+    cprint("List {} deleted.".format(rest), fg('green'))
+
 
 
 listdestroy.__argstr__ = '<list>'
@@ -2152,17 +2139,13 @@ def listhome(mastodon, rest):
         return
     stepper, rest = step_flag(rest)
 
-    try:
-        item = get_list_id(mastodon, rest)
-        if not item or item == -1:
-            cprint("List {} is not found".format(rest), fg('red'))
-            return
-        list_toots = mastodon.timeline_list(item)
-        print_toots(mastodon, list_toots, stepper, ctx_name='list')
+    item = get_list_id(mastodon, rest)
+    if not item or item == -1:
+        cprint("List {} is not found".format(rest), fg('red'))
+        return
+    list_toots = mastodon.timeline_list(item)
+    print_toots(mastodon, list_toots, stepper, ctx_name='list')
 
-    except Exception as e:
-        cprint("error while displaying list: {}".format(
-            type(e).__name__), fg('red'))
 
 
 listhome.__argstr__ = '<list>'
@@ -2217,12 +2200,8 @@ def listadd(mastodon, rest):
         cprint("Account {} is not found".format(items[1]), fg('red'))
         return
 
-    try:
-        mastodon.list_accounts_add(list_id, account_id)
-        cprint("Added {} to list {}.".format(items[1], items[0]), fg('green'))
-    except Exception as e:
-        cprint("error while adding to list: {}".format(
-            type(e).__name__), fg('red'))
+    mastodon.list_accounts_add(list_id, account_id)
+    cprint("Added {} to list {}.".format(items[1], items[0]), fg('green'))
 
 
 listadd.__argstr__ = '<list> <user>'
@@ -2256,13 +2235,9 @@ def listremove(mastodon, rest):
         cprint("Account {} is not found".format(items[1]), fg('red'))
         return
 
-    try:
-        mastodon.list_accounts_delete(list_id, account_id)
-        cprint("Removed {} from list {}.".format(
-            items[1], items[0]), fg('green'))
-    except Exception as e:
-        cprint("error while deleting from list: {}".format(
-            type(e).__name__), fg('red'))
+    mastodon.list_accounts_delete(list_id, account_id)
+    cprint("Removed {} from list {}.".format(
+        items[1], items[0]), fg('green'))
 
 
 listremove.__argstr__ = '<list> <user>'
