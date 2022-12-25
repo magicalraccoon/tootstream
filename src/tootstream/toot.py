@@ -67,6 +67,11 @@ GLYPHS = {
 RESERVED = ("theme", "global")
 
 
+class AlreadyPrintedException(Exception):
+    """An exception that has already been shown to the user, so doesn't need to be printed again."""
+    pass
+
+
 class IdDict:
     """Represents a mapping of local (tootstream) ID's to global
     (mastodon) IDs."""
@@ -187,6 +192,18 @@ def get_userid(mastodon, rest):
         return users
     else:
         return users[0]['id']
+
+
+def get_userid2(mastodon, rest):
+    userid = get_userid(mastodon, rest)
+    if isinstance(userid, list):
+        cprint("  multiple matches found:", fg('red'))
+        printUsersShort(userid)
+        raise AlreadyPrintedException()
+    elif userid == -1:
+        raise Exception("  username '{}' not found".format(rest))
+
+    return userid
 
 
 def get_list_id(mastodon, rest):
@@ -1598,19 +1615,10 @@ def block(mastodon, rest):
     ex: block 23
         block @user
         block @user@instance.example.com"""
-    userid = get_userid(mastodon, rest)
-    if isinstance(userid, list):
-        cprint("  multiple matches found:", fg('red'))
-        printUsersShort(userid)
-    elif userid == -1:
-        cprint("  username not found", fg('red'))
-    else:
-        try:
-            relations = mastodon.account_block(userid)
-            if relations['blocking']:
-                cprint("  user " + str(userid) + " is now blocked", fg('blue'))
-        except:
-            cprint(" Error, unable to block.", fg('red'))
+    userid = get_userid2(mastodon, rest)
+    relations = mastodon.account_block(userid)
+    if relations['blocking']:
+        cprint("  user " + str(userid) + " is now blocked", fg('blue'))
 
 
 block.__argstr__ = '<user>'
@@ -1624,20 +1632,11 @@ def unblock(mastodon, rest):
     ex: unblock 23
         unblock @user
         unblock @user@instance.example.com"""
-    userid = get_userid(mastodon, rest)
-    if isinstance(userid, list):
-        cprint("  multiple matches found:", fg('red'))
-        printUsersShort(userid)
-    elif userid == -1:
-        cprint("  username not found", fg('red'))
-    else:
-        try:
-            relations = mastodon.account_unblock(userid)
-            if not relations['blocking']:
-                cprint("  user " + str(userid) +
-                       " is now unblocked", fg('blue'))
-        except:
-            cprint("  Error, unable to unblock.", fg('red'))
+    userid = get_userid2(mastodon, rest)
+    relations = mastodon.account_unblock(userid)
+    if not relations['blocking']:
+        cprint("  user " + str(userid) +
+               " is now unblocked", fg('blue'))
 
 
 unblock.__argstr__ = '<user>'
@@ -1651,23 +1650,14 @@ def follow(mastodon, rest):
     ex: follow 23
         follow @user
         follow @user@instance.example.com"""
-    userid = get_userid(mastodon, rest)
-    if isinstance(userid, list):
-        cprint("  multiple matches found:", fg('red'))
-        printUsersShort(userid)
-    elif userid == -1:
-        cprint("  username not found", fg('red'))
-    else:
-        try:
-            relations = mastodon.account_follow(userid)
-            if relations['following']:
-                cprint("  user " + str(userid) +
-                       " is now followed", fg('blue'))
-                username = '@' + mastodon.account(userid)['acct']
-                if username not in completion_list:
-                    bisect.insort(completion_list, username)
-        except:
-            cprint("  Error, unable to follow.", fg('red'))
+    userid = get_userid2(mastodon, rest)
+    relations = mastodon.account_follow(userid)
+    if relations['following']:
+        cprint("  user " + str(userid) +
+               " is now followed", fg('blue'))
+        username = '@' + mastodon.account(userid)['acct']
+        if username not in completion_list:
+            bisect.insort(completion_list, username)
 
 
 follow.__argstr__ = '<user>'
@@ -1681,23 +1671,14 @@ def unfollow(mastodon, rest):
     ex: unfollow 23
         unfollow @user
         unfollow @user@instance.example.com"""
-    userid = get_userid(mastodon, rest)
-    if isinstance(userid, list):
-        cprint("  multiple matches found:", fg('red'))
-        printUsersShort(userid)
-    elif userid == -1:
-        cprint("  username not found", fg('red'))
-    else:
-        try:
-            relations = mastodon.account_unfollow(userid)
-            if not relations['following']:
-                cprint("  user " + str(userid) +
-                       " is now unfollowed", fg('blue'))
-            username = '@' + mastodon.account(userid)['acct']
-            if username in completion_list:
-                completion_list.remove(username)
-        except:
-            cprint("  Error, unable to unfollow.", fg('red'))
+    userid = get_userid2(mastodon, rest)
+    relations = mastodon.account_unfollow(userid)
+    if not relations['following']:
+        cprint("  user " + str(userid) +
+               " is now unfollowed", fg('blue'))
+    username = '@' + mastodon.account(userid)['acct']
+    if username in completion_list:
+        completion_list.remove(username)
 
 
 unfollow.__argstr__ = '<user>'
@@ -1711,19 +1692,10 @@ def mute(mastodon, rest):
     ex: mute 23
         mute @user
         mute @user@instance.example.com"""
-    userid = get_userid(mastodon, rest)
-    if isinstance(userid, list):
-        cprint("  multiple matches found:", fg('red'))
-        printUsersShort(userid)
-    elif userid == -1:
-        cprint("  username not found", fg('red'))
-    else:
-        try:
-            relations = mastodon.account_mute(userid)
-            if relations['muting']:
-                cprint("  user " + str(userid) + " is now muted", fg('blue'))
-        except:
-            cprint("  Error, unable to mute.", fg('red'))
+    userid = get_userid2(mastodon, rest)
+    relations = mastodon.account_mute(userid)
+    if relations['muting']:
+        cprint("  user " + str(userid) + " is now muted", fg('blue'))
 
 
 mute.__argstr__ = '<user>'
@@ -1737,19 +1709,10 @@ def unmute(mastodon, rest):
     ex: unmute 23
         unmute @user
         unmute @user@instance.example.com"""
-    userid = get_userid(mastodon, rest)
-    if isinstance(userid, list):
-        cprint("  multiple matches found:", fg('red'))
-        printUsersShort(userid)
-    elif userid == -1:
-        cprint("  username not found", fg('red'))
-    else:
-        try:
-            relations = mastodon.account_unmute(userid)
-            if not relations['muting']:
-                cprint("  user " + str(userid) + " is now unmuted", fg('blue'))
-        except:
-            cprint("  Error, unable to unmute.", fg('red'))
+    userid = get_userid2(mastodon, rest)
+    relations = mastodon.account_unmute(userid)
+    if not relations['muting']:
+        cprint("  user " + str(userid) + " is now unmuted", fg('blue'))
 
 
 unmute.__argstr__ = '<user>'
@@ -1820,17 +1783,9 @@ def view(mastodon, rest):
             return
 
     # validate userid argument
-    userid = get_userid(mastodon, userid)
-    if isinstance(userid, list):
-        cprint("  multiple matches found:", fg('red'))
-        printUsersShort(userid)
-    elif userid == -1:
-        cprint("  username not found", fg('red'))
-    else:
-
-        print_toots(mastodon, mastodon.account_statuses(userid, limit=count),
-                    ctx_name="user timeline", add_completion=False)
-    return
+    userid = get_userid2(mastodon, userid)
+    print_toots(mastodon, mastodon.account_statuses(userid, limit=count),
+                ctx_name="user timeline", add_completion=False)
 
 
 view.__argstr__ = '<user> [<N>]'
@@ -1944,22 +1899,9 @@ def accept(mastodon, rest):
     ex: accept 23
         accept @user
         accept @user@instance.example.com"""
-    userid = get_userid(mastodon, rest)
-    if isinstance(userid, list):
-        cprint("  multiple matches found:", fg('red'))
-        printUsersShort(userid)
-    elif userid == -1:
-        cprint("  username not found", fg('red'))
-    else:
-        try:
-            mastodon.follow_request_authorize(userid)
-        except:
-            cprint("  Error, unable to accept request.", fg('red'))
-            return
-
-        # assume it worked if no exception
-        cprint("  user {}'s request is accepted".format(userid), fg('blue'))
-    return
+    userid = get_userid2(mastodon, rest)
+    mastodon.follow_request_authorize(userid)
+    cprint("  user {}'s request is accepted".format(userid), fg('blue'))
 
 
 accept.__argstr__ = '<user>'
@@ -1973,22 +1915,9 @@ def reject(mastodon, rest):
     ex: reject 23
         reject @user
         reject @user@instance.example.com"""
-    userid = get_userid(mastodon, rest)
-    if isinstance(userid, list):
-        cprint("  multiple matches found:", fg('red'))
-        printUsersShort(userid)
-    elif userid == -1:
-        cprint("  username not found", fg('red'))
-    else:
-        try:
-            mastodon.follow_request_reject(userid)
-        except:
-            cprint("  Error, unable to reject request.", fg('red'))
-            return
-
-        # assume it worked if no exception
-        cprint("  user {}'s request is rejected".format(userid), fg('blue'))
-    return
+    userid = get_userid2(mastodon, rest)
+    mastodon.follow_request_reject(userid)
+    cprint("  user {}'s request is rejected".format(userid), fg('blue'))
 
 
 reject.__argstr__ = '<user>'
@@ -2174,12 +2103,7 @@ def listadd(mastodon, rest):
         return
 
     list_id = get_list_id(mastodon, items[0])
-    account_id = get_userid(mastodon, items[1])
-
-    if not account_id:
-        cprint("Account {} is not found".format(items[1]), fg('red'))
-        return
-
+    account_id = get_userid2(mastodon, items[1])
     mastodon.list_accounts_add(list_id, account_id)
     cprint("Added {} to list {}.".format(items[1], items[0]), fg('green'))
 
@@ -2205,12 +2129,7 @@ def listremove(mastodon, rest):
         return
 
     list_id = get_list_id(mastodon, items[0])
-    account_id = get_userid(mastodon, items[1])
-
-    if not account_id:
-        cprint("Account {} is not found".format(items[1]), fg('red'))
-        return
-
+    account_id = get_userid2(mastodon, items[1])
     mastodon.list_accounts_delete(list_id, account_id)
     cprint("Removed {} from list {}.".format(
         items[1], items[0]), fg('green'))
@@ -2317,6 +2236,8 @@ def main(instance, config, profile):
             command = command[0]
             cmd_func = commands.get(command, say_error)
             cmd_func(mastodon, rest)
+        except AlreadyPrintedException:
+            pass
         except Exception as e:
             cprint(e, fg('red'))
 
