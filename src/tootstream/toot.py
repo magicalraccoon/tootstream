@@ -191,8 +191,8 @@ def get_userid(mastodon, rest):
 
 def get_list_id(mastodon, rest):
     """Get the ID for a list"""
-    if not rest:
-        return -1
+    if not rest or not rest.strip():
+        raise Exception("List argument missing.")
 
     # maybe it's already an int
     try:
@@ -200,12 +200,13 @@ def get_list_id(mastodon, rest):
     except ValueError:
         pass
 
-    rest = rest.strip()
-
     lists = mastodon.lists()
+    desired_title = rest.strip().lower()
     for item in lists:
-        if item['title'].lower() == rest.lower():
+        if item['title'].lower() == desired_title:
             return item['id']
+
+    raise Exception("List '{}' is not found.".format(rest))
 
 
 def flaghandler_note(mastodon, rest):
@@ -1406,10 +1407,6 @@ def stream(mastodon, rest):
                 print("list stream must have a list ID.")
                 return
             item = get_list_id(mastodon, items[-1])
-            if not item or item == -1:
-                cprint("List {} is not found".format(items[-1]), fg('red'))
-                return
-
             handle = mastodon.stream_list(item, toot_listener, run_async=True,
                                           reconnect_async=True)
         elif rest.startswith('#'):
@@ -2094,10 +2091,6 @@ def listrename(mastodon, rest):
     list_id = get_list_id(mastodon, items[0])
     updated_name = items[1]
 
-    if not list_id:
-        cprint("List {} is not found".format(items[0]), fg('red'))
-        return
-
     mastodon.list_update(list_id, updated_name)
     cprint("Renamed {} to {}.".format(items[1], items[0]), fg('green'))
 
@@ -2114,9 +2107,6 @@ def listdestroy(mastodon, rest):
     if not(list_support(mastodon)):
         return
     item = get_list_id(mastodon, rest)
-    if not item or item == -1:
-        cprint("List {} is not found".format(rest), fg('red'))
-        return
 
     mastodon.list_delete(item)
     cprint("List {} deleted.".format(rest), fg('green'))
@@ -2140,9 +2130,6 @@ def listhome(mastodon, rest):
     stepper, rest = step_flag(rest)
 
     item = get_list_id(mastodon, rest)
-    if not item or item == -1:
-        cprint("List {} is not found".format(rest), fg('red'))
-        return
     list_toots = mastodon.timeline_list(item)
     print_toots(mastodon, list_toots, stepper, ctx_name='list')
 
@@ -2160,9 +2147,6 @@ def listaccounts(mastodon, rest):
     if not(list_support(mastodon)):
         return
     item = get_list_id(mastodon, rest)
-    if not item:
-        cprint("List {} is not found".format(rest), fg('red'))
-        return
     list_accounts = mastodon.list_accounts(item)
 
     cprint("List: %s" % rest, fg('green'))
@@ -2191,10 +2175,6 @@ def listadd(mastodon, rest):
 
     list_id = get_list_id(mastodon, items[0])
     account_id = get_userid(mastodon, items[1])
-
-    if not list_id:
-        cprint("List {} is not found".format(items[0]), fg('red'))
-        return
 
     if not account_id:
         cprint("Account {} is not found".format(items[1]), fg('red'))
@@ -2226,10 +2206,6 @@ def listremove(mastodon, rest):
 
     list_id = get_list_id(mastodon, items[0])
     account_id = get_userid(mastodon, items[1])
-
-    if not list_id:
-        cprint("List {} is not found".format(items[0]), fg('red'))
-        return
 
     if not account_id:
         cprint("Account {} is not found".format(items[1]), fg('red'))
