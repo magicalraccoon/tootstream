@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+### Release
+### 0.3.9.0
+
+#### Fixed
+- Remove duplicate code (thanks to Jesse Weinstein)
+- Upgrade to Mastodon.py version to Mastodon.py 1.8.0
 
 ### Release
 ### [0.3.8.1] - 2020-01-22
