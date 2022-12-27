@@ -1992,13 +1992,7 @@ def listdifference(mastodon, rest):
         cprint("Not enough arguments.", fg('red'))
         return
     list_id = get_list_id(mastodon, items[0])
-    if not list_id:
-        cprint("List {} is not found".format(items[0]), fg('red'))
-        return
     diff_list_id = get_list_id(mastodon, items[1])
-    if not diff_list_id:
-        cprint("List {} is not found".format(items[1]), fg('red'))
-        return
 
     list_accounts = mastodon.fetch_remaining(mastodon.list_accounts(diff_list_id))
     existing_ids = [x['id'] for x in mastodon.fetch_remaining(mastodon.list_accounts(list_id))]
@@ -2008,13 +2002,9 @@ def listdifference(mastodon, rest):
             cprint("User {} already missing from list {}.".format(
                 format_username(user), items[0]), fg('green'))
         else:
-            try:
-                mastodon.list_accounts_delete(list_id, user['id'])
-                cprint("Removed {} from list {}.".format(
-                    format_username(user), items[0]), fg('green'))
-            except Exception as e:
-                cprint("error while deleting from list: {}".format(
-                    type(e).__name__), fg('red'))
+            mastodon.list_accounts_delete(list_id, user['id'])
+            cprint("Removed {} from list {}.".format(
+                format_username(user), items[0]), fg('green'))
 
 
 @command("<list> <list>", "List")
@@ -2031,18 +2021,11 @@ def listunion(mastodon, rest):
         cprint("Not enough arguments.", fg('red'))
         return
     list_id = get_list_id(mastodon, items[0])
-    if not list_id:
-        cprint("List {} is not found".format(items[0]), fg('red'))
-        return
     if items[1] == "[following]":
         user = mastodon.account_verify_credentials()
         list_accounts = mastodon.fetch_remaining(mastodon.account_following(user['id']))
     else:
         union_list_id = get_list_id(mastodon, items[1])
-        if not union_list_id:
-            cprint("List {} is not found".format(items[1]), fg('red'))
-            return
-
         list_accounts = mastodon.fetch_remaining(mastodon.list_accounts(union_list_id))
 
     existing_ids = [x['id'] for x in mastodon.fetch_remaining(mastodon.list_accounts(list_id))]
@@ -2052,13 +2035,9 @@ def listunion(mastodon, rest):
             cprint("User {} already on list {}.".format(
                 format_username(user), items[0]), fg('green'))
         else:
-            try:
-                mastodon.list_accounts_add(list_id, user['id'])
-                cprint("Added {} to list {}.".format(
-                    format_username(user), items[0]), fg('green'))
-            except Exception as e:
-                cprint("error while adding to list: {}".format(
-                    type(e).__name__), fg('red'))
+            mastodon.list_accounts_add(list_id, user['id'])
+            cprint("Added {} to list {}.".format(
+                format_username(user), items[0]), fg('green'))
 
 
 @command("<list> <user>", "List")
