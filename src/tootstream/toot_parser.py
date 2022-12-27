@@ -44,7 +44,7 @@ def has_class(value, attrs):
       attrs - The list of attributes to search.
       Returns true if the specified class type was found.
     """
-    values = find_attr('class', attrs)
+    values = find_attr("class", attrs)
     if values is None:
         return False
 
@@ -95,15 +95,16 @@ class TootParser(HTMLParser):
     """
 
     def __init__(
-            self,
-            indent='',
-            width=0,
-            convert_emoji_to_unicode=False,
-            convert_emoji_to_shortcode=False,
-            shorten_links=False,
-            link_style=None,
-            mention_style=None,
-            hashtag_style=None):
+        self,
+        indent="",
+        width=0,
+        convert_emoji_to_unicode=False,
+        convert_emoji_to_shortcode=False,
+        shorten_links=False,
+        link_style=None,
+        mention_style=None,
+        hashtag_style=None,
+    ):
 
         super().__init__()
         self.reset()
@@ -126,7 +127,6 @@ class TootParser(HTMLParser):
         else:
             self.wrap = None
 
-
     def reset(self):
         """Resets the parser so a new toot can be parsed."""
         super().reset()
@@ -138,14 +138,12 @@ class TootParser(HTMLParser):
         self.hide = False
         self.ellipsis = False
 
-
     def pop_line(self):
         """Take the current text scratchpad and return it as a
         line of text and reset the scratchpad."""
-        line = ''.join(self.fed)
+        line = "".join(self.fed)
         self.fed = []
         return line
-
 
     def handle_data(self, data):
         """Processes plain text data.
@@ -162,29 +160,27 @@ class TootParser(HTMLParser):
 
         self.fed.append(data)
 
-
     def parse_link(self, attrs):
         """Processes a link tag.
           attrs - A list of attributes contained in the link tag.
         """
 
         # Save the link url
-        self.links.append(find_attr('href', attrs))
+        self.links.append(find_attr("href", attrs))
 
-        if has_class('hashtag', attrs):
-            self.cur_type = 'hashtag'
+        if has_class("hashtag", attrs):
+            self.cur_type = "hashtag"
             if self.hashtag_style != None:
                 self.fed.append(self.hashtag_style)
-        elif has_class('mention', attrs):
-            self.cur_type = 'mention'
+        elif has_class("mention", attrs):
+            self.cur_type = "mention"
             if self.mention_style != None:
                 self.fed.append(self.mention_style)
         else:
-            self.weblinks.append(find_attr('href', attrs))
-            self.cur_type = 'link'
+            self.weblinks.append(find_attr("href", attrs))
+            self.cur_type = "link"
             if self.link_style != None:
                 self.fed.append(self.link_style)
-
 
     def parse_span(self, attrs):
         """Processes a span tag.
@@ -196,63 +192,62 @@ class TootParser(HTMLParser):
         # text that should be omitted in the shorted link version
         # and <span class="ellipsis"> tags around text that should
         # be terminated with an ellipsis.
-        if not self.shorten_links or self.cur_type != 'link':
+        if not self.shorten_links or self.cur_type != "link":
             return
 
-        if has_class('invisible', attrs):
+        if has_class("invisible", attrs):
             # Mark that any text in the tag should be omitted
             self.hide = True
 
-        elif has_class('ellipsis', attrs):
+        elif has_class("ellipsis", attrs):
             # Mark the any text in the tag should be terminated
             # with ellipsis
             self.ellipsis = True
-
 
     def handle_starttag(self, tag, attrs):
         """Parses a new HTML tag.
           tag - The name of the new tag.
           attrs - The attributes contained in the tag.
         """
-        if tag == 'a':
+        if tag == "a":
             self.parse_link(attrs)
 
-        elif tag == 'span':
+        elif tag == "span":
             self.parse_span(attrs)
 
-        elif tag == 'br':
+        elif tag == "br":
             self.lines.append(self.pop_line())
 
-        elif tag == 'p' and len(self.fed) > 0:
+        elif tag == "p" and len(self.fed) > 0:
             self.lines.append(self.pop_line())
-            self.lines.append('')
-
+            self.lines.append("")
 
     def handle_endtag(self, tag):
         """Parses a closing tag.
           tag - The tag to parse.
         """
-        if tag == 'a':
+        if tag == "a":
             # Reset if we are applying a style
-            if ((self.cur_type == 'link' and self.link_style != None) or
-                (self.cur_type == 'mention' and self.mention_style != None) or
-                (self.cur_type == 'hashtag' and self.hashtag_style != None)):
-                self.fed.append(attr('reset'))
+            if (
+                (self.cur_type == "link" and self.link_style != None)
+                or (self.cur_type == "mention" and self.mention_style != None)
+                or (self.cur_type == "hashtag" and self.hashtag_style != None)
+            ):
+                self.fed.append(attr("reset"))
 
             # Only types associated with 'a' tags are tracked at the moment
             self.cur_type = None
 
-        if tag == 'span' and self.hide:
+        if tag == "span" and self.hide:
             # Allow text to be shown now that the hide span
             # has finished
             self.hide = False
 
-        if tag == 'span' and self.ellipsis:
+        if tag == "span" and self.ellipsis:
             # Add ellipsis to the text if we have finished a
             # <span class="ellipsis"> tag.
-            self.fed.append('...')
+            self.fed.append("...")
             self.ellipsis = False
-
 
     def parse(self, html):
         """Parses a single source toot.
@@ -262,7 +257,6 @@ class TootParser(HTMLParser):
         self.feed(html)
         self.close()
 
-
     def get_text(self):
         """Returns a plain text version of the source HTML toot."""
 
@@ -270,7 +264,7 @@ class TootParser(HTMLParser):
         self.lines.append(self.pop_line())
 
         if self.wrap == None:
-            return self.indent + ('\n' + self.indent).join(self.lines)
+            return self.indent + ("\n" + self.indent).join(self.lines)
 
         # Text wrap the lines by feeding them to TextWrapper first.
         out = []
@@ -279,7 +273,7 @@ class TootParser(HTMLParser):
                 out.append(line)
             else:
                 out.append(self.wrap.fill(line))
-        return '\n'.join(out)
+        return "\n".join(out)
 
     def get_links(self):
         """Returns an array of links parsed from the source HTML toot."""
