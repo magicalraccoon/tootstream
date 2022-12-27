@@ -930,7 +930,7 @@ def help(mastodon, rest):
                        attr('underlined'))
                 new_section = False
 
-            print("{:>12} {:<15}  {:<}".format(command, cmd_args, cmd_doc))
+            print("{:>14} {:<15}  {:<}".format(command, cmd_args, cmd_doc))
 
 
 @command('[<text>]', 'Toots')
