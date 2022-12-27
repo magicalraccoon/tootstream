@@ -837,11 +837,15 @@ def printList(list_item):
 commands = OrderedDict()
 
 
-def command(func):
+def command(argstr=None, section=None):
     """Adds the function to the command list."""
-    commands[func.__name__] = func
-    bisect.insort(completion_list, func.__name__)
-    return func
+    def inner(func):
+        commands[func.__name__] = func
+        bisect.insort(completion_list, func.__name__)
+        func.__argstr__ = argstr
+        func.__section__ = section
+        return func
+    return inner
 
 
 #####################################
@@ -857,7 +861,7 @@ Tootstream Help:
 """
 
 
-@command
+@command('[<cmd>]', 'Help')
 def help(mastodon, rest):
     """List all commands or show detailed help.
 
@@ -929,11 +933,7 @@ def help(mastodon, rest):
             print("{:>12} {:<15}  {:<}".format(command, cmd_args, cmd_doc))
 
 
-help.__argstr__ = '[<cmd>]'
-help.__section__ = 'Help'
-
-
-@command
+@command('[<text>]', 'Toots')
 def toot(mastodon, rest):
     """Publish a toot.
 
@@ -994,11 +994,9 @@ def toot(mastodon, rest):
                 posted = True
 
 
-toot.__argstr__ = '[<text>]'
-toot.__section__ = 'Toots'
 
 
-@command
+@command('<id> [<text>]', 'Toots')
 def rep(mastodon, rest):
     """Reply to a toot by ID.
 
@@ -1091,11 +1089,9 @@ def rep(mastodon, rest):
                 posted = True
 
 
-rep.__argstr__ = '<id> [<text>]'
-rep.__section__ = 'Toots'
 
 
-@command
+@command('<id>', 'Toots')
 def delete(mastodon, rest):
     """Deletes your toot by ID"""
     rest = IDS.to_global(rest)
@@ -1105,11 +1101,9 @@ def delete(mastodon, rest):
     print("Poof! It's gone.")
 
 
-delete.__argstr__ = '<id>'
-delete.__section__ = 'Toots'
 
 
-@command
+@command('<id>', 'Toots')
 def boost(mastodon, rest):
     """Boosts a toot by ID."""
     rest = IDS.to_global(rest)
@@ -1125,11 +1119,9 @@ def boost(mastodon, rest):
         cprint(e, fg('magenta') + attr('bold') + attr('underlined'))
 
 
-boost.__argstr__ = '<id>'
-boost.__section__ = 'Toots'
 
 
-@command
+@command('<id>', 'Toots')
 def unboost(mastodon, rest):
     """Removes a boosted toot by ID."""
     rest = IDS.to_global(rest)
@@ -1141,11 +1133,9 @@ def unboost(mastodon, rest):
     cprint(msg, fg('red'))
 
 
-unboost.__argstr__ = '<id>'
-unboost.__section__ = 'Toots'
 
 
-@command
+@command('<id>', 'Toots')
 def fav(mastodon, rest):
     """Favorites a toot by ID."""
     rest = IDS.to_global(rest)
@@ -1157,11 +1147,9 @@ def fav(mastodon, rest):
     cprint(msg, fg('red'))
 
 
-fav.__argstr__ = '<id>'
-fav.__section__ = 'Toots'
 
 
-@command
+@command('<id>', 'Toots')
 def unfav(mastodon, rest):
     """Removes a favorite toot by ID."""
     rest = IDS.to_global(rest)
@@ -1173,11 +1161,9 @@ def unfav(mastodon, rest):
     cprint(msg, fg('yellow'))
 
 
-unfav.__argstr__ = '<id>'
-unfav.__section__ = 'Toots'
 
 
-@command
+@command('<id>', 'Toots')
 def history(mastodon, rest):
     """Shows the history of the conversation for an ID.
 
@@ -1204,11 +1190,9 @@ def history(mastodon, rest):
             fg('red'))
 
 
-history.__argstr__ = '<id>'
-history.__section__ = 'Toots'
 
 
-@command
+@command('<id>', 'Toots')
 def thread(mastodon, rest):
     """Shows the complete thread of the conversation for an ID.
 
@@ -1239,11 +1223,9 @@ def thread(mastodon, rest):
             fg('red'))
 
 
-thread.__argstr__ = '<id>'
-thread.__section__ = 'Toots'
 
 
-@command
+@command('<id>', 'Toots')
 def puburl(mastodon, rest):
     """Shows the public URL of a toot, optionally open in browser.
 
@@ -1280,11 +1262,9 @@ def puburl(mastodon, rest):
         cprint("PubURL argument was not correct. Please try again.", fg('red'))
 
 
-puburl.__argstr__ = '<id>'
-puburl.__section__ = 'Toots'
 
 
-@command
+@command('<id>', 'Toots')
 def links(mastodon, rest):
     """Show URLs or any links in a toot, optionally open in browser.
 
@@ -1342,22 +1322,18 @@ def links(mastodon, rest):
                 cprint("Links argument was not correct. Please try again.", fg('red'))
 
 
-links.__argstr__ = '<id>'
-links.__section__ = 'Toots'
 
 
-@command
+@command('', 'Timeline')
 def home(mastodon, rest):
     """Displays the Home timeline."""
     stepper, rest = step_flag(rest)
     print_toots(mastodon, mastodon.timeline_home(), stepper, ctx_name='home')
 
 
-home.__argstr__ = ''
-home.__section__ = 'Timeline'
 
 
-@command
+@command('', 'Timeline')
 def fed(mastodon, rest):
     """Displays the Federated timeline."""
     stepper, rest = step_flag(rest)
@@ -1368,11 +1344,9 @@ def fed(mastodon, rest):
         ctx_name='federated timeline')
 
 
-fed.__argstr__ = ''
-fed.__section__ = 'Timeline'
 
 
-@command
+@command('', 'Timeline')
 def local(mastodon, rest):
     """Displays the Local timeline."""
     stepper, rest = step_flag(rest)
@@ -1380,11 +1354,9 @@ def local(mastodon, rest):
                 stepper, ctx_name='local timeline')
 
 
-local.__argstr__ = ''
-local.__section__ = 'Timeline'
 
 
-@command
+@command('<timeline>', 'Timeline')
 def stream(mastodon, rest):
     """Streams a timeline. Specify home, fed, local, list, or a #hashtagname.
 
@@ -1474,11 +1446,9 @@ def stream(mastodon, rest):
         is_streaming = False
 
 
-stream.__argstr__ = '<timeline>'
-stream.__section__ = 'Timeline'
 
 
-@command
+@command('[<filter>]', 'Timeline')
 def note(mastodon, rest):
     """Displays the Notifications timeline.
 
@@ -1576,11 +1546,9 @@ def note(mastodon, rest):
             print()
 
 
-note.__argstr__ = '[<filter>]'
-note.__section__ = 'Timeline'
 
 
-@command
+@command('[<note_id>]', 'Timeline')
 def dismiss(mastodon, rest):
     """Dismisses notifications.
 
@@ -1604,11 +1572,9 @@ def dismiss(mastodon, rest):
         cprint("Something went wrong: {}".format(e), fg('red'))
 
 
-dismiss.__argstr__ = '[<note_id>]'
-dismiss.__section__ = 'Timeline'
 
 
-@command
+@command('<user>', 'Users')
 def block(mastodon, rest):
     """Blocks a user by username or id.
 
@@ -1621,11 +1587,9 @@ def block(mastodon, rest):
         cprint("  user " + str(userid) + " is now blocked", fg('blue'))
 
 
-block.__argstr__ = '<user>'
-block.__section__ = 'Users'
 
 
-@command
+@command('<user>', 'Users')
 def unblock(mastodon, rest):
     """Unblocks a user by username or id.
 
@@ -1639,11 +1603,9 @@ def unblock(mastodon, rest):
                " is now unblocked", fg('blue'))
 
 
-unblock.__argstr__ = '<user>'
-unblock.__section__ = 'Users'
 
 
-@command
+@command('<user>', 'Users')
 def follow(mastodon, rest):
     """Follows an account by username or id.
 
@@ -1660,11 +1622,9 @@ def follow(mastodon, rest):
             bisect.insort(completion_list, username)
 
 
-follow.__argstr__ = '<user>'
-follow.__section__ = 'Users'
 
 
-@command
+@command('<user>', 'Users')
 def unfollow(mastodon, rest):
     """Unfollows an account by username or id.
 
@@ -1681,11 +1641,9 @@ def unfollow(mastodon, rest):
         completion_list.remove(username)
 
 
-unfollow.__argstr__ = '<user>'
-unfollow.__section__ = 'Users'
 
 
-@command
+@command('<user>', 'Users')
 def mute(mastodon, rest):
     """Mutes a user by username or id.
 
@@ -1698,11 +1656,9 @@ def mute(mastodon, rest):
         cprint("  user " + str(userid) + " is now muted", fg('blue'))
 
 
-mute.__argstr__ = '<user>'
-mute.__section__ = 'Users'
 
 
-@command
+@command('<user>', 'Users')
 def unmute(mastodon, rest):
     """Unmutes a user by username or id.
 
@@ -1715,11 +1671,9 @@ def unmute(mastodon, rest):
         cprint("  user " + str(userid) + " is now unmuted", fg('blue'))
 
 
-unmute.__argstr__ = '<user>'
-unmute.__section__ = 'Users'
 
 
-@command
+@command('<query>', 'Discover')
 def search(mastodon, rest):
     """Search for a #tag or @user.
 
@@ -1756,11 +1710,9 @@ def search(mastodon, rest):
     return
 
 
-search.__argstr__ = '<query>'
-search.__section__ = 'Discover'
 
 
-@command
+@command('<user> [<N>]', 'Discover')
 def view(mastodon, rest):
     """Displays toots from another user.
 
@@ -1788,22 +1740,18 @@ def view(mastodon, rest):
                 ctx_name="user timeline", add_completion=False)
 
 
-view.__argstr__ = '<user> [<N>]'
-view.__section__ = 'Discover'
 
 
-@command
+@command('', 'Profile')
 def info(mastodon, rest):
     """Prints your user info."""
     user = mastodon.account_verify_credentials()
     printUser(user)
 
 
-info.__argstr__ = ''
-info.__section__ = 'Profile'
 
 
-@command
+@command('', 'Profile')
 def followers(mastodon, rest):
     """Lists users who follow you."""
     # TODO: compare user['followers_count'] to len(users)
@@ -1819,11 +1767,9 @@ def followers(mastodon, rest):
         printUsersShort(users)
 
 
-followers.__argstr__ = ''
-followers.__section__ = 'Profile'
 
 
-@command
+@command('', 'Profile')
 def following(mastodon, rest):
     """Lists users you follow."""
     # TODO: compare user['following_count'] to len(users)
@@ -1838,11 +1784,9 @@ def following(mastodon, rest):
         printUsersShort(users)
 
 
-following.__argstr__ = ''
-following.__section__ = 'Profile'
 
 
-@command
+@command('', 'Profile')
 def blocks(mastodon, rest):
     """Lists users you have blocked."""
     users = mastodon.blocks()
@@ -1853,11 +1797,9 @@ def blocks(mastodon, rest):
         printUsersShort(users)
 
 
-blocks.__argstr__ = ''
-blocks.__section__ = 'Profile'
 
 
-@command
+@command('', 'Profile')
 def mutes(mastodon, rest):
     """Lists users you have muted."""
     users = mastodon.mutes()
@@ -1868,11 +1810,9 @@ def mutes(mastodon, rest):
         printUsersShort(users)
 
 
-mutes.__argstr__ = ''
-mutes.__section__ = 'Profile'
 
 
-@command
+@command('', 'Profile')
 def requests(mastodon, rest):
     """Lists your incoming follow requests.
 
@@ -1888,11 +1828,9 @@ def requests(mastodon, rest):
         cprint("   or 'reject <id>' to reject", fg('magenta'))
 
 
-requests.__argstr__ = ''
-requests.__section__ = 'Profile'
 
 
-@command
+@command('<user>', 'Profile')
 def accept(mastodon, rest):
     """Accepts a user's follow request by username or id.
 
@@ -1904,11 +1842,9 @@ def accept(mastodon, rest):
     cprint("  user {}'s request is accepted".format(userid), fg('blue'))
 
 
-accept.__argstr__ = '<user>'
-accept.__section__ = 'Profile'
 
 
-@command
+@command('<user>', 'Profile')
 def reject(mastodon, rest):
     """Rejects a user's follow request by username or id.
 
@@ -1920,22 +1856,18 @@ def reject(mastodon, rest):
     cprint("  user {}'s request is rejected".format(userid), fg('blue'))
 
 
-reject.__argstr__ = '<user>'
-reject.__section__ = 'Profile'
 
 
-@command
+@command('', 'Profile')
 def faves(mastodon, rest):
     """Displays posts you've favourited."""
     print_toots(mastodon, mastodon.favourites(),
                 ctx_name='favourites', add_completion=False)
 
 
-faves.__argstr__ = ''
-faves.__section__ = 'Profile'
 
 
-@command
+@command('[<N>]', 'Profile')
 def me(mastodon, rest):
     """Displays toots you've tooted.
 
@@ -1946,11 +1878,10 @@ def me(mastodon, rest):
     view(mastodon, "{} {}".format(itme['id'], rest))
 
 
-me.__argstr__ = '[<N>]'
 me.__section__ = "Profile"
 
 
-@command
+@command('', 'Profile')
 def about(mastodon, rest):
     """Shows version information and connected instance """
     print("Tootstream version: %s" % version)
@@ -1958,21 +1889,17 @@ def about(mastodon, rest):
     cprint(mastodon.api_base_url, fg('green') + attr('bold'))
 
 
-about.__argstr__ = ''
-about.__section__ = 'Profile'
 
 
-@command
+@command('', 'Profile')
 def quit(mastodon, rest):
     """Ends the program."""
     sys.exit("Goodbye!")
 
 
-quit.__argstr__ = ''
-quit.__section__ = 'Profile'
 
 
-@command
+@command('', 'List')
 def lists(mastodon, rest):
     """Shows the lists that the user has created."""
     if not(list_support(mastodon)):
@@ -1985,11 +1912,9 @@ def lists(mastodon, rest):
         printList(list_item)
 
 
-lists.__argstr__ = ''
-lists.__section__ = 'List'
 
 
-@command
+@command('<list>', 'List')
 def listcreate(mastodon, rest):
     """Creates a list."""
     if not(list_support(mastodon)):
@@ -1998,11 +1923,9 @@ def listcreate(mastodon, rest):
     cprint("List {} created.".format(rest), fg('green'))
 
 
-listcreate.__argstr__ = '<list>'
-listcreate.__section__ = 'List'
 
 
-@command
+@command('<list> <list>', 'List')
 def listrename(mastodon, rest):
     """Rename a list.
     ex:  listrename oldlist newlist"""
@@ -2024,11 +1947,9 @@ def listrename(mastodon, rest):
     cprint("Renamed {} to {}.".format(items[1], items[0]), fg('green'))
 
 
-listrename.__argstr__ = '<list> <list>'
-listrename.__section__ = 'List'
 
 
-@command
+@command('<list>', 'List')
 def listdestroy(mastodon, rest):
     """Destroys a list.
     ex: listdestroy listname
@@ -2042,11 +1963,9 @@ def listdestroy(mastodon, rest):
 
 
 
-listdestroy.__argstr__ = '<list>'
-listdestroy.__section__ = 'List'
 
 
-@command
+@command('<list>', 'List')
 def listhome(mastodon, rest):
     """Show the toots from a list.
     ex:  listhome listname
@@ -2064,11 +1983,9 @@ def listhome(mastodon, rest):
 
 
 
-listhome.__argstr__ = '<list>'
-listhome.__section__ = 'List'
 
 
-@command
+@command('<list>', 'List')
 def listaccounts(mastodon, rest):
     """Show the accounts for the list.
     ex:  listaccounts listname
@@ -2083,11 +2000,9 @@ def listaccounts(mastodon, rest):
         printUser(user)
 
 
-listaccounts.__argstr__ = '<list>'
-listaccounts.__section__ = 'List'
 
 
-@command
+@command('<list> <user>', 'List')
 def listadd(mastodon, rest):
     """Add user to list.
     ex:  listadd listname @user@instance.example.com
@@ -2108,11 +2023,9 @@ def listadd(mastodon, rest):
     cprint("Added {} to list {}.".format(items[1], items[0]), fg('green'))
 
 
-listadd.__argstr__ = '<list> <user>'
-listadd.__section__ = 'List'
 
 
-@command
+@command('<list> <user>', 'List')
 def listremove(mastodon, rest):
     """Remove user from list.
     ex:  listremove list user@instance.example.com
@@ -2135,8 +2048,6 @@ def listremove(mastodon, rest):
         items[1], items[0]), fg('green'))
 
 
-listremove.__argstr__ = '<list> <user>'
-listremove.__section__ = 'List'
 #####################################
 ######### END COMMAND BLOCK #########
 #####################################
