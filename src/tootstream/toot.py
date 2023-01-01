@@ -2061,17 +2061,7 @@ def authenticated(mastodon):
     return True
 
 
-CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
-@click.command(context_settings=CONTEXT_SETTINGS)
-@click.option('--instance', '-i', metavar='<string>',
-              help='Hostname of the instance to connect')
-@click.option('--config', '-c', metavar='<file>',
-              type=click.Path(exists=False, readable=True),
-              default='~/.config/tootstream/tootstream.conf',
-              help='Location of alternate configuration file to load')
-@click.option('--profile', '-P', metavar='<profile>', default='default',
-              help='Name of profile for saved credentials (default)')
-def main(instance, config, profile):
+def get_mastodon(instance, config, profile):
     configpath = os.path.expanduser(config)
     if os.path.isfile(configpath) and not os.access(configpath, os.W_OK):
         # warn the user before they're asked for input
@@ -2113,6 +2103,21 @@ def main(instance, config, profile):
         }
 
     save_config(configpath, config)
+    return (mastodon, profile)
+
+
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.option('--instance', '-i', metavar='<string>',
+              help='Hostname of the instance to connect')
+@click.option('--config', '-c', metavar='<file>',
+              type=click.Path(exists=False, readable=True),
+              default='~/.config/tootstream/tootstream.conf',
+              help='Location of alternate configuration file to load')
+@click.option('--profile', '-P', metavar='<profile>', default='default',
+              help='Name of profile for saved credentials (default)')
+def main(instance, config, profile):
+    mastodon, profile = get_mastodon(instance, config, profile)
 
     def say_error(a, b): return cprint("Invalid command. Use 'help' for a list of commands.",
                                        fg('white') + bg('red'))
