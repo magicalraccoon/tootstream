@@ -1758,7 +1758,7 @@ def followers(mastodon, rest):
     #       request more from server if first call doesn't get full list
     # TODO: optional username/userid to show another user's followers?
     user = mastodon.account_verify_credentials()
-    users =  mastodon.fetch_remaining(mastodon.account_followers(user['id']))
+    users = mastodon.fetch_remaining(mastodon.account_followers(user['id']))
     if not users:
         cprint("  Nobody follows you", fg('red'))
     else:
@@ -1776,7 +1776,7 @@ def following(mastodon, rest):
     #       request more from server if first call doesn't get full list
     # TODO: optional username/userid to show another user's following?
     user = mastodon.account_verify_credentials()
-    users =  mastodon.fetch_remaining(mastodon.account_following(user['id']))
+    users = mastodon.fetch_remaining(mastodon.account_following(user['id']))
     if not users:
         cprint("  You aren't following anyone", fg('red'))
     else:
@@ -1789,7 +1789,7 @@ def following(mastodon, rest):
 @command('', 'Profile')
 def blocks(mastodon, rest):
     """Lists users you have blocked."""
-    users =  mastodon.fetch_remaining(mastodon.blocks())
+    users = mastodon.fetch_remaining(mastodon.blocks())
     if not users:
         cprint("  You haven't blocked anyone (... yet)", fg('red'))
     else:
@@ -1802,7 +1802,7 @@ def blocks(mastodon, rest):
 @command('', 'Profile')
 def mutes(mastodon, rest):
     """Lists users you have muted."""
-    users =  mastodon.fetch_remaining(mastodon.mutes())
+    users = mastodon.fetch_remaining(mastodon.mutes())
     if not users:
         cprint("  You haven't muted anyone (... yet)", fg('red'))
     else:
@@ -1818,7 +1818,7 @@ def requests(mastodon, rest):
 
     Run 'accept id' to accept a request
      or 'reject id' to reject."""
-    users =  mastodon.fetch_remaining(mastodon.follow_requests())
+    users = mastodon.fetch_remaining(mastodon.follow_requests())
     if not users:
         cprint("  You have no incoming requests", fg('red'))
     else:
@@ -1993,7 +1993,7 @@ def listaccounts(mastodon, rest):
     if not(list_support(mastodon)):
         return
     item = get_list_id(mastodon, rest)
-    list_accounts =  mastodon.fetch_remaining(mastodon.list_accounts(item))
+    list_accounts = mastodon.fetch_remaining(mastodon.list_accounts(item))
 
     cprint("List: %s" % rest, fg('green'))
     for user in list_accounts:
