@@ -230,28 +230,29 @@ def get_list_id(mastodon, rest):
     raise Exception("List '{}' is not found.".format(rest))
 
 
-NOTE_FLAGS = {"m": "mention", "f": "favourite", "b": "reblog", "F": "follow", "p": "poll"}
-
-
-def flaghandler_note(mastodon, rest):
-    """Parse input for flagsr."""
+def flaghandler(rest, initial, flags):
+    """Parse input for flags."""
 
     # initialize kwargs to default values
-    kwargs = {k: True for k in NOTE_FLAGS.values()}
+    kwargs = {k: initial for k in flags.values()}
 
     # token-grabbing loop
-    # recognize `note -m -f -b -F -p` as well as `note -mfbFp`
+    # recognize separated (e.g. `-m -f`) as well as combined (`-mf`)
     while rest.startswith("-"):
         # get the next token
         (args, _, rest) = rest.partition(" ")
         # traditional unix "ignore flags after this" syntax
         if args == "--":
             break
-        for k in NOTE_FLAGS.keys():
+        for k in flags.keys():
             if k in args:
-                kwargs[NOTE_FLAGS[k]] = False
+                kwargs[flags[k]] = not kwargs[flags[k]]
 
     return (rest, kwargs)
+
+
+def flaghandler_note(mastodon, rest):
+    return flaghandler(rest, True, {"m": "mention", "f": "favourite", "b": "reblog", "F": "follow", "p": "poll"})
 
 
 def flaghandler_tootreply(mastodon, rest):
@@ -267,25 +268,7 @@ def flaghandler_tootreply(mastodon, rest):
         "spoiler_text": None,
         "visibility": "",
     }
-    flags = {"m": False, "c": False, "C": False, "v": False}
-
-    # token-grabbing loop
-    # recognize `toot -v -m -c` as well as `toot -vmc`
-    # but `toot -v Hello -c` will only get -v
-    while rest.startswith("-"):
-        # get the next token
-        (args, _, rest) = rest.partition(" ")
-        # traditional unix "ignore flags after this" syntax
-        if args == "--":
-            break
-        if "v" in args:
-            flags["v"] = True
-        if "c" in args:
-            flags["c"] = True
-        if "C" in args:
-            flags["C"] = True
-        if "m" in args:
-            flags["m"] = True
+    (rest, flags) = flaghandler(rest, False, {"v":"v","c":"c","C":"C","m":"m"})
 
     # if any flag is true, print a general usage message
     if True in flags.values():
