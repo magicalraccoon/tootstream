@@ -9,6 +9,7 @@ import bisect
 import shutil
 from collections import OrderedDict
 import webbrowser
+
 # Get the version of Tootstream
 import pkg_resources  # part of setuptools
 import click
@@ -229,19 +230,14 @@ def get_list_id(mastodon, rest):
     raise Exception("List '{}' is not found.".format(rest))
 
 
+NOTE_FLAGS = {"m": "mention", "f": "favourite", "b": "reblog", "F": "follow", "p": "poll"}
+
+
 def flaghandler_note(mastodon, rest):
     """Parse input for flagsr."""
 
     # initialize kwargs to default values
-    kwargs = {
-        "mention": True,
-        "favourite": True,
-        "reblog": True,
-        "follow": True,
-        "poll": True,
-    }
-
-    flags = {"m": False, "f": False, "b": False, "F": False, "p": False}
+    kwargs = {k: True for k in NOTE_FLAGS.values()}
 
     # token-grabbing loop
     # recognize `note -m -f -b -F -p` as well as `note -mfbFp`
@@ -251,16 +247,9 @@ def flaghandler_note(mastodon, rest):
         # traditional unix "ignore flags after this" syntax
         if args == "--":
             break
-        if "m" in args:
-            kwargs["mention"] = False
-        if "f" in args:
-            kwargs["favourite"] = False
-        if "b" in args:
-            kwargs["reblog"] = False
-        if "F" in args:
-            kwargs["follow"] = False
-        if "p" in args:
-            kwargs["poll"] = False
+        for k in NOTE_FLAGS.keys():
+            if k in args:
+                kwargs[NOTE_FLAGS[k]] = False
 
     return (rest, kwargs)
 
