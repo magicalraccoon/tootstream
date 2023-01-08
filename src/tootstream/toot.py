@@ -261,6 +261,12 @@ def flaghandler_tootreply(mastodon, rest):
     arguments for Mastodon.status_post().  On failure, returns
     (None, None)."""
 
+    (rest, flags) = flaghandler(rest, False, {"v":"visibility","c":"cw","C":"noCW","m":"media"})
+
+    # if any flag is true, print a general usage message
+    if True in flags.values():
+        print("Press Ctrl-C to abort and return to the main prompt.")
+
     # initialize kwargs to default values
     kwargs = {
         "sensitive": False,
@@ -268,14 +274,9 @@ def flaghandler_tootreply(mastodon, rest):
         "spoiler_text": None,
         "visibility": "",
     }
-    (rest, flags) = flaghandler(rest, False, {"v":"v","c":"c","C":"C","m":"m"})
-
-    # if any flag is true, print a general usage message
-    if True in flags.values():
-        print("Press Ctrl-C to abort and return to the main prompt.")
 
     # visibility flag
-    if flags["v"]:
+    if flags["visibility"]:
         vis = input("Set visibility [(p)ublic/(u)nlisted/(pr)ivate/(d)irect/None]: ")
         vis = vis.lower()
 
@@ -301,13 +302,13 @@ def flaghandler_tootreply(mastodon, rest):
     # end vis
 
     # cw/spoiler flag
-    if flags["C"] and flags["c"]:
+    if flags["noCW"] and flags["cw"]:
         cprint("error: only one of -C and -c allowed", fg("red"))
         return (None, None)
-    elif flags["C"]:
+    elif flags["noCW"]:
         # unset
         kwargs["spoiler_text"] = ""
-    elif flags["c"]:
+    elif flags["cw"]:
         # prompt to set
         cw = input("Set content warning [leave blank for none]: ")
 
@@ -318,7 +319,7 @@ def flaghandler_tootreply(mastodon, rest):
 
     # media flag
     media = []
-    if flags["m"]:
+    if flags["media"]:
         print("You can attach up to 4 files. A blank line will end filename input.")
         count = 0
         while count < 4:
