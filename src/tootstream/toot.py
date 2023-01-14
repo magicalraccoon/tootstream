@@ -1200,6 +1200,30 @@ def unfav(mastodon, rest):
 
 
 @command("<id>", "Toots")
+def book(mastodon, rest):
+    """Bookmark a toot by ID."""
+    rest = IDS.to_global(rest)
+    if rest is None:
+        return
+    mastodon.status_bookmark(rest)
+    item = mastodon.status(rest)
+    msg = "  Bookmarked:\n" + get_content(item)
+    cprint(msg, fg("red"))
+
+
+@command("<id>", "Toots")
+def unbook(mastodon, rest):
+    """Remove a bookmark from a toot by ID."""
+    rest = IDS.to_global(rest)
+    if rest is None:
+        return
+    mastodon.status_unbookmark(rest)
+    item = mastodon.status(rest)
+    msg = "  Removed bookmark: " + get_content(item)
+    cprint(msg, fg("yellow"))
+
+
+@command("<id>", "Toots")
 def history(mastodon, rest):
     """Shows the history of the conversation for an ID.
 
@@ -1858,6 +1882,14 @@ def faves(mastodon, rest):
     """Displays posts you've favourited."""
     print_toots(
         mastodon, mastodon.favourites(), ctx_name="favourites", add_completion=False
+    )
+
+
+@command("", "Profile")
+def bookmarks(mastodon, rest):
+    """Displays posts you've bookmarked."""
+    print_toots(
+        mastodon, mastodon.bookmarks(), ctx_name="bookmarks", add_completion=False
     )
 
 
