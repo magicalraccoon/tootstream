@@ -9,6 +9,7 @@ import bisect
 import shutil
 from collections import OrderedDict
 import webbrowser
+
 # Get the version of Tootstream
 import pkg_resources  # part of setuptools
 import click
@@ -229,40 +230,29 @@ def get_list_id(mastodon, rest):
     raise Exception("List '{}' is not found.".format(rest))
 
 
-def flaghandler_note(mastodon, rest):
-    """Parse input for flagsr."""
+def flaghandler(rest, initial, flags):
+    """Parse input for flags."""
 
     # initialize kwargs to default values
-    kwargs = {
-        "mention": True,
-        "favourite": True,
-        "reblog": True,
-        "follow": True,
-        "poll": True,
-    }
-
-    flags = {"m": False, "f": False, "b": False, "F": False, "p": False}
+    kwargs = {k: initial for k in flags.values()}
 
     # token-grabbing loop
-    # recognize `note -m -f -b -F -p` as well as `note -mfbFp`
+    # recognize separated (e.g. `-m -f`) as well as combined (`-mf`)
     while rest.startswith("-"):
         # get the next token
         (args, _, rest) = rest.partition(" ")
         # traditional unix "ignore flags after this" syntax
         if args == "--":
             break
-        if "m" in args:
-            kwargs["mention"] = False
-        if "f" in args:
-            kwargs["favourite"] = False
-        if "b" in args:
-            kwargs["reblog"] = False
-        if "F" in args:
-            kwargs["follow"] = False
-        if "p" in args:
-            kwargs["poll"] = False
+        for k in flags.keys():
+            if k in args:
+                kwargs[flags[k]] = not kwargs[flags[k]]
 
     return (rest, kwargs)
+
+
+def flaghandler_note(mastodon, rest):
+    return flaghandler(rest, True, {"m": "mention", "f": "favourite", "b": "reblog", "F": "follow", "p": "poll"})
 
 
 def flaghandler_tootreply(mastodon, rest):
@@ -271,6 +261,12 @@ def flaghandler_tootreply(mastodon, rest):
     arguments for Mastodon.status_post().  On failure, returns
     (None, None)."""
 
+    (rest, flags) = flaghandler(rest, False, {"v":"visibility","c":"cw","C":"noCW","m":"media"})
+
+    # if any flag is true, print a general usage message
+    if True in flags.values():
+        print("Press Ctrl-C to abort and return to the main prompt.")
+
     # initialize kwargs to default values
     kwargs = {
         "sensitive": False,
@@ -278,32 +274,9 @@ def flaghandler_tootreply(mastodon, rest):
         "spoiler_text": None,
         "visibility": "",
     }
-    flags = {"m": False, "c": False, "C": False, "v": False}
-
-    # token-grabbing loop
-    # recognize `toot -v -m -c` as well as `toot -vmc`
-    # but `toot -v Hello -c` will only get -v
-    while rest.startswith("-"):
-        # get the next token
-        (args, _, rest) = rest.partition(" ")
-        # traditional unix "ignore flags after this" syntax
-        if args == "--":
-            break
-        if "v" in args:
-            flags["v"] = True
-        if "c" in args:
-            flags["c"] = True
-        if "C" in args:
-            flags["C"] = True
-        if "m" in args:
-            flags["m"] = True
-
-    # if any flag is true, print a general usage message
-    if True in flags.values():
-        print("Press Ctrl-C to abort and return to the main prompt.")
 
     # visibility flag
-    if flags["v"]:
+    if flags["visibility"]:
         vis = input("Set visibility [(p)ublic/(u)nlisted/(pr)ivate/(d)irect/None]: ")
         vis = vis.lower()
 
@@ -329,13 +302,13 @@ def flaghandler_tootreply(mastodon, rest):
     # end vis
 
     # cw/spoiler flag
-    if flags["C"] and flags["c"]:
+    if flags["noCW"] and flags["cw"]:
         cprint("error: only one of -C and -c allowed", fg("red"))
         return (None, None)
-    elif flags["C"]:
+    elif flags["noCW"]:
         # unset
         kwargs["spoiler_text"] = ""
-    elif flags["c"]:
+    elif flags["cw"]:
         # prompt to set
         cw = input("Set content warning [leave blank for none]: ")
 
@@ -346,7 +319,7 @@ def flaghandler_tootreply(mastodon, rest):
 
     # media flag
     media = []
-    if flags["m"]:
+    if flags["media"]:
         print("You can attach up to 4 files. A blank line will end filename input.")
         count = 0
         while count < 4:
