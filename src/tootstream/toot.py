@@ -1200,7 +1200,7 @@ def unfav(mastodon, rest):
 
 
 @command("<id>", "Toots")
-def book(mastodon, rest):
+def bookmark(mastodon, rest):
     """Bookmark a toot by ID."""
     rest = IDS.to_global(rest)
     if rest is None:
@@ -1212,7 +1212,7 @@ def book(mastodon, rest):
 
 
 @command("<id>", "Toots")
-def unbook(mastodon, rest):
+def unbookmark(mastodon, rest):
     """Remove a bookmark from a toot by ID."""
     rest = IDS.to_global(rest)
     if rest is None:
