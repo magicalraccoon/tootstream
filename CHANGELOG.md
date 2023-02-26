@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Remove duplicate code (thanks to Jesse Weinstein)
 - Upgrade to Mastodon.py version to Mastodon.py 1.8.0
 
+#### Added
+- Added support for bookmarks (thanks to Jessee Weinstein)
+
 ### Release
 ### [0.3.8.1] - 2020-01-22
 
