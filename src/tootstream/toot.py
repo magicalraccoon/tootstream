@@ -1983,6 +1983,82 @@ def listaccounts(mastodon, rest):
         printUser(user)
 
 
+@command("<list> <list>", "List")
+def listdifference(mastodon, rest):
+    """Remove users in the second list from the first list.
+    ex:  listdifference list_to_remove_from list_of_what_to_remove"""
+    if not (list_support(mastodon)):
+        return
+    if not rest:
+        cprint("Argument required.", fg("red"))
+        return
+    items = rest.split(" ")
+    if len(items) < 2:
+        cprint("Not enough arguments.", fg("red"))
+        return
+    list_id = get_list_id(mastodon, items[0])
+    diff_list_id = get_list_id(mastodon, items[1])
+
+    list_accounts = mastodon.fetch_remaining(mastodon.list_accounts(diff_list_id))
+    existing_ids = [
+        x["id"] for x in mastodon.fetch_remaining(mastodon.list_accounts(list_id))
+    ]
+
+    for user in list_accounts:
+        if user["id"] in existing_ids:
+            cprint(
+                "User {} already missing from list {}.".format(
+                    format_username(user), items[0]
+                ),
+                fg("green"),
+            )
+        else:
+            mastodon.list_accounts_delete(list_id, user["id"])
+            cprint(
+                "Removed {} from list {}.".format(format_username(user), items[0]),
+                fg("green"),
+            )
+
+
+@command("<list> <list>", "List")
+def listunion(mastodon, rest):
+    """Add users in the second list to the first list.
+    ex:  listunion list_to_add_to list_of_what_to_add"""
+    if not (list_support(mastodon)):
+        return
+    if not rest:
+        cprint("Argument required.", fg("red"))
+        return
+    items = rest.split(" ")
+    if len(items) < 2:
+        cprint("Not enough arguments.", fg("red"))
+        return
+    list_id = get_list_id(mastodon, items[0])
+    if items[1] == "[following]":
+        user = mastodon.account_verify_credentials()
+        list_accounts = mastodon.fetch_remaining(mastodon.account_following(user["id"]))
+    else:
+        union_list_id = get_list_id(mastodon, items[1])
+        list_accounts = mastodon.fetch_remaining(mastodon.list_accounts(union_list_id))
+
+    existing_ids = [
+        x["id"] for x in mastodon.fetch_remaining(mastodon.list_accounts(list_id))
+    ]
+
+    for user in list_accounts:
+        if user["id"] in existing_ids:
+            cprint(
+                "User {} already on list {}.".format(format_username(user), items[0]),
+                fg("green"),
+            )
+        else:
+            mastodon.list_accounts_add(list_id, user["id"])
+            cprint(
+                "Added {} to list {}.".format(format_username(user), items[0]),
+                fg("green"),
+            )
+
+
 @command("<list> <user>", "List")
 def listadd(mastodon, rest):
     """Add user to list.
