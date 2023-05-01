@@ -1894,6 +1894,12 @@ def quit(mastodon, rest):
     sys.exit("Goodbye!")
 
 
+@command("", "Profile")
+def exit(mastodon, rest):
+    """Ends the program."""
+    sys.exit("Goodbye!")
+
+
 @command("", "List")
 def lists(mastodon, rest):
     """Shows the lists that the user has created."""
