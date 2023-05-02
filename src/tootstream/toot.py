@@ -782,10 +782,11 @@ def format_toot_idline(toot):
     return " ".join(out)
 
 
-def printToot(toot):
+def printToot(toot, show_toot=False):
     if not toot:
         return
 
+    show_toot_text = True
     out = []
     # if it's a boost, only output header line from toot
     # then get other data from toot['reblog']
@@ -807,10 +808,18 @@ def printToot(toot):
         # pass CW through get_content for wrapping/indenting
         faketoot = {"content": "[CW: " + toot["spoiler_text"] + "]"}
         out.append(stylize(get_content(faketoot), fg("red")))
+        show_toot_text = False
 
-    out.append(get_content(toot))
+    if toot.filtered:
+        filter_titles = ', '.join([x['filter']['title'] for x in toot.filtered])
+        faketoot = {"content": "[Filter: " + filter_titles + "]"}
+        out.append(stylize(get_content(faketoot), fg("red")))
+        show_toot_text = False
 
-    if toot.get("media_attachments"):
+    if show_toot_text or show_toot:
+        out.append(get_content(toot))
+
+    if toot.get("media_attachments") and show_toot_text:
         # simple version: output # of attachments. TODO: urls instead?
         nsfw = "CW " if toot["sensitive"] else ""
         out.append(
@@ -1170,6 +1179,15 @@ def unfav(mastodon, rest):
     unfaved = mastodon.status(rest)
     msg = "  Removed favorite: " + get_content(unfaved)
     cprint(msg, fg("yellow"))
+
+
+@command("<id>", "Toots")
+def show(mastodon, rest):
+    """Shows a toot by ID"""
+    rest = IDS.to_global(rest)
+    if rest is None:
+        return
+    printToot(mastodon.status(rest), show_toot=True)
 
 
 @command("<id>", "Toots")
