@@ -252,7 +252,11 @@ def flaghandler(rest, initial, flags):
 
 
 def flaghandler_note(mastodon, rest):
-    return flaghandler(rest, True, {"m": "mention", "f": "favourite", "b": "reblog", "F": "follow", "p": "poll"})
+    return flaghandler(
+        rest,
+        True,
+        {"m": "mention", "f": "favourite", "b": "reblog", "F": "follow", "p": "poll"},
+    )
 
 
 def flaghandler_tootreply(mastodon, rest):
@@ -261,7 +265,9 @@ def flaghandler_tootreply(mastodon, rest):
     arguments for Mastodon.status_post().  On failure, returns
     (None, None)."""
 
-    (rest, flags) = flaghandler(rest, False, {"v":"visibility","c":"cw","C":"noCW","m":"media"})
+    (rest, flags) = flaghandler(
+        rest, False, {"v": "visibility", "c": "cw", "C": "noCW", "m": "media"}
+    )
 
     # if any flag is true, print a general usage message
     if True in flags.values():
@@ -811,7 +817,7 @@ def printToot(toot, show_toot=False):
         show_toot_text = False
 
     if toot.filtered:
-        filter_titles = ', '.join([x['filter']['title'] for x in toot.filtered])
+        filter_titles = ", ".join([x["filter"]["title"] for x in toot.filtered])
         faketoot = {"content": "[Filter: " + filter_titles + "]"}
         out.append(stylize(get_content(faketoot), fg("red")))
         show_toot_text = False
