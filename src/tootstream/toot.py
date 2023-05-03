@@ -865,6 +865,14 @@ def printList(list_item):
     cprint("(id: %s)" % list_item["id"], fg("red"))
 
 
+def printFilter(filter_item):
+    """Prints filter entry nicely with hardcoded colors."""
+    cprint(filter_item["phrase"], fg("cyan"), end=" ")
+    cprint("(id: %s," % filter_item["id"], fg("red"), end=" ")
+    cprint("context: %s, " % filter_item["context"], fg("red"), end=" ")
+    cprint("expires_at: %s, " % filter_item["expires_at"], fg("red"), end=" ")
+    cprint("whole_word: %s)" % filter_item["whole_word"], fg("red"))
+
 #####################################
 ######## DECORATORS          ########
 #####################################
@@ -1194,6 +1202,19 @@ def show(mastodon, rest):
     if rest is None:
         return
     printToot(mastodon.status(rest), show_toot=True)
+
+
+@command("", "Filter")
+def filters(mastodon, rest):
+    """Shows the filters that the user has created."""
+    if not (list_support(mastodon)):
+        return
+    user_filters = mastodon.filters()
+    if len(user_filters) == 0:
+        cprint("No filters found", fg("red"))
+        return
+    for filter_item in user_filters:
+        printFilter(filter_item)
 
 
 @command("<id>", "Toots")
