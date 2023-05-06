@@ -116,6 +116,9 @@ class TootListener(StreamListener):
 
 IDS = IdDict()
 
+LAST_PAGE = None
+LAST_CONTEXT = None
+
 # Get the current width of the terminal
 terminal_size = shutil.get_terminal_size((80, 20))
 toot_parser = TootParser(
@@ -399,6 +402,9 @@ def print_toots(
     sort_toots is used to apply reversed (chronological) sort to the list of toots.
         Default is true; threading needs this to be false.
     """
+    if listing is None:
+        cprint("No toots in current context.", fg("white") + bg("red"),)
+        return
     user = mastodon.account_verify_credentials()
     ctx = "" if ctx_name is None else " in {}".format(ctx_name)
 
@@ -1397,24 +1403,57 @@ def links(mastodon, rest):
 @command("", "Timeline")
 def home(mastodon, rest):
     """Displays the Home timeline."""
+    global LAST_PAGE, LAST_CONTEXT
     stepper, rest = step_flag(rest)
-    print_toots(mastodon, mastodon.timeline_home(), stepper, ctx_name="home")
+    LAST_PAGE = mastodon.timeline_home()
+    LAST_CONTEXT = "home"
+    print_toots(mastodon, LAST_PAGE, stepper, ctx_name=LAST_CONTEXT)
 
 
 @command("", "Timeline")
 def fed(mastodon, rest):
     """Displays the Federated timeline."""
+    global LAST_PAGE, LAST_CONTEXT
     stepper, rest = step_flag(rest)
-    print_toots(
-        mastodon, mastodon.timeline_public(), stepper, ctx_name="federated timeline"
-    )
+    LAST_PAGE = mastodon.timeline_public()
+    LAST_CONTEXT = "federated timeline"
+    print_toots(mastodon, LAST_PAGE, stepper, ctx_name=LAST_CONTEXT)
 
 
 @command("", "Timeline")
 def local(mastodon, rest):
     """Displays the Local timeline."""
+    global LAST_PAGE, LAST_CONTEXT
     stepper, rest = step_flag(rest)
-    print_toots(mastodon, mastodon.timeline_local(), stepper, ctx_name="local timeline")
+    LAST_PAGE = mastodon.timeline_public()
+    LAST_CONTEXT = "local timeline"
+    print_toots(mastodon, LAST_PAGE, stepper, ctx_name=LAST_CONTEXT)
+
+
+@command("", "Timeline")
+def next(mastodon, rest):
+    """Displays the next page of paginated results."""
+    global LAST_PAGE, LAST_CONTEXT
+    stepper, rest = step_flag(rest)
+    if LAST_PAGE:
+        LAST_PAGE = mastodon.fetch_next(LAST_PAGE)
+        if LAST_PAGE:
+            print_toots(mastodon, LAST_PAGE, stepper, ctx_name=LAST_CONTEXT)
+            return
+    cprint("No more toots in current context.", fg("white") + bg("red"),)
+
+
+@command("", "Timeline")
+def prev(mastodon, rest):
+    """Displays the previous page of paginated results."""
+    global LAST_PAGE, LAST_CONTEXT
+    stepper, rest = step_flag(rest)
+    if LAST_PAGE:
+        LAST_PAGE = mastodon.fetch_previous(LAST_PAGE)
+        if LAST_PAGE:
+            print_toots(mastodon, LAST_PAGE, stepper, ctx_name=LAST_CONTEXT)
+            return
+    cprint("No more toots in current context.", fg("white") + bg("red"),)
 
 
 @command("<timeline>", "Timeline")
