@@ -1430,7 +1430,7 @@ def local(mastodon, rest):
     """Displays the Local timeline."""
     global LAST_PAGE, LAST_CONTEXT
     stepper, rest = step_flag(rest)
-    LAST_PAGE = mastodon.timeline_public()
+    LAST_PAGE = mastodon.timeline_local()
     LAST_CONTEXT = "local timeline"
     print_toots(mastodon, LAST_PAGE, stepper, ctx_name=LAST_CONTEXT)
 
