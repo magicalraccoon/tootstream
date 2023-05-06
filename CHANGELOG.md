@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 - Toots with content warnings will not automatically display. Use the `show` command to display the contents.
+- Updating colors to be more consistent / better contrast
 
 ### Added
 - Filter support (list filters, toots with filters honor the filter settings).

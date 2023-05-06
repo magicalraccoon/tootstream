@@ -775,7 +775,7 @@ def format_toot_idline(toot):
     out = [
         stylize(GLYPHS["boost"] + ":" + str(toot["reblogs_count"]), fg("cyan")),
         stylize(GLYPHS["fave"] + ":" + str(toot["favourites_count"]), fg("yellow")),
-        stylize("id:" + str(IDS.to_local(toot["id"])), fg("red")),
+        stylize("id:" + str(IDS.to_local(toot["id"])), fg("white")),
         stylize("vis:" + GLYPHS[toot["visibility"]], fg("blue")),
     ]
 
@@ -1164,7 +1164,7 @@ def boost(mastodon, rest):
         mastodon.status_reblog(rest)
         boosted = mastodon.status(rest)
         msg = "  You boosted: " + fg("white") + get_content(boosted)
-        cprint(msg, fg("green"))
+        cprint(msg, attr("dim"))
     except Exception as e:
         cprint("Received error: ", fg("red") + attr("bold"), end="")
         cprint(e, fg("magenta") + attr("bold") + attr("underlined"))
@@ -1179,7 +1179,7 @@ def unboost(mastodon, rest):
     mastodon.status_unreblog(rest)
     unboosted = mastodon.status(rest)
     msg = "  Removed boost: " + get_content(unboosted)
-    cprint(msg, fg("red"))
+    cprint(msg, attr("dim"))
 
 
 @command("<id>", "Toots")
@@ -1191,7 +1191,7 @@ def fav(mastodon, rest):
     mastodon.status_favourite(rest)
     faved = mastodon.status(rest)
     msg = "  Favorited:\n" + get_content(faved)
-    cprint(msg, fg("red"))
+    cprint(msg, attr("dim"))
 
 
 @command("<id>", "Toots")
