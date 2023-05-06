@@ -1828,10 +1828,10 @@ def mute(mastodon, rest):
     if relations.get("muting"):
         if mute_seconds:
             cprint(
-                "  user " + str(userid) + " is now muted for " + mute_time, fg("blue")
+                "  user " + username + " is now muted for " + mute_time, fg("blue")
             )
         else:
-            cprint("  user " + str(userid) + " is now muted", fg("blue"))
+            cprint("  user " + username + " is now muted", fg("blue"))
 
 
 @command("<user>", "Users")
@@ -1843,8 +1843,9 @@ def unmute(mastodon, rest):
         unmute @user@instance.example.com"""
     userid = get_userid2(mastodon, rest)
     relations = mastodon.account_unmute(userid)
+    username = rest
     if not relations["muting"]:
-        cprint("  user " + str(userid) + " is now unmuted", fg("blue"))
+        cprint("  user " + username + " is now unmuted", fg("blue"))
 
 
 @command("<query>", "Discover")
