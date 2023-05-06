@@ -404,7 +404,10 @@ def print_toots(
         Default is true; threading needs this to be false.
     """
     if listing is None:
-        cprint("No toots in current context.", fg("white") + bg("red"),)
+        cprint(
+            "No toots in current context.",
+            fg("white") + bg("red"),
+        )
         return
     user = mastodon.account_verify_credentials()
     ctx = "" if ctx_name is None else " in {}".format(ctx_name)
@@ -879,6 +882,7 @@ def printFilter(filter_item):
     cprint("context: %s, " % filter_item["context"], fg("red"), end=" ")
     cprint("expires_at: %s, " % filter_item["expires_at"], fg("red"), end=" ")
     cprint("whole_word: %s)" % filter_item["whole_word"], fg("red"))
+
 
 #####################################
 ######## DECORATORS          ########
@@ -1441,7 +1445,10 @@ def next(mastodon, rest):
         if LAST_PAGE:
             print_toots(mastodon, LAST_PAGE, stepper, ctx_name=LAST_CONTEXT)
             return
-    cprint("No more toots in current context.", fg("white") + bg("red"),)
+    cprint(
+        "No more toots in current context.",
+        fg("white") + bg("red"),
+    )
 
 
 @command("", "Timeline")
@@ -1454,7 +1461,10 @@ def prev(mastodon, rest):
         if LAST_PAGE:
             print_toots(mastodon, LAST_PAGE, stepper, ctx_name=LAST_CONTEXT)
             return
-    cprint("No more toots in current context.", fg("white") + bg("red"),)
+    cprint(
+        "No more toots in current context.",
+        fg("white") + bg("red"),
+    )
 
 
 @command("<timeline>", "Timeline")
@@ -1753,8 +1763,8 @@ def mute(mastodon, rest):
         mute @user 30s"""
     mute_time = None
     mute_seconds = None
-    if ' ' in rest:
-        username, mute_time = rest.split(' ')
+    if " " in rest:
+        username, mute_time = rest.split(" ")
     else:
         username = rest
     if mute_time:
@@ -1763,7 +1773,9 @@ def mute(mastodon, rest):
     relations = mastodon.account_mute(userid, duration=mute_seconds)
     if relations.get("muting"):
         if mute_seconds:
-            cprint("  user " + str(userid) + " is now muted for " + mute_time, fg("blue"))
+            cprint(
+                "  user " + str(userid) + " is now muted for " + mute_time, fg("blue")
+            )
         else:
             cprint("  user " + str(userid) + " is now muted", fg("blue"))
 
@@ -1809,7 +1821,7 @@ def search(mastodon, rest):
     # # hashtag search
     elif indicator == "#" and not query == "":
         LAST_PAGE = mastodon.timeline_hashtag(query)
-        LAST_CONTEXT = "search for #{}".format(query),
+        LAST_CONTEXT = "search for #{}".format(query)
         print_toots(
             mastodon,
             LAST_PAGE,
@@ -1851,11 +1863,11 @@ def view(mastodon, rest):
     # validate userid argument
     userid = get_userid2(mastodon, userid)
     LAST_PAGE = mastodon.account_statuses(userid, limit=count)
-    LAST_CONTEXT = "user timeline",
+    LAST_CONTEXT = "user timeline"
     print_toots(
         mastodon,
         LAST_PAGE,
-        ctx_name= LAST_CONTEXT,
+        ctx_name=LAST_CONTEXT,
         add_completion=False,
     )
 
