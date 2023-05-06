@@ -1449,7 +1449,7 @@ def next(mastodon, rest):
         else:
             LAST_PAGE = curr_page
     cprint(
-        "No more toots in current context.",
+        "No more toots in current context: " + LAST_CONTEXT,
         fg("white") + bg("red"),
     )
 
@@ -1468,7 +1468,7 @@ def prev(mastodon, rest):
         else:
             LAST_PAGE = curr_page
     cprint(
-        "No more toots in current context.",
+        "No more toots in current context: " + LAST_CONTEXT,
         fg("white") + bg("red"),
     )
 
