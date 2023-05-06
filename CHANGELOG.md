@@ -15,7 +15,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Filter support (list filters, toots with filters honor the filter settings).
 - `show` command, which shows the contents of a toot.
 - `next` and `prev` commands for pagination of the current timeline context.
-- `mute` now has time duration (30s, 1d, etc.)
+- `mute` now has time duration (30s, 1d, etc.).
+- Update the current prompt with the current context.
+- Added `mentions` command to just show mentions.
 
 ## Release
 

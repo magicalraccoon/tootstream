@@ -137,6 +137,14 @@ toot_listener = TootListener()
 #####################################
 
 
+def update_prompt(username, context, profile):
+    if context:
+        prompt = f"[@{username} <{context}> ({profile})]: "
+    else:
+        prompt = f"[@{username} ({profile})]: "
+    return prompt
+
+
 def list_support(mastodon, silent=False):
     lists_available = mastodon.verify_minimum_version("2.1.0")
     if lists_available is False and silent is False:
@@ -1581,6 +1589,14 @@ def stream(mastodon, rest):
         is_streaming = False
 
 
+@command("", "Timeline")
+def mentions(mastodon, rest):
+    """Displays the Notifications timeline with only mentions
+
+    ex: 'mentions' """
+    note(mastodon, '-bfF')
+
+
 @command("[<filter>]", "Timeline")
 def note(mastodon, rest):
     """Displays the Notifications timeline.
@@ -1597,6 +1613,8 @@ def note(mastodon, rest):
         -f    Filter favorites
         -F    Filter follows
         -m    Filter mentions"""
+
+    displayed_notification = False
 
     # Fill in Content fields first.
     try:
@@ -1627,6 +1645,7 @@ def note(mastodon, rest):
 
             # Mentions
             if note["type"] == "mention":
+                displayed_notification = True
                 time = " " + stylize(
                     format_time(note["status"]["created_at"]), attr("dim")
                 )
@@ -1637,6 +1656,7 @@ def note(mastodon, rest):
 
             # Favorites
             elif note["type"] == "favourite":
+                displayed_notification = True
                 tz_info = note["status"]["created_at"].tzinfo
                 note_time_diff = (
                     datetime.datetime.now(tz_info) - note["status"]["created_at"]
@@ -1657,6 +1677,7 @@ def note(mastodon, rest):
 
             # Boosts
             elif note["type"] == "reblog":
+                displayed_notification = True
                 cprint(display_name + username + " boosted your status:", fg("yellow"))
                 cprint(get_content(note["status"]), attr("dim"))
                 if getattr(note["status"], "poll", None):
@@ -1665,16 +1686,20 @@ def note(mastodon, rest):
 
             # Follows
             elif note["type"] == "follow":
+                displayed_notification = True
                 print("  ", end="")
                 cprint(display_name + username + " followed you!", fg("yellow"))
 
             # Poll
             elif note["type"] == "poll":
+                displayed_notification = True
                 cprint(get_content(note["status"]), attr("dim"))
                 cprint(get_poll(note["status"]), attr("dim"))
 
             # blank line
             print()
+    if not displayed_notification:
+        cprint("No notifications of this type are available.", fg("magenta"))
 
 
 @command("[<note_id>]", "Timeline")
@@ -2095,16 +2120,18 @@ def listhome(mastodon, rest):
     """Show the toots from a list.
     ex:  listhome listname
          listhome 23"""
+    global LAST_PAGE, LAST_CONTEXT
     if not (list_support(mastodon)):
         return
     if not rest:
         cprint("Argument required.", fg("red"))
         return
     stepper, rest = step_flag(rest)
-
-    item = get_list_id(mastodon, rest)
-    list_toots = mastodon.timeline_list(item)
-    print_toots(mastodon, list_toots, stepper, ctx_name="list")
+    list_name = rest.strip()
+    item = get_list_id(mastodon, list_name)
+    LAST_PAGE = mastodon.timeline_list(item)
+    LAST_CONTEXT = f"list ({list_name})"
+    print_toots(mastodon, LAST_PAGE, stepper, ctx_name=LAST_CONTEXT)
 
 
 @command("<list>", "List")
@@ -2264,7 +2291,8 @@ def main(instance, config, profile):
     print("\n")
 
     user = mastodon.account_verify_credentials()
-    prompt = "[@{} ({})]: ".format(str(user["username"]), profile)
+    username = str(user.get("username"))
+    prompt = update_prompt(username=username, context=LAST_CONTEXT, profile=profile)
 
     # Completion setup stuff
     if list_support(mastodon, silent=True):
@@ -2292,6 +2320,7 @@ def main(instance, config, profile):
             pass
         except Exception as e:
             cprint(e, fg("red"))
+        prompt = update_prompt(username=username, context=LAST_CONTEXT, profile=profile)
 
 
 if __name__ == "__main__":
