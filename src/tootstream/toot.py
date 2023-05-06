@@ -158,10 +158,18 @@ def get_content(toot):
 
 
 def get_poll(toot):
+    __import__("pdb").set_trace()
     poll = getattr(toot, "poll", None)
     if poll:
+        poll_options = poll.get("options")
+        poll_tally = [
+            ": ".join([x.get("title"), str(x.get("votes_count"))]) for x in poll_options
+        ]
+        poll_results = ""
+        for i, poll_result in enumerate(poll_tally):
+            poll_results += f"  {i}: {poll_result}\n"
         uri = toot["uri"]
-        return "  [poll]: {}".format(uri)
+        return f"  [poll] {poll['id']} ({uri})\n{poll_results}"
 
 
 def get_userid(mastodon, rest):
@@ -849,8 +857,7 @@ def printToot(toot, show_toot=False):
                 out.append(stylize("   " + nsfw + " " + media.url, fg("green")))
 
     if toot.get("poll"):
-        # if there's a poll then just show that it exists for now
-        out.append("  [poll]")
+        out.append(get_poll(toot))
 
     print("\n".join(out))
     print()
