@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Toots with content warnings will not automatically display. Use the `show` command to display the contents.
 - Updating colors to be more consistent / better contrast.
 - Displays poll results and URI to vote.
+- Display no-content, image-only toots.
 
 ### Added
 - Filter support (list filters, toots with filters honor the filter settings).

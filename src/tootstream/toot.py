@@ -160,9 +160,26 @@ def step_flag(rest):
 
 
 def get_content(toot):
-    html = toot["content"]
+    html = toot.get("content")
+    if html is None:
+        return ""
     toot_parser.parse(html)
     return toot_parser.get_text()
+
+
+def get_media_attachments(toot):
+    out = []
+    nsfw = "CW " if toot.get("sensitive") else ""
+    out.append(
+        stylize(
+            "  " + nsfw + "media: " + str(len(toot.get("media_attachments"))),
+            fg("magenta"),
+        )
+    )
+    if show_media_links:
+        for media in toot.get("media_attachments"):
+            out.append(stylize("   " + nsfw + " " + media.url, fg("green")))
+    return out
 
 
 def get_poll(toot):
@@ -787,12 +804,15 @@ def format_toot_idline(toot):
     # id-and-counts line: boosted count, faved count, tootid, visibility, favourited-already, boosted-already
     if not toot:
         return ""
-    out = [
-        stylize(GLYPHS["boost"] + ":" + str(toot["reblogs_count"]), fg("cyan")),
-        stylize(GLYPHS["fave"] + ":" + str(toot["favourites_count"]), fg("yellow")),
-        stylize("id:" + str(IDS.to_local(toot["id"])), fg("white")),
-        stylize("vis:" + GLYPHS[toot["visibility"]], fg("blue")),
-    ]
+    reblogs_count = toot.get("reblogs_count", 0)
+    favourites_count = toot.get("favourites_count", 0)
+    visibility = toot.get("visibility")
+    out = []
+    out.append(stylize(GLYPHS["boost"] + ":" + str(reblogs_count), fg("cyan")))
+    out.append(stylize(GLYPHS["fave"] + ":" + str(favourites_count), fg("yellow")))
+    out.append(stylize("id:" + str(IDS.to_local(toot.get("id"))), fg("white")))
+    if visibility:
+        out.append(stylize("vis:" + GLYPHS[toot.get("visibility")], fg("blue")))
 
     # app used to post. frequently empty
     if toot.get("application") and toot.get("application").get("name"):
@@ -835,13 +855,13 @@ def printToot(toot, show_toot=False):
         "  " + format_toot_idline(toot),
     ]
 
-    if toot["spoiler_text"] != "":
+    if toot.get("spoiler_text", "") != "":
         # pass CW through get_content for wrapping/indenting
         faketoot = {"content": "[CW: " + toot["spoiler_text"] + "]"}
         out.append(stylize(get_content(faketoot), fg("red")))
         show_toot_text = False
 
-    if toot.filtered:
+    if toot.get("filtered"):
         filter_titles = ", ".join([x["filter"]["title"] for x in toot.filtered])
         faketoot = {"content": "[Filter: " + filter_titles + "]"}
         out.append(stylize(get_content(faketoot), fg("red")))
@@ -850,18 +870,12 @@ def printToot(toot, show_toot=False):
     if show_toot_text or show_toot:
         out.append(get_content(toot))
 
+    if toot.get("status"):
+        out.append('\n'.join(get_media_attachments(toot.get("status"))))
+
     if toot.get("media_attachments") and show_toot_text:
         # simple version: output # of attachments. TODO: urls instead?
-        nsfw = "CW " if toot["sensitive"] else ""
-        out.append(
-            stylize(
-                "  " + nsfw + "media: " + str(len(toot["media_attachments"])),
-                fg("magenta"),
-            )
-        )
-        if show_media_links:
-            for media in toot["media_attachments"]:
-                out.append(stylize("   " + nsfw + " " + media.url, fg("green")))
+        out.append('\n'.join(get_media_attachments(toot)))
 
     if toot.get("poll"):
         out.append(get_poll(toot))
@@ -1646,13 +1660,14 @@ def note(mastodon, rest):
             # Mentions
             if note["type"] == "mention":
                 displayed_notification = True
-                time = " " + stylize(
-                    format_time(note["status"]["created_at"]), attr("dim")
-                )
-                cprint(display_name + username, fg("magenta"))
-                print("  " + format_toot_idline(note["status"]) + "  " + time)
-                cprint(get_content(note["status"]), attr("bold"), fg("white"))
-                print(stylize("", attr("dim")))
+                printToot(note)
+                # time = " " + stylize(
+                    # format_time(note["status"]["created_at"]), attr("dim")
+                # )
+                # cprint(display_name + username, fg("magenta"))
+                # print("  " + format_toot_idline(note["status"]) + "  " + time)
+                # cprint(get_content(note["status"]), attr("bold"), fg("white"))
+                # print(stylize("", attr("dim")))
 
             # Favorites
             elif note["type"] == "favourite":
