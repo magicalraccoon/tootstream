@@ -1439,12 +1439,15 @@ def local(mastodon, rest):
 def next(mastodon, rest):
     """Displays the next page of paginated results."""
     global LAST_PAGE, LAST_CONTEXT
+    curr_page = LAST_PAGE
     stepper, rest = step_flag(rest)
     if LAST_PAGE:
         LAST_PAGE = mastodon.fetch_next(LAST_PAGE)
         if LAST_PAGE:
             print_toots(mastodon, LAST_PAGE, stepper, ctx_name=LAST_CONTEXT)
             return
+        else:
+            LAST_PAGE = curr_page
     cprint(
         "No more toots in current context.",
         fg("white") + bg("red"),
@@ -1456,11 +1459,14 @@ def prev(mastodon, rest):
     """Displays the previous page of paginated results."""
     global LAST_PAGE, LAST_CONTEXT
     stepper, rest = step_flag(rest)
+    curr_page = LAST_PAGE
     if LAST_PAGE:
         LAST_PAGE = mastodon.fetch_previous(LAST_PAGE)
         if LAST_PAGE:
             print_toots(mastodon, LAST_PAGE, stepper, ctx_name=LAST_CONTEXT)
             return
+        else:
+            LAST_PAGE = curr_page
     cprint(
         "No more toots in current context.",
         fg("white") + bg("red"),
