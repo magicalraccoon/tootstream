@@ -9,16 +9,17 @@ import bisect
 import shutil
 from collections import OrderedDict
 import webbrowser
+import dateutil
 
 # Get the version of Tootstream
 import pkg_resources  # part of setuptools
 import click
-import dateutil
 from tootstream.toot_parser import TootParser
 from mastodon import Mastodon, StreamListener
 from colored import fg, bg, attr, stylize
 import humanize
 import emoji
+import pytimeparse
 
 
 version = pkg_resources.require("tootstream")[0].version
@@ -1689,6 +1690,9 @@ def block(mastodon, rest):
     relations = mastodon.account_block(userid)
     if relations["blocking"]:
         cprint("  user " + str(userid) + " is now blocked", fg("blue"))
+        username = "@" + mastodon.account(userid)["acct"]
+        if username in completion_list:
+            completion_list.remove(username)
 
 
 @command("<user>", "Users")
@@ -1702,6 +1706,9 @@ def unblock(mastodon, rest):
     relations = mastodon.account_unblock(userid)
     if not relations["blocking"]:
         cprint("  user " + str(userid) + " is now unblocked", fg("blue"))
+        username = "@" + mastodon.account(userid)["acct"]
+        if username not in completion_list:
+            bisect.insort(completion_list, username)
 
 
 @command("<user>", "Users")
@@ -1729,24 +1736,36 @@ def unfollow(mastodon, rest):
         unfollow @user@instance.example.com"""
     userid = get_userid2(mastodon, rest)
     relations = mastodon.account_unfollow(userid)
-    if not relations["following"]:
+    if not relations.get("following"):
         cprint("  user " + str(userid) + " is now unfollowed", fg("blue"))
     username = "@" + mastodon.account(userid)["acct"]
     if username in completion_list:
         completion_list.remove(username)
 
 
-@command("<user>", "Users")
+@command("<user> [<duration>]", "Users")
 def mute(mastodon, rest):
     """Mutes a user by username or id.
 
     ex: mute 23
         mute @user
-        mute @user@instance.example.com"""
-    userid = get_userid2(mastodon, rest)
-    relations = mastodon.account_mute(userid)
-    if relations["muting"]:
-        cprint("  user " + str(userid) + " is now muted", fg("blue"))
+        mute @user@instance.example.com
+        mute @user 30s"""
+    mute_time = None
+    mute_seconds = None
+    if ' ' in rest:
+        username, mute_time = rest.split(' ')
+    else:
+        username = rest
+    if mute_time:
+        mute_seconds = pytimeparse.parse(mute_time)
+    userid = get_userid2(mastodon, username)
+    relations = mastodon.account_mute(userid, duration=mute_seconds)
+    if relations.get("muting"):
+        if mute_seconds:
+            cprint("  user " + str(userid) + " is now muted for " + mute_time, fg("blue"))
+        else:
+            cprint("  user " + str(userid) + " is now muted", fg("blue"))
 
 
 @command("<user>", "Users")
