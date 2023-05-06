@@ -934,7 +934,7 @@ def help(mastodon, rest):
             # Show Command Help
             try:
                 cmd_func = commands[args[0]]
-            except:
+            except Exception:
                 print(__friendly_cmd_error__.format(rest))
                 return
 
@@ -1769,12 +1769,13 @@ def search(mastodon, rest):
     ex:  search #tagname
          search @user
          search @user@instance.example.com"""
+    global LAST_PAGE, LAST_CONTEXT
     usage = str("  usage: search #tagname\n" + "         search @username")
     stepper, rest = step_flag(rest)
     try:
         indicator = rest[:1]
         query = rest[1:]
-    except:
+    except Exception:
         cprint(usage, fg("red"))
         return
 
@@ -1788,11 +1789,13 @@ def search(mastodon, rest):
 
     # # hashtag search
     elif indicator == "#" and not query == "":
+        LAST_PAGE = mastodon.timeline_hashtag(query)
+        LAST_CONTEXT = "search for #{}".format(query),
         print_toots(
             mastodon,
-            mastodon.timeline_hashtag(query),
+            LAST_PAGE,
             stepper,
-            ctx_name="search for #{}".format(query),
+            ctx_name=LAST_CONTEXT,
             add_completion=False,
         )
     # end #
@@ -1813,6 +1816,7 @@ def view(mastodon, rest):
     ex: view 23
         view @user 10
         view @user@instance.example.com"""
+    global LAST_PAGE, LAST_CONTEXT
     (userid, _, count) = rest.partition(" ")
 
     # validate count argument
@@ -1827,10 +1831,12 @@ def view(mastodon, rest):
 
     # validate userid argument
     userid = get_userid2(mastodon, userid)
+    LAST_PAGE = mastodon.account_statuses(userid, limit=count)
+    LAST_CONTEXT = "user timeline",
     print_toots(
         mastodon,
-        mastodon.account_statuses(userid, limit=count),
-        ctx_name="user timeline",
+        LAST_PAGE,
+        ctx_name= LAST_CONTEXT,
         add_completion=False,
     )
 
