@@ -158,7 +158,6 @@ def get_content(toot):
 
 
 def get_poll(toot):
-    __import__("pdb").set_trace()
     poll = getattr(toot, "poll", None)
     if poll:
         poll_options = poll.get("options")
