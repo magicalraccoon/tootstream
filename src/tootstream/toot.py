@@ -821,7 +821,7 @@ def format_toot_idline(toot):
     out.append(stylize(GLYPHS["fave"] + ":" + str(favourites_count), fg("yellow")))
     out.append(stylize("id:" + str(IDS.to_local(toot.get("id"))), fg("white")))
     if visibility:
-        out.append(stylize("vis:" + GLYPHS[toot.get("visibility")], fg("blue")))
+        out.append(stylize("vis:" + GLYPHS[visibility], fg("blue")))
 
     # app used to post. frequently empty
     if toot.get("application") and toot.get("application").get("name"):
@@ -842,7 +842,7 @@ def format_toot_idline(toot):
     return " ".join(out)
 
 
-def printToot(toot, show_toot=False):
+def printToot(toot, show_toot=False, dim=False):
     if not toot:
         return
 
@@ -891,7 +891,10 @@ def printToot(toot, show_toot=False):
     if toot.get("poll"):
         out.append(get_poll(toot))
 
-    print("\n".join(out))
+    if dim:
+        cprint("\n".join(out), attr("dim"))
+    else:
+        print("\n".join(out))
     print()
 
 
@@ -1170,7 +1173,7 @@ def rep(mastodon, rest):
                 "%s %s" % (mentions, text), in_reply_to_id=parent_id, **kwargs
             )
             msg = "  Replied with: " + get_content(reply_toot)
-            cprint(msg, fg("red"))
+            cprint(msg, attr("dim"))
             posted = True
         except Exception as e:
             cprint("error while posting: {}".format(type(e).__name__), fg("red"))
@@ -1258,6 +1261,7 @@ def unboost(mastodon, rest):
 @command("<id>", "Toots")
 def fav(mastodon, rest):
     """Favorites a toot by ID."""
+    __import__('pdb').set_trace()
     rest = IDS.to_global(rest)
     if rest is None:
         return
@@ -1705,14 +1709,13 @@ def note(mastodon, rest):
             # Mentions
             if note["type"] == "mention":
                 displayed_notification = True
-                printToot(note)
-                # time = " " + stylize(
-                    # format_time(note["status"]["created_at"]), attr("dim")
-                # )
-                # cprint(display_name + username, fg("magenta"))
-                # print("  " + format_toot_idline(note["status"]) + "  " + time)
-                # cprint(get_content(note["status"]), attr("bold"), fg("white"))
-                # print(stylize("", attr("dim")))
+                time = " " + stylize(
+                    format_time(note["status"]["created_at"]), attr("dim")
+                )
+                cprint(display_name + username, fg("magenta"))
+                print("  " + format_toot_idline(note["status"]) + "  " + time)
+                cprint(get_content(note["status"]), attr("bold"), fg("white"))
+                print(stylize("", attr("dim")))
 
             # Favorites
             elif note["type"] == "favourite":
