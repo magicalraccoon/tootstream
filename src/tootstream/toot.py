@@ -185,13 +185,19 @@ def get_media_attachments(toot):
 def get_poll(toot):
     poll = getattr(toot, "poll", None)
     if poll:
-        poll_options = poll.get("options")
-        poll_tally = [
-            ": ".join([x.get("title"), str(x.get("votes_count"))]) for x in poll_options
-        ]
         poll_results = ""
-        for i, poll_result in enumerate(poll_tally):
-            poll_results += f"  {i}: {poll_result}\n"
+        total_votes_count = poll.get("votes_count")
+        poll_options = poll.get("options")
+        for i, poll_element in enumerate(poll_options):
+            poll_title = poll_element.get("title")
+            poll_votes_count = poll_element.get("votes_count")
+            poll_percentage = (poll_votes_count / total_votes_count) * 100
+            poll_results += f"  {i}: {poll_title} ({poll_votes_count}: {poll_percentage:.2f}%)\n"
+        poll_results += f"  Total votes: {total_votes_count}"
+        if poll.multiple:
+            poll_results += f"\n  (Multiple votes may be cast.)"
+        if poll.expired:
+            poll_results += f"\n  Polling is over."
         uri = toot["uri"]
         return f"  [poll] {poll['id']} ({uri})\n{poll_results}"
 
@@ -1172,6 +1178,40 @@ def rep(mastodon, rest):
                 text = edittoot(text=text)
             else:
                 posted = True
+
+
+@command("<id> [votes]", "Toots")
+def vote(mastodon, rest):
+    """Vote  your toot by ID
+
+    Example:
+        >>> vote 23 1
+        >>> vote 23 1,2,3
+    """
+    try:
+        poll_id = None
+        toot_id, rest = rest.split(' ', 1)
+        global_id = IDS.to_global(toot_id)
+        poll = mastodon.status(global_id).get("poll")
+        if poll:
+            poll_id = poll.get("id")
+        if poll_id is None:
+            cprint(f"  {toot_id} does not point to a valid poll.", fg("red"))
+            return
+
+        if rest is None:
+            cprint("Note has no options.", fg("white") + bg("red"),)
+            return
+
+        vote_options = [x.strip() for x in rest.split(',')]
+        if len(vote_options) > 1 and not poll.get('multiple'):
+            cprint("Too many votes cast.", fg("white") + bg("red"),)
+            return
+
+        mastodon.poll_vote(poll_id, vote_options)
+        print("Vote cast.")
+    except Exception as e:
+        cprint(f"  {e}", fg("red"),)
 
 
 @command("<id>", "Toots")
