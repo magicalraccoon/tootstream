@@ -1261,7 +1261,6 @@ def unboost(mastodon, rest):
 @command("<id>", "Toots")
 def fav(mastodon, rest):
     """Favorites a toot by ID."""
-    __import__('pdb').set_trace()
     rest = IDS.to_global(rest)
     if rest is None:
         return
