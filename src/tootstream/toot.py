@@ -191,7 +191,10 @@ def get_poll(toot):
         for i, poll_element in enumerate(poll_options):
             poll_title = poll_element.get("title")
             poll_votes_count = poll_element.get("votes_count")
-            poll_percentage = (poll_votes_count / total_votes_count) * 100
+            if total_votes_count > 0:
+                poll_percentage = (poll_votes_count / total_votes_count) * 100
+            else:
+                poll_percentage = 0
             poll_results += f"  {i}: {poll_title} ({poll_votes_count}: {poll_percentage:.2f}%)\n"
         poll_results += f"  Total votes: {total_votes_count}"
         if poll.multiple:
