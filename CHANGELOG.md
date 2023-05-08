@@ -9,7 +9,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 - Toots with content warnings will not automatically display. Use the `show` command to display the contents.
 - Updating colors to be more consistent / better contrast.
-- Displays poll results and URI to vote.
 - Display no-content, image-only toots.
 - Use search with limit 1 when we only want one account, bypassing Mastodon's questionable search algorithm.
 - `view` command doesn't bring back a list of users that are close to what you were searching for.
@@ -20,6 +19,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - `next` and `prev` commands for pagination of the current timeline context.
 - `mute` now has time duration (30s, 1d, etc.).
 - `view` command now shows which user you are viewing and allows pagination.
+- `vote` command for voting in polls.
+- Displays poll results, whether the poll is expired, and if the poll supports multiple votes (along with a URI).
 - Update the current prompt with the current context.
 - Added `mentions` command to just show mentions.
 
