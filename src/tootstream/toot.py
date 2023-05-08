@@ -195,7 +195,9 @@ def get_poll(toot):
                 poll_percentage = (poll_votes_count / total_votes_count) * 100
             else:
                 poll_percentage = 0
-            poll_results += f"  {i}: {poll_title} ({poll_votes_count}: {poll_percentage:.2f}%)\n"
+            poll_results += (
+                f"  {i}: {poll_title} ({poll_votes_count}: {poll_percentage:.2f}%)\n"
+            )
         poll_results += f"  Total votes: {total_votes_count}"
         if poll.multiple:
             poll_results += f"\n  (Multiple votes may be cast.)"
@@ -205,53 +207,35 @@ def get_poll(toot):
         return f"  [poll] {poll['id']} ({uri})\n{poll_results}"
 
 
-def get_userid(mastodon, rest):
-    # we got some user input.  we need a userid (int).
-    # returns userid as int, -1 on error, or list of users if ambiguous.
-    if not rest:
-        return -1
+def get_unique_userid(mastodon, rest, exact=True):
+    """Get a unique user ID by limiting the search to the top result.
+    params:
+        rest: rest of the command
+        exact: whether to do an exact search or not.
+            Most commands should require precision, so
 
-    # maybe it's already an int
+    """
+    # Check if the ID is already in numeric form
     try:
-        return int(rest)
+        userid = int(rest)
+        return userid
     except ValueError:
         pass
 
-    # not an int
-    users = mastodon.account_search(rest)
-    if not users:
-        return -1
-    elif len(users) > 1:
-        # Mastodon's search is fuzzier than we want; check for exact match
-
-        query = rest[1:] if rest.startswith("@") else rest
-        (quser, _, qinstance) = query.partition("@")
-        localinstance = mastodon.instance()
-
-        # on uptodate servers, exact match should be first in list
-        for user in users:
-            # match user@remoteinstance, localuser
-            if query == user["acct"]:
-                return user["id"]
-            # match user@localinstance
-            elif quser == user["acct"] and qinstance == localinstance["uri"]:
-                return user["id"]
-
-        # no exact match; return list
-        return users
-    else:
-        return users[0]["id"]
-
-
-def get_userid2(mastodon, rest):
-    userid = get_userid(mastodon, rest)
-    if isinstance(userid, list):
-        cprint("  multiple matches found:", fg("red"))
-        printUsersShort(userid)
-        raise AlreadyPrintedException()
-    elif userid == -1:
-        raise Exception("  username '{}' not found".format(rest))
-
+    user_list = mastodon.account_search(rest, limit=1)
+    if not user_list:
+        raise Exception(f"  username '{rest}' not found")
+        return
+    user = user_list.pop()
+    if exact:
+        username_check = rest.lstrip("@")
+        username_acct = user.get("acct").lstrip("@")
+        if username_check != username_acct:
+            if "@" not in username_check:
+                raise ValueError("  Please use a more exact username for this command.")
+            else:
+                raise Exception(f"  {username_check} not found.")
+    userid = user.get("id")
     return userid
 
 
@@ -386,7 +370,7 @@ def flaghandler_tootreply(mastodon, rest):
                 media.append(fname)
                 count += 1
             else:
-                cprint("error: cannot find file {}".format(fname), fg("red"))
+                raise Exception(f"error: cannot find file {fname}")
 
         # upload, verify
         if count:
@@ -880,13 +864,13 @@ def printToot(toot, show_toot=False, dim=False):
         out.append(get_content(toot))
 
     if toot.get("status"):
-        out.append(get_content(toot.get('status')))
-        if toot.get("status").get('media_attachments'):
-            out.append('\n'.join(get_media_attachments(toot.get("status"))))
+        out.append(get_content(toot.get("status")))
+        if toot.get("status").get("media_attachments"):
+            out.append("\n".join(get_media_attachments(toot.get("status"))))
 
     if toot.get("media_attachments") and show_toot_text:
         # simple version: output # of attachments. TODO: urls instead?
-        out.append('\n'.join(get_media_attachments(toot)))
+        out.append("\n".join(get_media_attachments(toot)))
 
     if toot.get("poll"):
         out.append(get_poll(toot))
@@ -1196,7 +1180,7 @@ def vote(mastodon, rest):
     """
     try:
         poll_id = None
-        toot_id, rest = rest.split(' ', 1)
+        toot_id, rest = rest.split(" ", 1)
         global_id = IDS.to_global(toot_id)
         poll = mastodon.status(global_id).get("poll")
         if poll:
@@ -1206,18 +1190,27 @@ def vote(mastodon, rest):
             return
 
         if rest is None:
-            cprint("Note has no options.", fg("white") + bg("red"),)
+            cprint(
+                "Note has no options.",
+                fg("white") + bg("red"),
+            )
             return
 
-        vote_options = [x.strip() for x in rest.split(',')]
-        if len(vote_options) > 1 and not poll.get('multiple'):
-            cprint("Too many votes cast.", fg("white") + bg("red"),)
+        vote_options = [x.strip() for x in rest.split(",")]
+        if len(vote_options) > 1 and not poll.get("multiple"):
+            cprint(
+                "Too many votes cast.",
+                fg("white") + bg("red"),
+            )
             return
 
         mastodon.poll_vote(poll_id, vote_options)
         print("Vote cast.")
     except Exception as e:
-        cprint(f"  {e}", fg("red"),)
+        cprint(
+            f"  {e}",
+            fg("red"),
+        )
 
 
 @command("<id>", "Toots")
@@ -1655,8 +1648,8 @@ def stream(mastodon, rest):
 def mentions(mastodon, rest):
     """Displays the Notifications timeline with only mentions
 
-    ex: 'mentions' """
-    note(mastodon, '-bfF')
+    ex: 'mentions'"""
+    note(mastodon, "-bfF")
 
 
 @command("[<filter>]", "Timeline")
@@ -1715,6 +1708,8 @@ def note(mastodon, rest):
                 print("  " + format_toot_idline(note["status"]) + "  " + time)
                 cprint(get_content(note["status"]), attr("bold"), fg("white"))
                 print(stylize("", attr("dim")))
+                if note.get("status", {}).get("media_attachments"):
+                    print("\n".join(get_media_attachments(note.get("status"))))
 
             # Favorites
             elif note["type"] == "favourite":
@@ -1795,7 +1790,7 @@ def block(mastodon, rest):
     ex: block 23
         block @user
         block @user@instance.example.com"""
-    userid = get_userid2(mastodon, rest)
+    userid = get_unique_userid(mastodon, rest)
     relations = mastodon.account_block(userid)
     if relations["blocking"]:
         cprint("  user " + str(userid) + " is now blocked", fg("blue"))
@@ -1809,9 +1804,8 @@ def unblock(mastodon, rest):
     """Unblocks a user by username or id.
 
     ex: unblock 23
-        unblock @user
         unblock @user@instance.example.com"""
-    userid = get_userid2(mastodon, rest)
+    userid = get_unique_userid(mastodon, rest)
     relations = mastodon.account_unblock(userid)
     if not relations["blocking"]:
         cprint("  user " + str(userid) + " is now unblocked", fg("blue"))
@@ -1825,9 +1819,8 @@ def follow(mastodon, rest):
     """Follows an account by username or id.
 
     ex: follow 23
-        follow @user
         follow @user@instance.example.com"""
-    userid = get_userid2(mastodon, rest)
+    userid = get_unique_userid(mastodon, rest)
     relations = mastodon.account_follow(userid)
     if relations["following"]:
         cprint("  user " + str(userid) + " is now followed", fg("blue"))
@@ -1841,9 +1834,8 @@ def unfollow(mastodon, rest):
     """Unfollows an account by username or id.
 
     ex: unfollow 23
-        unfollow @user
         unfollow @user@instance.example.com"""
-    userid = get_userid2(mastodon, rest)
+    userid = get_unique_userid(mastodon, rest)
     relations = mastodon.account_unfollow(userid)
     if not relations.get("following"):
         cprint("  user " + str(userid) + " is now unfollowed", fg("blue"))
@@ -1857,7 +1849,6 @@ def mute(mastodon, rest):
     """Mutes a user by username or id.
 
     ex: mute 23
-        mute @user
         mute @user@instance.example.com
         mute @user 30s"""
     mute_time = None
@@ -1868,13 +1859,11 @@ def mute(mastodon, rest):
         username = rest
     if mute_time:
         mute_seconds = pytimeparse.parse(mute_time)
-    userid = get_userid2(mastodon, username)
+    userid = get_unique_userid(mastodon, username)
     relations = mastodon.account_mute(userid, duration=mute_seconds)
     if relations.get("muting"):
         if mute_seconds:
-            cprint(
-                "  user " + username + " is now muted for " + mute_time, fg("blue")
-            )
+            cprint("  user " + username + " is now muted for " + mute_time, fg("blue"))
         else:
             cprint("  user " + username + " is now muted", fg("blue"))
 
@@ -1884,9 +1873,8 @@ def unmute(mastodon, rest):
     """Unmutes a user by username or id.
 
     ex: unmute 23
-        unmute @user
         unmute @user@instance.example.com"""
-    userid = get_userid2(mastodon, rest)
+    userid = get_unique_userid(mastodon, rest)
     relations = mastodon.account_unmute(userid)
     username = rest
     if not relations["muting"]:
@@ -1932,8 +1920,7 @@ def search(mastodon, rest):
     # end #
 
     else:
-        cprint("  Invalid format. (General search coming soon.)\n" + usage, fg("red"))
-
+        raise ValueError("  Invalid format.\n" + usage)
     return
 
 
@@ -1948,7 +1935,7 @@ def view(mastodon, rest):
         view @user 10
         view @user@instance.example.com"""
     global LAST_PAGE, LAST_CONTEXT
-    (userid, _, count) = rest.partition(" ")
+    (user, _, count) = rest.partition(" ")
 
     # validate count argument
     if not count:
@@ -1957,13 +1944,11 @@ def view(mastodon, rest):
         try:
             count = int(count)
         except ValueError:
-            cprint("  invalid count: {}".format(count), fg("red"))
-            return
+            raise ValueError("  invalid count: {count}")
 
-    # validate userid argument
-    userid = get_userid2(mastodon, userid)
+    userid = get_unique_userid(mastodon, user, exact=False)
     LAST_PAGE = mastodon.account_statuses(userid, limit=count)
-    LAST_CONTEXT = "user timeline"
+    LAST_CONTEXT = f"{user} timeline"
     print_toots(
         mastodon,
         LAST_PAGE,
@@ -2052,9 +2037,8 @@ def accept(mastodon, rest):
     """Accepts a user's follow request by username or id.
 
     ex: accept 23
-        accept @user
         accept @user@instance.example.com"""
-    userid = get_userid2(mastodon, rest)
+    userid = get_unique_userid(mastodon, rest)
     mastodon.follow_request_authorize(userid)
     cprint("  user {}'s request is accepted".format(userid), fg("blue"))
 
@@ -2064,9 +2048,8 @@ def reject(mastodon, rest):
     """Rejects a user's follow request by username or id.
 
     ex: reject 23
-        reject @user
         reject @user@instance.example.com"""
-    userid = get_userid2(mastodon, rest)
+    userid = get_unique_userid(mastodon, rest)
     mastodon.follow_request_reject(userid)
     cprint("  user {}'s request is rejected".format(userid), fg("blue"))
 
@@ -2209,6 +2192,9 @@ def listaccounts(mastodon, rest):
 
     cprint("List: %s" % rest, fg("green"))
     for user in list_accounts:
+        username = "@" + user.get("acct")
+        if username not in completion_list:
+            bisect.insort(completion_list, username)
         printUser(user)
 
 
@@ -2228,7 +2214,7 @@ def listadd(mastodon, rest):
         return
 
     list_id = get_list_id(mastodon, items[0])
-    account_id = get_userid2(mastodon, items[1])
+    account_id = get_unique_userid(mastodon, items[1])
     mastodon.list_accounts_add(list_id, account_id)
     cprint("Added {} to list {}.".format(items[1], items[0]), fg("green"))
 
@@ -2250,7 +2236,7 @@ def listremove(mastodon, rest):
         return
 
     list_id = get_list_id(mastodon, items[0])
-    account_id = get_userid2(mastodon, items[1])
+    account_id = get_unique_userid(mastodon, items[1])
     mastodon.list_accounts_delete(list_id, account_id)
     cprint("Removed {} from list {}.".format(items[1], items[0]), fg("green"))
 

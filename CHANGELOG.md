@@ -11,12 +11,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Updating colors to be more consistent / better contrast.
 - Displays poll results and URI to vote.
 - Display no-content, image-only toots.
+- Use search with limit 1 when we only want one account, bypassing Mastodon's questionable search algorithm.
+- `view` command doesn't bring back a list of users that are close to what you were searching for.
 
 ### Added
 - Filter support (list filters, toots with filters honor the filter settings).
 - `show` command, which shows the contents of a toot.
 - `next` and `prev` commands for pagination of the current timeline context.
 - `mute` now has time duration (30s, 1d, etc.).
+- `view` command now shows which user you are viewing and allows pagination.
 - Update the current prompt with the current context.
 - Added `mentions` command to just show mentions.
 
