@@ -1711,7 +1711,7 @@ def note(mastodon, rest):
             if note_type == "mention":
                 displayed_notification = True
                 cprint(display_name + username, fg("magenta"))
-                print("  " + format_toot_idline(note_status) + "  " + time)
+                print("  " + format_toot_idline(note_status) + "  " + note_time)
                 cprint(get_content(note_status), attr("bold"), fg("white"))
                 print(stylize("", attr("dim")))
                 if note_media_attachments:
