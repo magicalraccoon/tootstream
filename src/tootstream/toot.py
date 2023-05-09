@@ -284,7 +284,7 @@ def flaghandler_note(mastodon, rest):
     return flaghandler(
         rest,
         True,
-        {"m": "mention", "f": "favourite", "b": "reblog", "F": "follow", "p": "poll"},
+        {"m": "mention", "f": "favourite", "b": "reblog", "F": "follow", "p": "poll", "u": "update"},
     )
 
 
@@ -1649,7 +1649,7 @@ def mentions(mastodon, rest):
     """Displays the Notifications timeline with only mentions
 
     ex: 'mentions'"""
-    note(mastodon, "-bfF")
+    note(mastodon, "-bfFpu")
 
 
 @command("[<filter>]", "Timeline")
@@ -1660,14 +1660,16 @@ def note(mastodon, rest):
                  will show all notifications
         'note -b'
                  will show all notifications minus boosts
-        'note -f -F -b' (or 'note -fFb')
+        'note -f -F -b -u' (or 'note -fFb')
                 will only show mentions
 
     Options:
         -b    Filter boosts
         -f    Filter favorites
         -F    Filter follows
-        -m    Filter mentions"""
+        -m    Filter mentions
+        -p    Filter polls
+        -u    Filter updates"""
 
     displayed_notification = False
 
@@ -1687,74 +1689,62 @@ def note(mastodon, rest):
         return
 
     for note in reversed(notifications):
-        display_name = "  " + format_display_name(note["account"]["display_name"])
-        username = format_username(note["account"])
-        note_id = str(note["id"])
+        note_type = note.get("type")
+        note_status = note.get("status", {})
+        note_created_at = note_status.get("created_at")
+        note_time = " " + stylize(
+            format_time(note_created_at), attr("dim")
+        )
+        note_media_attachments = note_status.get("media_attachments")
+        display_name = "  " + format_display_name(note.get("account").get("display_name"))
+        username = format_username(note.get("account"))
+        note_id = str(note.get("id"))
 
         random.seed(display_name)
 
         # Check if we should even display this note type
-        if kwargs[note["type"]]:
+        if kwargs[note_type]:
             # Display Note ID
             cprint(" note: " + note_id, fg("magenta"))
 
             # Mentions
-            if note["type"] == "mention":
+            if note_type == "mention":
                 displayed_notification = True
-                time = " " + stylize(
-                    format_time(note["status"]["created_at"]), attr("dim")
-                )
                 cprint(display_name + username, fg("magenta"))
-                print("  " + format_toot_idline(note["status"]) + "  " + time)
-                cprint(get_content(note["status"]), attr("bold"), fg("white"))
+                print("  " + format_toot_idline(note_status) + "  " + time)
+                cprint(get_content(note_status), attr("bold"), fg("white"))
                 print(stylize("", attr("dim")))
-                if note.get("status", {}).get("media_attachments"):
-                    print("\n".join(get_media_attachments(note.get("status"))))
-
-            # Favorites
-            elif note["type"] == "favourite":
-                displayed_notification = True
-                tz_info = note["status"]["created_at"].tzinfo
-                note_time_diff = (
-                    datetime.datetime.now(tz_info) - note["status"]["created_at"]
-                )
-                countsline = format_toot_idline(note["status"])
-                format_time(note["status"]["created_at"])
-                time = " " + stylize(
-                    format_time(note["status"]["created_at"]), attr("dim")
-                )
-                content = get_content(note["status"])
-                cprint(display_name + username, fg(random.choice(COLORS)), end="")
-                cprint(" favorited your status:", fg("yellow"))
-                print("  " + countsline + stylize(time, attr("dim")))
-                cprint(content, attr("dim"))
-                if getattr(note["status"], "poll", None):
-                    poll = get_poll(note["status"])
-                    cprint(poll, attr("dim"))
-
-            # Boosts
-            elif note["type"] == "reblog":
-                displayed_notification = True
-                cprint(display_name + username + " boosted your status:", fg("yellow"))
-                cprint(get_content(note["status"]), attr("dim"))
-                if getattr(note["status"], "poll", None):
-                    poll = get_poll(note["status"])
-                    cprint(poll, attr("dim"))
+                if note_media_attachments:
+                    print("\n".join(get_media_attachments(note_status)))
 
             # Follows
-            elif note["type"] == "follow":
+            elif note_type == "follow":
                 displayed_notification = True
                 print("  ", end="")
                 cprint(display_name + username + " followed you!", fg("yellow"))
 
-            # Poll
-            elif note["type"] == "poll":
+            # Update
+            elif note_type in ["update", "favourite", "reblog", "poll"]:
                 displayed_notification = True
-                cprint(get_content(note["status"]), attr("dim"))
-                cprint(get_poll(note["status"]), attr("dim"))
+                countsline = format_toot_idline(note_status)
+                content = get_content(note_status)
+                cprint(display_name + username, fg(random.choice(COLORS)), end="")
+                if note_type == "update":
+                    cprint(f" updated their status:", fg("yellow"))
+                elif note_type == "reblog":
+                    cprint(f" boosted your status:", fg("yellow"))
+                elif note_type == "poll":
+                    cprint(f" ended their poll:", fg("yellow"))
+                else:
+                    cprint(f" favorited your status:", fg("yellow"))
+                print("  " + countsline + stylize(note_time, attr("dim")))
+                cprint(content, attr("dim"))
+                if getattr(note_status, "poll", None):
+                    poll = get_poll(note_status)
+                    cprint(poll, attr("dim"))
 
-            # blank line
             print()
+
     if not displayed_notification:
         cprint("No notifications of this type are available.", fg("magenta"))
 
