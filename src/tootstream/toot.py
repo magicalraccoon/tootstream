@@ -439,7 +439,7 @@ def print_toots(
 
     def say_error(*args, **kwargs):
         cprint(
-            "Invalid command. Use 'help' for a list of commands or press [enter] for next toot, [a] to abort.",
+            "Invalid command. Use 'help' for a list of commands. Press [enter] for next toot, [q] to abort.",
             fg("white") + bg("red"),
         )
 
@@ -458,7 +458,7 @@ def print_toots(
                 str(user["username"]), pos + 1, len(listing), ctx
             )
             command = None
-            while command not in ["", "a"]:
+            while command not in ["", "q"]:
                 command = input(prompt).split(" ", 1)
 
                 try:
@@ -466,7 +466,7 @@ def print_toots(
                 except IndexError:
                     rest = ""
                 command = command[0]
-                if command not in ["", "a"]:
+                if command not in ["", "q"]:
                     cmd_func = commands.get(command, say_error)
                     if (
                         hasattr(cmd_func, "__argstr__")
@@ -478,7 +478,7 @@ def print_toots(
                             rest = "@" + toot["account"]["username"] + " " + rest
                     cmd_func(mastodon, rest)
 
-            if command == "a":
+            if command == "q":
                 break
 
 

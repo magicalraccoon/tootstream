@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Update the current prompt with the current context.
 - Added `mentions` command to just show mentions.
 - Added poll and update filters to `note` command.
+- Changed command to abort step from "a" to "q" to maintain consistency.
 
 ## Release
 
