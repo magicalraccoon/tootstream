@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Added `mentions` command to just show mentions.
 - Added poll and update filters to `note` command.
 - Changed command to abort step from "a" to "q" to maintain consistency.
+- Allow favoriting / unfavoriting multiple toots at once.
 
 ## Release
 
