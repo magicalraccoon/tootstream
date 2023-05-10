@@ -137,6 +137,13 @@ toot_listener = TootListener()
 #####################################
 
 
+def rest_to_list(rest):
+    rest = (",".join(rest.split()))
+    rest = rest.replace(",,", ",")
+    rest = [x.strip() for x in rest.split(",")]
+    return rest
+
+
 def update_prompt(username, context, profile):
     if context:
         prompt = f"[@{username} <{context}> ({profile})]: "
@@ -1196,7 +1203,7 @@ def vote(mastodon, rest):
             )
             return
 
-        vote_options = [x.strip() for x in rest.split(",")]
+        vote_options = rest_to_list(rest)
         if len(vote_options) > 1 and not poll.get("multiple"):
             cprint(
                 "Too many votes cast.",
@@ -1254,9 +1261,7 @@ def unboost(mastodon, rest):
 @command("<id> [<id>]", "Toots")
 def fav(mastodon, rest):
     """Favorites a toot by ID or IDs."""
-    for i in range(0, 2):
-        rest = rest.replace("  ", " ")  # Ensure we don't have weird spacing
-    favorite_ids = rest.split(" ")
+    favorite_ids = rest_to_list(rest)
     multiple = len(favorite_ids) > 1
     for favorite_id in favorite_ids:
         if favorite_id:
@@ -1274,9 +1279,7 @@ def fav(mastodon, rest):
 @command("<id> [<id>]", "Toots")
 def unfav(mastodon, rest):
     """Removes a favorite toot by ID or IDs."""
-    for i in range(0, 2):
-        rest = rest.replace("  ", " ")  # Ensure we don't have weird spacing
-    favorite_ids = rest.split(" ")
+    favorite_ids = rest_to_list(rest)
     multiple = len(favorite_ids) > 1
     for favorite_id in favorite_ids:
         if favorite_id:
