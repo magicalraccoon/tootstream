@@ -1259,15 +1259,16 @@ def fav(mastodon, rest):
     favorite_ids = rest.split(" ")
     multiple = len(favorite_ids) > 1
     for favorite_id in favorite_ids:
-        favorite_global_id = IDS.to_global(favorite_id)
-        if favorite_global_id is None:
-            cprint(f"  Can't favorite id {favorite_id}: Not found", fg("red") + attr("bold"))
-            next
-        faved = mastodon.status_favourite(favorite_global_id)
-        msg = f"  Favorited ({favorite_id}):\n" + get_content(faved)
-        cprint(msg, attr("dim"))
-        if multiple:
-            print()
+        if favorite_id:
+            favorite_global_id = IDS.to_global(favorite_id)
+            if favorite_global_id is None:
+                cprint(f"  Can't favorite id {favorite_id}: Not found", fg("red") + attr("bold"))
+                next
+            faved = mastodon.status_favourite(favorite_global_id)
+            msg = f"  Favorited ({favorite_id}):\n" + get_content(faved)
+            cprint(msg, attr("dim"))
+            if multiple:
+                print()
 
 
 @command("<id> [<id>]", "Toots")
@@ -1278,15 +1279,16 @@ def unfav(mastodon, rest):
     favorite_ids = rest.split(" ")
     multiple = len(favorite_ids) > 1
     for favorite_id in favorite_ids:
-        favorite_global_id = IDS.to_global(favorite_id)
-        if favorite_global_id is None:
-            cprint(f"  Can't unfavorite id {favorite_id}: Not found", fg("red") + attr("bold"))
-            next
-        unfaved = mastodon.status_unfavourite(favorite_global_id)
-        msg = f"  Removed favorite ({favorite_id}):\n" + get_content(unfaved)
-        cprint(msg, fg("yellow"))
-        if multiple:
-            print()
+        if favorite_id:
+            favorite_global_id = IDS.to_global(favorite_id)
+            if favorite_global_id is None:
+                cprint(f"  Can't unfavorite id {favorite_id}: Not found", fg("red") + attr("bold"))
+                next
+            unfaved = mastodon.status_unfavourite(favorite_global_id)
+            msg = f"  Removed favorite ({favorite_id}):\n" + get_content(unfaved)
+            cprint(msg, fg("yellow"))
+            if multiple:
+                print()
 
 
 @command("<id>", "Toots")
