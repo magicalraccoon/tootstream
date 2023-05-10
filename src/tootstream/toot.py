@@ -1257,8 +1257,7 @@ def fav(mastodon, rest):
     rest = IDS.to_global(rest)
     if rest is None:
         return
-    mastodon.status_favourite(rest)
-    faved = mastodon.status(rest)
+    faved = mastodon.status_favourite(rest)
     msg = "  Favorited:\n" + get_content(faved)
     cprint(msg, attr("dim"))
 
@@ -1517,10 +1516,16 @@ def next(mastodon, rest):
             return
         else:
             LAST_PAGE = curr_page
-    cprint(
-        "No more toots in current context: " + LAST_CONTEXT,
-        fg("white") + bg("red"),
-    )
+    if LAST_CONTEXT:
+        cprint(
+            "No more toots in current context: " + LAST_CONTEXT,
+            fg("white") + bg("red"),
+        )
+    else:
+        cprint(
+            "No current context.",
+            fg("white") + bg("red"),
+        )
 
 
 @command("", "Timeline")
@@ -1536,10 +1541,16 @@ def prev(mastodon, rest):
             return
         else:
             LAST_PAGE = curr_page
-    cprint(
-        "No more toots in current context: " + LAST_CONTEXT,
-        fg("white") + bg("red"),
-    )
+    if LAST_CONTEXT:
+        cprint(
+            "No more toots in current context: " + LAST_CONTEXT,
+            fg("white") + bg("red"),
+        )
+    else:
+        cprint(
+            "No current context.",
+            fg("white") + bg("red"),
+        )
 
 
 @command("<timeline>", "Timeline")
@@ -1692,9 +1703,10 @@ def note(mastodon, rest):
         note_type = note.get("type")
         note_status = note.get("status", {})
         note_created_at = note_status.get("created_at")
-        note_time = " " + stylize(
-            format_time(note_created_at), attr("dim")
-        )
+        if note_created_at:
+            note_time = " " + stylize(
+                format_time(note_created_at), attr("dim")
+            )
         note_media_attachments = note_status.get("media_attachments")
         display_name = "  " + format_display_name(note.get("account").get("display_name"))
         username = format_username(note.get("account"))
