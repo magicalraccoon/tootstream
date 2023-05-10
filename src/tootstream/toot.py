@@ -868,7 +868,7 @@ def printToot(toot, show_toot=False, dim=False):
         if toot.get("status").get("media_attachments"):
             out.append("\n".join(get_media_attachments(toot.get("status"))))
 
-    if toot.get("media_attachments") and show_toot_text:
+    if toot.get("media_attachments") and (show_toot_text or show_toot):
         # simple version: output # of attachments. TODO: urls instead?
         out.append("\n".join(get_media_attachments(toot)))
 
