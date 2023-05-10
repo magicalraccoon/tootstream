@@ -62,6 +62,7 @@ GLYPHS = {
     # mute-spkr '\U0001f507', mute-bell '\U0001f515', prohibited '\U0001f6ab'
     "muting": "\U0001f6ab",
     "requested": "\U00002753",  # hourglass '\U0000231b', question '\U00002753'
+    "voted": "\U00002714",  # Checkmark
     # catchall
     "unknown": "\U0001f34d",
 }
@@ -195,15 +196,19 @@ def get_poll(toot):
         poll_results = ""
         total_votes_count = poll.get("votes_count")
         poll_options = poll.get("options")
+        own_votes = poll.get("own_votes")
         for i, poll_element in enumerate(poll_options):
+            selected = " "
             poll_title = poll_element.get("title")
             poll_votes_count = poll_element.get("votes_count")
             if total_votes_count > 0:
                 poll_percentage = (poll_votes_count / total_votes_count) * 100
             else:
                 poll_percentage = 0
+            if i in own_votes:
+                selected = GLYPHS.get("voted")
             poll_results += (
-                f"  {i}: {poll_title} ({poll_votes_count}: {poll_percentage:.2f}%)\n"
+                f"{selected} {i}: {poll_title} ({poll_votes_count}: {poll_percentage:.2f}%)\n"
             )
         poll_results += f"  Total votes: {total_votes_count}"
         if poll.multiple:
