@@ -1347,6 +1347,13 @@ def unbookmark(mastodon, rest):
 
 
 @command("<id>", "Toots")
+def showhistory(mastodon, rest):
+    """Shows the history of the conversation for an ID with CWs/ Filters displayed"""
+    history(mastodon, rest, show_toot=True)
+
+
+
+@command("<id>", "Toots")
 def history(mastodon, rest, show_toot=False):
     """Shows the history of the conversation for an ID.
 
@@ -1406,7 +1413,7 @@ def thread(mastodon, rest, show_toot=False):
         # Then display the rest
         # current_toot = mastodon.status(rest)
         conversation = mastodon.status_context(rest)
-        print_toots(mastodon, conversation["descendants"], stepper, show_toot, sort_toots=False)
+        print_toots(mastodon, conversation["descendants"], stepper, show_toot=show_toot, sort_toots=False)
 
     except Exception as e:
         raise e
