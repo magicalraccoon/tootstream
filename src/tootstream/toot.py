@@ -417,6 +417,7 @@ def print_toots(
     stepper=False,
     ctx_name=None,
     add_completion=True,
+    show_toot=False,
     sort_toots=True,
 ):
     """Print toot listings and allow context dependent commands.
@@ -461,7 +462,7 @@ def print_toots(
         toot_list = enumerate(listing)
 
     for pos, toot in toot_list:
-        printToot(toot)
+        printToot(toot, show_toot)
         if add_completion is True:
             completion_add(toot)
 
@@ -1244,7 +1245,7 @@ def boost(mastodon, rest):
     try:
         mastodon.status_reblog(rest)
         boosted = mastodon.status(rest)
-        msg = "  You boosted: " + fg("white") + get_content(boosted)
+        msg = "  You boosted:\n " + fg("white") + get_content(boosted)
         cprint(msg, attr("dim"))
     except Exception as e:
         cprint("Received error: ", fg("red") + attr("bold"), end="")
@@ -1259,7 +1260,7 @@ def unboost(mastodon, rest):
         return
     mastodon.status_unreblog(rest)
     unboosted = mastodon.status(rest)
-    msg = "  Removed boost: " + get_content(unboosted)
+    msg = "  Removed boost:\n " + get_content(unboosted)
     cprint(msg, attr("dim"))
 
 
@@ -1346,7 +1347,7 @@ def unbookmark(mastodon, rest):
 
 
 @command("<id>", "Toots")
-def history(mastodon, rest):
+def history(mastodon, rest, show_toot=False):
     """Shows the history of the conversation for an ID.
 
     ex: history 23"""
@@ -1363,12 +1364,13 @@ def history(mastodon, rest):
             conversation["ancestors"],
             stepper,
             ctx_name="Previous toots",
+            show_toot=show_toot,
             sort_toots=False,
         )
 
         if stepper is False:
             cprint("Current Toot:", fg("yellow"))
-        print_toots(mastodon, [current_toot], stepper, ctx_name="Current toot")
+        print_toots(mastodon, [current_toot], stepper, ctx_name="Current toot", show_toot=show_toot)
         # printToot(current_toot)
         # completion_add(current_toot)
     except Exception as e:
@@ -1376,7 +1378,15 @@ def history(mastodon, rest):
 
 
 @command("<id>", "Toots")
-def thread(mastodon, rest):
+def showthread(mastodon, rest):
+    """Shows the complete thread of the conversation for an ID while showing CWs / filters.
+
+    ex: showthread 23"""
+    thread(mastodon, rest, show_toot=True)
+
+
+@command("<id>", "Toots")
+def thread(mastodon, rest, show_toot=False):
     """Shows the complete thread of the conversation for an ID.
 
     ex: thread 23"""
@@ -1391,12 +1401,12 @@ def thread(mastodon, rest):
 
     try:
         # First display the history
-        history(mastodon, original_rest)
+        history(mastodon, original_rest, show_toot)
 
         # Then display the rest
         # current_toot = mastodon.status(rest)
         conversation = mastodon.status_context(rest)
-        print_toots(mastodon, conversation["descendants"], stepper, sort_toots=False)
+        print_toots(mastodon, conversation["descendants"], stepper, show_toot, sort_toots=False)
 
     except Exception as e:
         raise e

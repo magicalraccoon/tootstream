@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Added poll and update filters to `note` command.
 - Changed command to abort step from "a" to "q" to maintain consistency.
 - Allow favoriting / unfavoriting multiple toots at once.
+- `showthread` will show all toots in a thread with content warnings / filters removed.
 
 ## Release
 
