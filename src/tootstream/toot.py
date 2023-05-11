@@ -434,6 +434,7 @@ def print_toots(
         listing: Iterable containing toots
         ctx_name (str, optional): Displayed in command prompt
         add_completion (bool, optional): Add toots to completion list
+        show:toot (bool, optional): whether to show the toot by default or not
 
     Examples:
         >>> print_toots(mastodon, mastodon.timeline_home(), ctx_name='home')
