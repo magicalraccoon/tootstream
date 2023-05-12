@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Use search with limit 1 when we only want one account, bypassing Mastodon's questionable search algorithm.
 - `view` command doesn't bring back a list of users that are close to what you were searching for.
 - edits no longer break `note` command.
+- Commands using `step` now find the original toot for a reblogged toot.
 
 ### Added
 - Filter support (list filters, toots with filters honor the filter settings).
@@ -21,6 +22,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - `mute` now has time duration (30s, 1d, etc.).
 - `view` command now shows which user you are viewing and allows pagination.
 - `vote` command for voting in polls.
+- `user` command for showing a user profile.
 - Displays poll results, whether the poll is expired, and if the poll supports multiple votes (along with a URI).
 - Update the current prompt with the current context.
 - Added `mentions` command to just show mentions.

@@ -138,6 +138,17 @@ toot_listener = TootListener()
 #####################################
 
 
+def find_original_toot_id(toot):
+    """ Locates the original toot ID in case of a reblog"""
+    reblog = toot.get("reblog")
+    if reblog:
+        original_toot = reblog
+    else:
+        original_toot = toot
+    original_toot_id = original_toot.get("id")
+    return IDS.to_local(original_toot_id)
+
+
 def rest_to_list(rest):
     rest = (",".join(rest.split()))
     rest = rest.replace(",,", ",")
@@ -468,9 +479,8 @@ def print_toots(
             completion_add(toot)
 
         if stepper:
-            prompt = "[@{} {}/{}{}]: ".format(
-                str(user["username"]), pos + 1, len(listing), ctx
-            )
+            username = user.get("username")
+            prompt = f"[@{username} {pos+1}/{len(listing)}{ctx}]: "
             command = None
             while command not in ["", "q"]:
                 command = input(prompt).split(" ", 1)
@@ -487,7 +497,7 @@ def print_toots(
                         and cmd_func.__argstr__ is not None
                     ):
                         if cmd_func.__argstr__.startswith("<id>"):
-                            rest = str(IDS.to_local(toot["id"])) + " " + rest
+                            rest = str(find_original_toot_id(toot)) + " " + rest
                         if cmd_func.__argstr__.startswith("<user>"):
                             rest = "@" + toot["account"]["username"] + " " + rest
                     cmd_func(mastodon, rest)
@@ -1170,7 +1180,7 @@ def rep(mastodon, rest):
             reply_toot = mastodon.status_post(
                 "%s %s" % (mentions, text), in_reply_to_id=parent_id, **kwargs
             )
-            msg = "  Replied with: " + get_content(reply_toot)
+            msg = "  Replied with:\n" + get_content(reply_toot)
             cprint(msg, attr("dim"))
             posted = True
         except Exception as e:
@@ -1967,6 +1977,23 @@ def search(mastodon, rest):
     else:
         raise ValueError("  Invalid format.\n" + usage)
     return
+
+
+@command("<user> [<N>]", "Discover")
+def user(mastodon, rest):
+    """Displays profile information for another user
+
+     <user>:   a userID, @username, or @user@instance
+
+    ex: user 23
+        user @user
+        user @user@instance.example.com"""
+    userid = get_unique_userid(mastodon, rest, exact=False)
+    profile = mastodon.account(userid)
+    if profile:
+        printUser(profile)
+        return
+    raise Exception("user {rest} not found")
 
 
 @command("<user> [<N>]", "Discover")
