@@ -251,8 +251,8 @@ def get_unique_userid(mastodon, rest, exact=True):
         return
     user = user_list.pop()
     if exact:
-        username_check = rest.lstrip("@")
-        username_acct = user.get("acct").lstrip("@")
+        username_check = rest.lstrip("@").strip()
+        username_acct = user.get("acct").lstrip("@").strip()
         if username_check != username_acct:
             if "@" not in username_check:
                 raise ValueError("  Please use a more exact username for this command.")
@@ -307,7 +307,14 @@ def flaghandler_note(mastodon, rest):
     return flaghandler(
         rest,
         True,
-        {"m": "mention", "f": "favourite", "b": "reblog", "F": "follow", "p": "poll", "u": "update"},
+        {
+            "m": "mention",
+            "f": "favourite",
+            "b": "reblog",
+            "F": "follow",
+            "r": "follow_request",
+            "p": "poll",
+            "u": "update"},
     )
 
 
@@ -1713,7 +1720,7 @@ def mentions(mastodon, rest):
     """Displays the Notifications timeline with only mentions
 
     ex: 'mentions'"""
-    note(mastodon, "-bfFpu")
+    note(mastodon, "-bfFpru")
 
 
 @command("[<filter>]", "Timeline")
@@ -1733,6 +1740,7 @@ def note(mastodon, rest):
         -F    Filter follows
         -m    Filter mentions
         -p    Filter polls
+        -r    Filter follow requests
         -u    Filter updates"""
 
     displayed_notification = False
@@ -1787,6 +1795,11 @@ def note(mastodon, rest):
                 displayed_notification = True
                 print("  ", end="")
                 cprint(display_name + username + " followed you!", fg("yellow"))
+
+            elif note_type == "follow_request":
+                displayed_notification = True
+                cprint(display_name + username + " sent a follow request", fg("yellow"))
+                cprint("  Use 'accept' or 'reject' to accept or reject the request", fg("yellow"))
 
             # Update
             elif note_type in ["update", "favourite", "reblog", "poll"]:
@@ -2112,7 +2125,7 @@ def accept(mastodon, rest):
         accept @user@instance.example.com"""
     userid = get_unique_userid(mastodon, rest)
     mastodon.follow_request_authorize(userid)
-    cprint("  user {}'s request is accepted".format(userid), fg("blue"))
+    cprint(f"  user {rest}'s follow request is accepted", fg("blue"))
 
 
 @command("<user>", "Profile")
@@ -2123,7 +2136,7 @@ def reject(mastodon, rest):
         reject @user@instance.example.com"""
     userid = get_unique_userid(mastodon, rest)
     mastodon.follow_request_reject(userid)
-    cprint("  user {}'s request is rejected".format(userid), fg("blue"))
+    cprint(f"  user {rest}'s follow request is rejected", fg("blue"))
 
 
 @command("", "Profile")

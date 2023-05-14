@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Changed command to abort step from "a" to "q" to maintain consistency.
 - Allow favoriting / unfavoriting multiple toots at once.
 - `showthread` will show all toots in a thread with content warnings / filters removed.
+- Added `follow_request` to note; added `-r` to filter requests.
 
 ## Release
 
