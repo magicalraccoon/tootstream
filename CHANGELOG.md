@@ -4,7 +4,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## Released
+
+## [0.4.0] - 2023-05-16
 
 ### Fixed
 - Toots with content warnings will not automatically display. Use the `show` command to display the contents.
