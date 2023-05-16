@@ -9,16 +9,17 @@ import bisect
 import shutil
 from collections import OrderedDict
 import webbrowser
+import dateutil
 
 # Get the version of Tootstream
 import pkg_resources  # part of setuptools
 import click
-import dateutil
 from tootstream.toot_parser import TootParser
 from mastodon import Mastodon, StreamListener
 from colored import fg, bg, attr, stylize
 import humanize
 import emoji
+import pytimeparse
 
 
 version = pkg_resources.require("tootstream")[0].version
@@ -61,6 +62,7 @@ GLYPHS = {
     # mute-spkr '\U0001f507', mute-bell '\U0001f515', prohibited '\U0001f6ab'
     "muting": "\U0001f6ab",
     "requested": "\U00002753",  # hourglass '\U0000231b', question '\U00002753'
+    "voted": "\U00002714",  # Checkmark
     # catchall
     "unknown": "\U0001f34d",
 }
@@ -116,6 +118,9 @@ class TootListener(StreamListener):
 
 IDS = IdDict()
 
+LAST_PAGE = None
+LAST_CONTEXT = None
+
 # Get the current width of the terminal
 terminal_size = shutil.get_terminal_size((80, 20))
 toot_parser = TootParser(
@@ -133,6 +138,32 @@ toot_listener = TootListener()
 #####################################
 
 
+def find_original_toot_id(toot):
+    """ Locates the original toot ID in case of a reblog"""
+    reblog = toot.get("reblog")
+    if reblog:
+        original_toot = reblog
+    else:
+        original_toot = toot
+    original_toot_id = original_toot.get("id")
+    return IDS.to_local(original_toot_id)
+
+
+def rest_to_list(rest):
+    rest = (",".join(rest.split()))
+    rest = rest.replace(",,", ",")
+    rest = [x.strip() for x in rest.split(",")]
+    return rest
+
+
+def update_prompt(username, context, profile):
+    if context:
+        prompt = f"[@{username} <{context}> ({profile})]: "
+    else:
+        prompt = f"[@{username} ({profile})]: "
+    return prompt
+
+
 def list_support(mastodon, silent=False):
     lists_available = mastodon.verify_minimum_version("2.1.0")
     if lists_available is False and silent is False:
@@ -148,65 +179,86 @@ def step_flag(rest):
 
 
 def get_content(toot):
-    html = toot["content"]
+    html = toot.get("content")
+    if html is None:
+        return ""
     toot_parser.parse(html)
     return toot_parser.get_text()
+
+
+def get_media_attachments(toot):
+    out = []
+    nsfw = "CW " if toot.get("sensitive") else ""
+    out.append(
+        stylize(
+            "  " + nsfw + "media: " + str(len(toot.get("media_attachments"))),
+            fg("magenta"),
+        )
+    )
+    if show_media_links:
+        for media in toot.get("media_attachments"):
+            out.append(stylize("   " + nsfw + " " + media.url, fg("green")))
+    return out
 
 
 def get_poll(toot):
     poll = getattr(toot, "poll", None)
     if poll:
+        poll_results = ""
+        total_votes_count = poll.get("votes_count")
+        poll_options = poll.get("options")
+        own_votes = poll.get("own_votes")
+        for i, poll_element in enumerate(poll_options):
+            selected = " "
+            poll_title = poll_element.get("title")
+            poll_votes_count = poll_element.get("votes_count")
+            if total_votes_count > 0:
+                poll_percentage = (poll_votes_count / total_votes_count) * 100
+            else:
+                poll_percentage = 0
+            if i in own_votes:
+                selected = GLYPHS.get("voted")
+            poll_results += (
+                f"{selected} {i}: {poll_title} ({poll_votes_count}: {poll_percentage:.2f}%)\n"
+            )
+        poll_results += f"  Total votes: {total_votes_count}"
+        if poll.multiple:
+            poll_results += f"\n  (Multiple votes may be cast.)"
+        if poll.expired:
+            poll_results += f"\n  Polling is over."
         uri = toot["uri"]
-        return "  [poll]: {}".format(uri)
+        return f"  [poll] {poll['id']} ({uri})\n{poll_results}"
 
 
-def get_userid(mastodon, rest):
-    # we got some user input.  we need a userid (int).
-    # returns userid as int, -1 on error, or list of users if ambiguous.
-    if not rest:
-        return -1
+def get_unique_userid(mastodon, rest, exact=True):
+    """Get a unique user ID by limiting the search to the top result.
+    params:
+        rest: rest of the command
+        exact: whether to do an exact search or not.
+            Most commands should require precision, so
 
-    # maybe it's already an int
+    """
+    # Check if the ID is already in numeric form
     try:
-        return int(rest)
+        userid = int(rest)
+        return userid
     except ValueError:
         pass
 
-    # not an int
-    users = mastodon.account_search(rest)
-    if not users:
-        return -1
-    elif len(users) > 1:
-        # Mastodon's search is fuzzier than we want; check for exact match
-
-        query = rest[1:] if rest.startswith("@") else rest
-        (quser, _, qinstance) = query.partition("@")
-        localinstance = mastodon.instance()
-
-        # on uptodate servers, exact match should be first in list
-        for user in users:
-            # match user@remoteinstance, localuser
-            if query == user["acct"]:
-                return user["id"]
-            # match user@localinstance
-            elif quser == user["acct"] and qinstance == localinstance["uri"]:
-                return user["id"]
-
-        # no exact match; return list
-        return users
-    else:
-        return users[0]["id"]
-
-
-def get_userid2(mastodon, rest):
-    userid = get_userid(mastodon, rest)
-    if isinstance(userid, list):
-        cprint("  multiple matches found:", fg("red"))
-        printUsersShort(userid)
-        raise AlreadyPrintedException()
-    elif userid == -1:
-        raise Exception("  username '{}' not found".format(rest))
-
+    user_list = mastodon.account_search(rest, limit=1)
+    if not user_list:
+        raise Exception(f"  username '{rest}' not found")
+        return
+    user = user_list.pop()
+    if exact:
+        username_check = rest.lstrip("@").strip()
+        username_acct = user.get("acct").lstrip("@").strip()
+        if username_check != username_acct:
+            if "@" not in username_check:
+                raise ValueError("  Please use a more exact username for this command.")
+            else:
+                raise Exception(f"  {username_check} not found.")
+    userid = user.get("id")
     return userid
 
 
@@ -252,7 +304,18 @@ def flaghandler(rest, initial, flags):
 
 
 def flaghandler_note(mastodon, rest):
-    return flaghandler(rest, True, {"m": "mention", "f": "favourite", "b": "reblog", "F": "follow", "p": "poll"})
+    return flaghandler(
+        rest,
+        True,
+        {
+            "m": "mention",
+            "f": "favourite",
+            "b": "reblog",
+            "F": "follow",
+            "r": "follow_request",
+            "p": "poll",
+            "u": "update"},
+    )
 
 
 def flaghandler_tootreply(mastodon, rest):
@@ -261,7 +324,9 @@ def flaghandler_tootreply(mastodon, rest):
     arguments for Mastodon.status_post().  On failure, returns
     (None, None)."""
 
-    (rest, flags) = flaghandler(rest, False, {"v":"visibility","c":"cw","C":"noCW","m":"media"})
+    (rest, flags) = flaghandler(
+        rest, False, {"v": "visibility", "c": "cw", "C": "noCW", "m": "media"}
+    )
 
     # if any flag is true, print a general usage message
     if True in flags.values():
@@ -335,7 +400,7 @@ def flaghandler_tootreply(mastodon, rest):
                 media.append(fname)
                 count += 1
             else:
-                cprint("error: cannot find file {}".format(fname), fg("red"))
+                raise Exception(f"error: cannot find file {fname}")
 
         # upload, verify
         if count:
@@ -370,6 +435,7 @@ def print_toots(
     stepper=False,
     ctx_name=None,
     add_completion=True,
+    show_toot=False,
     sort_toots=True,
 ):
     """Print toot listings and allow context dependent commands.
@@ -386,6 +452,7 @@ def print_toots(
         listing: Iterable containing toots
         ctx_name (str, optional): Displayed in command prompt
         add_completion (bool, optional): Add toots to completion list
+        show:toot (bool, optional): whether to show the toot by default or not
 
     Examples:
         >>> print_toots(mastodon, mastodon.timeline_home(), ctx_name='home')
@@ -393,12 +460,18 @@ def print_toots(
     sort_toots is used to apply reversed (chronological) sort to the list of toots.
         Default is true; threading needs this to be false.
     """
+    if listing is None:
+        cprint(
+            "No toots in current context.",
+            fg("white") + bg("red"),
+        )
+        return
     user = mastodon.account_verify_credentials()
     ctx = "" if ctx_name is None else " in {}".format(ctx_name)
 
     def say_error(*args, **kwargs):
         cprint(
-            "Invalid command. Use 'help' for a list of commands or press [enter] for next toot, [a] to abort.",
+            "Invalid command. Use 'help' for a list of commands. Press [enter] for next toot, [q] to abort.",
             fg("white") + bg("red"),
         )
 
@@ -408,16 +481,15 @@ def print_toots(
         toot_list = enumerate(listing)
 
     for pos, toot in toot_list:
-        printToot(toot)
+        printToot(toot, show_toot)
         if add_completion is True:
             completion_add(toot)
 
         if stepper:
-            prompt = "[@{} {}/{}{}]: ".format(
-                str(user["username"]), pos + 1, len(listing), ctx
-            )
+            username = user.get("username")
+            prompt = f"[@{username} {pos+1}/{len(listing)}{ctx}]: "
             command = None
-            while command not in ["", "a"]:
+            while command not in ["", "q"]:
                 command = input(prompt).split(" ", 1)
 
                 try:
@@ -425,19 +497,19 @@ def print_toots(
                 except IndexError:
                     rest = ""
                 command = command[0]
-                if command not in ["", "a"]:
+                if command not in ["", "q"]:
                     cmd_func = commands.get(command, say_error)
                     if (
                         hasattr(cmd_func, "__argstr__")
                         and cmd_func.__argstr__ is not None
                     ):
                         if cmd_func.__argstr__.startswith("<id>"):
-                            rest = str(IDS.to_local(toot["id"])) + " " + rest
+                            rest = str(find_original_toot_id(toot)) + " " + rest
                         if cmd_func.__argstr__.startswith("<user>"):
                             rest = "@" + toot["account"]["username"] + " " + rest
                     cmd_func(mastodon, rest)
 
-            if command == "a":
+            if command == "q":
                 break
 
 
@@ -756,12 +828,15 @@ def format_toot_idline(toot):
     # id-and-counts line: boosted count, faved count, tootid, visibility, favourited-already, boosted-already
     if not toot:
         return ""
-    out = [
-        stylize(GLYPHS["boost"] + ":" + str(toot["reblogs_count"]), fg("cyan")),
-        stylize(GLYPHS["fave"] + ":" + str(toot["favourites_count"]), fg("yellow")),
-        stylize("id:" + str(IDS.to_local(toot["id"])), fg("red")),
-        stylize("vis:" + GLYPHS[toot["visibility"]], fg("blue")),
-    ]
+    reblogs_count = toot.get("reblogs_count", 0)
+    favourites_count = toot.get("favourites_count", 0)
+    visibility = toot.get("visibility")
+    out = []
+    out.append(stylize(GLYPHS["boost"] + ":" + str(reblogs_count), fg("cyan")))
+    out.append(stylize(GLYPHS["fave"] + ":" + str(favourites_count), fg("yellow")))
+    out.append(stylize("id:" + str(IDS.to_local(toot.get("id"))), fg("white")))
+    if visibility:
+        out.append(stylize("vis:" + GLYPHS[visibility], fg("blue")))
 
     # app used to post. frequently empty
     if toot.get("application") and toot.get("application").get("name"):
@@ -782,10 +857,11 @@ def format_toot_idline(toot):
     return " ".join(out)
 
 
-def printToot(toot):
+def printToot(toot, show_toot=False, dim=False):
     if not toot:
         return
 
+    show_toot_text = True
     out = []
     # if it's a boost, only output header line from toot
     # then get other data from toot['reblog']
@@ -803,31 +879,37 @@ def printToot(toot):
         "  " + format_toot_idline(toot),
     ]
 
-    if toot["spoiler_text"] != "":
+    if toot.get("spoiler_text", "") != "":
         # pass CW through get_content for wrapping/indenting
         faketoot = {"content": "[CW: " + toot["spoiler_text"] + "]"}
         out.append(stylize(get_content(faketoot), fg("red")))
+        show_toot_text = False
 
-    out.append(get_content(toot))
+    if toot.get("filtered"):
+        filter_titles = ", ".join([x["filter"]["title"] for x in toot.filtered])
+        faketoot = {"content": "[Filter: " + filter_titles + "]"}
+        out.append(stylize(get_content(faketoot), fg("red")))
+        show_toot_text = False
 
-    if toot.get("media_attachments"):
+    if show_toot_text or show_toot:
+        out.append(get_content(toot))
+
+    if toot.get("status"):
+        out.append(get_content(toot.get("status")))
+        if toot.get("status").get("media_attachments"):
+            out.append("\n".join(get_media_attachments(toot.get("status"))))
+
+    if toot.get("media_attachments") and (show_toot_text or show_toot):
         # simple version: output # of attachments. TODO: urls instead?
-        nsfw = "CW " if toot["sensitive"] else ""
-        out.append(
-            stylize(
-                "  " + nsfw + "media: " + str(len(toot["media_attachments"])),
-                fg("magenta"),
-            )
-        )
-        if show_media_links:
-            for media in toot["media_attachments"]:
-                out.append(stylize("   " + nsfw + " " + media.url, fg("green")))
+        out.append("\n".join(get_media_attachments(toot)))
 
     if toot.get("poll"):
-        # if there's a poll then just show that it exists for now
-        out.append("  [poll]")
+        out.append(get_poll(toot))
 
-    print("\n".join(out))
+    if dim:
+        cprint("\n".join(out), attr("dim"))
+    else:
+        print("\n".join(out))
     print()
 
 
@@ -848,6 +930,15 @@ def printList(list_item):
     """Prints list entry nicely with hardcoded colors."""
     cprint(list_item["title"], fg("cyan"), end=" ")
     cprint("(id: %s)" % list_item["id"], fg("red"))
+
+
+def printFilter(filter_item):
+    """Prints filter entry nicely with hardcoded colors."""
+    cprint(filter_item["phrase"], fg("cyan"), end=" ")
+    cprint("(id: %s," % filter_item["id"], fg("red"), end=" ")
+    cprint("context: %s, " % filter_item["context"], fg("red"), end=" ")
+    cprint("expires_at: %s, " % filter_item["expires_at"], fg("red"), end=" ")
+    cprint("whole_word: %s)" % filter_item["whole_word"], fg("red"))
 
 
 #####################################
@@ -905,7 +996,7 @@ def help(mastodon, rest):
             # Show Command Help
             try:
                 cmd_func = commands[args[0]]
-            except:
+            except Exception:
                 print(__friendly_cmd_error__.format(rest))
                 return
 
@@ -1096,8 +1187,8 @@ def rep(mastodon, rest):
             reply_toot = mastodon.status_post(
                 "%s %s" % (mentions, text), in_reply_to_id=parent_id, **kwargs
             )
-            msg = "  Replied with: " + get_content(reply_toot)
-            cprint(msg, fg("red"))
+            msg = "  Replied with:\n" + get_content(reply_toot)
+            cprint(msg, attr("dim"))
             posted = True
         except Exception as e:
             cprint("error while posting: {}".format(type(e).__name__), fg("red"))
@@ -1108,6 +1199,49 @@ def rep(mastodon, rest):
                 text = edittoot(text=text)
             else:
                 posted = True
+
+
+@command("<id> [votes]", "Toots")
+def vote(mastodon, rest):
+    """Vote  your toot by ID
+
+    Example:
+        >>> vote 23 1
+        >>> vote 23 1,2,3
+    """
+    try:
+        poll_id = None
+        toot_id, rest = rest.split(" ", 1)
+        global_id = IDS.to_global(toot_id)
+        poll = mastodon.status(global_id).get("poll")
+        if poll:
+            poll_id = poll.get("id")
+        if poll_id is None:
+            cprint(f"  {toot_id} does not point to a valid poll.", fg("red"))
+            return
+
+        if rest is None:
+            cprint(
+                "Note has no options.",
+                fg("white") + bg("red"),
+            )
+            return
+
+        vote_options = rest_to_list(rest)
+        if len(vote_options) > 1 and not poll.get("multiple"):
+            cprint(
+                "Too many votes cast.",
+                fg("white") + bg("red"),
+            )
+            return
+
+        mastodon.poll_vote(poll_id, vote_options)
+        print("Vote cast.")
+    except Exception as e:
+        cprint(
+            f"  {e}",
+            fg("red"),
+        )
 
 
 @command("<id>", "Toots")
@@ -1129,8 +1263,8 @@ def boost(mastodon, rest):
     try:
         mastodon.status_reblog(rest)
         boosted = mastodon.status(rest)
-        msg = "  You boosted: " + fg("white") + get_content(boosted)
-        cprint(msg, fg("green"))
+        msg = "  You boosted:\n " + fg("white") + get_content(boosted)
+        cprint(msg, attr("dim"))
     except Exception as e:
         cprint("Received error: ", fg("red") + attr("bold"), end="")
         cprint(e, fg("magenta") + attr("bold") + attr("underlined"))
@@ -1144,32 +1278,66 @@ def unboost(mastodon, rest):
         return
     mastodon.status_unreblog(rest)
     unboosted = mastodon.status(rest)
-    msg = "  Removed boost: " + get_content(unboosted)
-    cprint(msg, fg("red"))
+    msg = "  Removed boost:\n " + get_content(unboosted)
+    cprint(msg, attr("dim"))
 
 
-@command("<id>", "Toots")
+@command("<id> [<id>]", "Toots")
 def fav(mastodon, rest):
-    """Favorites a toot by ID."""
-    rest = IDS.to_global(rest)
-    if rest is None:
-        return
-    mastodon.status_favourite(rest)
-    faved = mastodon.status(rest)
-    msg = "  Favorited:\n" + get_content(faved)
-    cprint(msg, fg("red"))
+    """Favorites a toot by ID or IDs."""
+    favorite_ids = rest_to_list(rest)
+    multiple = len(favorite_ids) > 1
+    for favorite_id in favorite_ids:
+        if favorite_id:
+            favorite_global_id = IDS.to_global(favorite_id)
+            if favorite_global_id is None:
+                cprint(f"  Can't favorite id {favorite_id}: Not found", fg("red") + attr("bold"))
+                next
+            faved = mastodon.status_favourite(favorite_global_id)
+            msg = f"  Favorited ({favorite_id}):\n" + get_content(faved)
+            cprint(msg, attr("dim"))
+            if multiple:
+                print()
+
+
+@command("<id> [<id>]", "Toots")
+def unfav(mastodon, rest):
+    """Removes a favorite toot by ID or IDs."""
+    favorite_ids = rest_to_list(rest)
+    multiple = len(favorite_ids) > 1
+    for favorite_id in favorite_ids:
+        if favorite_id:
+            favorite_global_id = IDS.to_global(favorite_id)
+            if favorite_global_id is None:
+                cprint(f"  Can't unfavorite id {favorite_id}: Not found", fg("red") + attr("bold"))
+                next
+            unfaved = mastodon.status_unfavourite(favorite_global_id)
+            msg = f"  Removed favorite ({favorite_id}):\n" + get_content(unfaved)
+            cprint(msg, fg("yellow"))
+            if multiple:
+                print()
 
 
 @command("<id>", "Toots")
-def unfav(mastodon, rest):
-    """Removes a favorite toot by ID."""
+def show(mastodon, rest):
+    """Shows a toot by ID"""
     rest = IDS.to_global(rest)
     if rest is None:
         return
-    mastodon.status_unfavourite(rest)
-    unfaved = mastodon.status(rest)
-    msg = "  Removed favorite: " + get_content(unfaved)
-    cprint(msg, fg("yellow"))
+    printToot(mastodon.status(rest), show_toot=True)
+
+
+@command("", "Filter")
+def filters(mastodon, rest):
+    """Shows the filters that the user has created."""
+    if not (list_support(mastodon)):
+        return
+    user_filters = mastodon.filters()
+    if len(user_filters) == 0:
+        cprint("No filters found", fg("red"))
+        return
+    for filter_item in user_filters:
+        printFilter(filter_item)
 
 
 @command("<id>", "Toots")
@@ -1197,7 +1365,14 @@ def unbookmark(mastodon, rest):
 
 
 @command("<id>", "Toots")
-def history(mastodon, rest):
+def showhistory(mastodon, rest):
+    """Shows the history of the conversation for an ID with CWs/ Filters displayed"""
+    history(mastodon, rest, show_toot=True)
+
+
+
+@command("<id>", "Toots")
+def history(mastodon, rest, show_toot=False):
     """Shows the history of the conversation for an ID.
 
     ex: history 23"""
@@ -1214,12 +1389,13 @@ def history(mastodon, rest):
             conversation["ancestors"],
             stepper,
             ctx_name="Previous toots",
+            show_toot=show_toot,
             sort_toots=False,
         )
 
         if stepper is False:
             cprint("Current Toot:", fg("yellow"))
-        print_toots(mastodon, [current_toot], stepper, ctx_name="Current toot")
+        print_toots(mastodon, [current_toot], stepper, ctx_name="Current toot", show_toot=show_toot)
         # printToot(current_toot)
         # completion_add(current_toot)
     except Exception as e:
@@ -1227,7 +1403,15 @@ def history(mastodon, rest):
 
 
 @command("<id>", "Toots")
-def thread(mastodon, rest):
+def showthread(mastodon, rest):
+    """Shows the complete thread of the conversation for an ID while showing CWs / filters.
+
+    ex: showthread 23"""
+    thread(mastodon, rest, show_toot=True)
+
+
+@command("<id>", "Toots")
+def thread(mastodon, rest, show_toot=False):
     """Shows the complete thread of the conversation for an ID.
 
     ex: thread 23"""
@@ -1242,12 +1426,12 @@ def thread(mastodon, rest):
 
     try:
         # First display the history
-        history(mastodon, original_rest)
+        history(mastodon, original_rest, show_toot)
 
         # Then display the rest
         # current_toot = mastodon.status(rest)
         conversation = mastodon.status_context(rest)
-        print_toots(mastodon, conversation["descendants"], stepper, sort_toots=False)
+        print_toots(mastodon, conversation["descendants"], stepper, show_toot=show_toot, sort_toots=False)
 
     except Exception as e:
         raise e
@@ -1352,24 +1536,81 @@ def links(mastodon, rest):
 @command("", "Timeline")
 def home(mastodon, rest):
     """Displays the Home timeline."""
+    global LAST_PAGE, LAST_CONTEXT
     stepper, rest = step_flag(rest)
-    print_toots(mastodon, mastodon.timeline_home(), stepper, ctx_name="home")
+    LAST_PAGE = mastodon.timeline_home()
+    LAST_CONTEXT = "home"
+    print_toots(mastodon, LAST_PAGE, stepper, ctx_name=LAST_CONTEXT)
 
 
 @command("", "Timeline")
 def fed(mastodon, rest):
     """Displays the Federated timeline."""
+    global LAST_PAGE, LAST_CONTEXT
     stepper, rest = step_flag(rest)
-    print_toots(
-        mastodon, mastodon.timeline_public(), stepper, ctx_name="federated timeline"
-    )
+    LAST_PAGE = mastodon.timeline_public()
+    LAST_CONTEXT = "federated timeline"
+    print_toots(mastodon, LAST_PAGE, stepper, ctx_name=LAST_CONTEXT)
 
 
 @command("", "Timeline")
 def local(mastodon, rest):
     """Displays the Local timeline."""
+    global LAST_PAGE, LAST_CONTEXT
     stepper, rest = step_flag(rest)
-    print_toots(mastodon, mastodon.timeline_local(), stepper, ctx_name="local timeline")
+    LAST_PAGE = mastodon.timeline_local()
+    LAST_CONTEXT = "local timeline"
+    print_toots(mastodon, LAST_PAGE, stepper, ctx_name=LAST_CONTEXT)
+
+
+@command("", "Timeline")
+def next(mastodon, rest):
+    """Displays the next page of paginated results."""
+    global LAST_PAGE, LAST_CONTEXT
+    curr_page = LAST_PAGE
+    stepper, rest = step_flag(rest)
+    if LAST_PAGE:
+        LAST_PAGE = mastodon.fetch_next(LAST_PAGE)
+        if LAST_PAGE:
+            print_toots(mastodon, LAST_PAGE, stepper, ctx_name=LAST_CONTEXT)
+            return
+        else:
+            LAST_PAGE = curr_page
+    if LAST_CONTEXT:
+        cprint(
+            "No more toots in current context: " + LAST_CONTEXT,
+            fg("white") + bg("red"),
+        )
+    else:
+        cprint(
+            "No current context.",
+            fg("white") + bg("red"),
+        )
+
+
+@command("", "Timeline")
+def prev(mastodon, rest):
+    """Displays the previous page of paginated results."""
+    global LAST_PAGE, LAST_CONTEXT
+    stepper, rest = step_flag(rest)
+    curr_page = LAST_PAGE
+    if LAST_PAGE:
+        LAST_PAGE = mastodon.fetch_previous(LAST_PAGE)
+        if LAST_PAGE:
+            print_toots(mastodon, LAST_PAGE, stepper, ctx_name=LAST_CONTEXT)
+            return
+        else:
+            LAST_PAGE = curr_page
+    if LAST_CONTEXT:
+        cprint(
+            "No more toots in current context: " + LAST_CONTEXT,
+            fg("white") + bg("red"),
+        )
+    else:
+        cprint(
+            "No current context.",
+            fg("white") + bg("red"),
+        )
 
 
 @command("<timeline>", "Timeline")
@@ -1474,6 +1715,14 @@ def stream(mastodon, rest):
         is_streaming = False
 
 
+@command("", "Timeline")
+def mentions(mastodon, rest):
+    """Displays the Notifications timeline with only mentions
+
+    ex: 'mentions'"""
+    note(mastodon, "-bfFpru")
+
+
 @command("[<filter>]", "Timeline")
 def note(mastodon, rest):
     """Displays the Notifications timeline.
@@ -1482,14 +1731,19 @@ def note(mastodon, rest):
                  will show all notifications
         'note -b'
                  will show all notifications minus boosts
-        'note -f -F -b' (or 'note -fFb')
+        'note -f -F -b -u' (or 'note -fFb')
                 will only show mentions
 
     Options:
         -b    Filter boosts
         -f    Filter favorites
         -F    Filter follows
-        -m    Filter mentions"""
+        -m    Filter mentions
+        -p    Filter polls
+        -r    Filter follow requests
+        -u    Filter updates"""
+
+    displayed_notification = False
 
     # Fill in Content fields first.
     try:
@@ -1507,67 +1761,70 @@ def note(mastodon, rest):
         return
 
     for note in reversed(notifications):
-        display_name = "  " + format_display_name(note["account"]["display_name"])
-        username = format_username(note["account"])
-        note_id = str(note["id"])
+        note_type = note.get("type")
+        note_status = note.get("status", {})
+        note_created_at = note_status.get("created_at")
+        if note_created_at:
+            note_time = " " + stylize(
+                format_time(note_created_at), attr("dim")
+            )
+        note_media_attachments = note_status.get("media_attachments")
+        display_name = "  " + format_display_name(note.get("account").get("display_name"))
+        username = format_username(note.get("account"))
+        note_id = str(note.get("id"))
 
         random.seed(display_name)
 
         # Check if we should even display this note type
-        if kwargs[note["type"]]:
+        if kwargs[note_type]:
             # Display Note ID
             cprint(" note: " + note_id, fg("magenta"))
 
             # Mentions
-            if note["type"] == "mention":
-                time = " " + stylize(
-                    format_time(note["status"]["created_at"]), attr("dim")
-                )
+            if note_type == "mention":
+                displayed_notification = True
                 cprint(display_name + username, fg("magenta"))
-                print("  " + format_toot_idline(note["status"]) + "  " + time)
-                cprint(get_content(note["status"]), attr("bold"), fg("white"))
+                print("  " + format_toot_idline(note_status) + "  " + note_time)
+                cprint(get_content(note_status), attr("bold"), fg("white"))
                 print(stylize("", attr("dim")))
-
-            # Favorites
-            elif note["type"] == "favourite":
-                tz_info = note["status"]["created_at"].tzinfo
-                note_time_diff = (
-                    datetime.datetime.now(tz_info) - note["status"]["created_at"]
-                )
-                countsline = format_toot_idline(note["status"])
-                format_time(note["status"]["created_at"])
-                time = " " + stylize(
-                    format_time(note["status"]["created_at"]), attr("dim")
-                )
-                content = get_content(note["status"])
-                cprint(display_name + username, fg(random.choice(COLORS)), end="")
-                cprint(" favorited your status:", fg("yellow"))
-                print("  " + countsline + stylize(time, attr("dim")))
-                cprint(content, attr("dim"))
-                if getattr(note["status"], "poll", None):
-                    poll = get_poll(note["status"])
-                    cprint(poll, attr("dim"))
-
-            # Boosts
-            elif note["type"] == "reblog":
-                cprint(display_name + username + " boosted your status:", fg("yellow"))
-                cprint(get_content(note["status"]), attr("dim"))
-                if getattr(note["status"], "poll", None):
-                    poll = get_poll(note["status"])
-                    cprint(poll, attr("dim"))
+                if note_media_attachments:
+                    print("\n".join(get_media_attachments(note_status)))
 
             # Follows
-            elif note["type"] == "follow":
+            elif note_type == "follow":
+                displayed_notification = True
                 print("  ", end="")
                 cprint(display_name + username + " followed you!", fg("yellow"))
 
-            # Poll
-            elif note["type"] == "poll":
-                cprint(get_content(note["status"]), attr("dim"))
-                cprint(get_poll(note["status"]), attr("dim"))
+            elif note_type == "follow_request":
+                displayed_notification = True
+                cprint(display_name + username + " sent a follow request", fg("yellow"))
+                cprint("  Use 'accept' or 'reject' to accept or reject the request", fg("yellow"))
 
-            # blank line
+            # Update
+            elif note_type in ["update", "favourite", "reblog", "poll"]:
+                displayed_notification = True
+                countsline = format_toot_idline(note_status)
+                content = get_content(note_status)
+                cprint(display_name + username, fg(random.choice(COLORS)), end="")
+                if note_type == "update":
+                    cprint(f" updated their status:", fg("yellow"))
+                elif note_type == "reblog":
+                    cprint(f" boosted your status:", fg("yellow"))
+                elif note_type == "poll":
+                    cprint(f" ended their poll:", fg("yellow"))
+                else:
+                    cprint(f" favorited your status:", fg("yellow"))
+                print("  " + countsline + stylize(note_time, attr("dim")))
+                cprint(content, attr("dim"))
+                if getattr(note_status, "poll", None):
+                    poll = get_poll(note_status)
+                    cprint(poll, attr("dim"))
+
             print()
+
+    if not displayed_notification:
+        cprint("No notifications of this type are available.", fg("magenta"))
 
 
 @command("[<note_id>]", "Timeline")
@@ -1601,10 +1858,13 @@ def block(mastodon, rest):
     ex: block 23
         block @user
         block @user@instance.example.com"""
-    userid = get_userid2(mastodon, rest)
+    userid = get_unique_userid(mastodon, rest)
     relations = mastodon.account_block(userid)
     if relations["blocking"]:
         cprint("  user " + str(userid) + " is now blocked", fg("blue"))
+        username = "@" + mastodon.account(userid)["acct"]
+        if username in completion_list:
+            completion_list.remove(username)
 
 
 @command("<user>", "Users")
@@ -1612,12 +1872,14 @@ def unblock(mastodon, rest):
     """Unblocks a user by username or id.
 
     ex: unblock 23
-        unblock @user
         unblock @user@instance.example.com"""
-    userid = get_userid2(mastodon, rest)
+    userid = get_unique_userid(mastodon, rest)
     relations = mastodon.account_unblock(userid)
     if not relations["blocking"]:
         cprint("  user " + str(userid) + " is now unblocked", fg("blue"))
+        username = "@" + mastodon.account(userid)["acct"]
+        if username not in completion_list:
+            bisect.insort(completion_list, username)
 
 
 @command("<user>", "Users")
@@ -1625,9 +1887,8 @@ def follow(mastodon, rest):
     """Follows an account by username or id.
 
     ex: follow 23
-        follow @user
         follow @user@instance.example.com"""
-    userid = get_userid2(mastodon, rest)
+    userid = get_unique_userid(mastodon, rest)
     relations = mastodon.account_follow(userid)
     if relations["following"]:
         cprint("  user " + str(userid) + " is now followed", fg("blue"))
@@ -1641,28 +1902,38 @@ def unfollow(mastodon, rest):
     """Unfollows an account by username or id.
 
     ex: unfollow 23
-        unfollow @user
         unfollow @user@instance.example.com"""
-    userid = get_userid2(mastodon, rest)
+    userid = get_unique_userid(mastodon, rest)
     relations = mastodon.account_unfollow(userid)
-    if not relations["following"]:
+    if not relations.get("following"):
         cprint("  user " + str(userid) + " is now unfollowed", fg("blue"))
     username = "@" + mastodon.account(userid)["acct"]
     if username in completion_list:
         completion_list.remove(username)
 
 
-@command("<user>", "Users")
+@command("<user> [<duration>]", "Users")
 def mute(mastodon, rest):
     """Mutes a user by username or id.
 
     ex: mute 23
-        mute @user
-        mute @user@instance.example.com"""
-    userid = get_userid2(mastodon, rest)
-    relations = mastodon.account_mute(userid)
-    if relations["muting"]:
-        cprint("  user " + str(userid) + " is now muted", fg("blue"))
+        mute @user@instance.example.com
+        mute @user 30s"""
+    mute_time = None
+    mute_seconds = None
+    if " " in rest:
+        username, mute_time = rest.split(" ")
+    else:
+        username = rest
+    if mute_time:
+        mute_seconds = pytimeparse.parse(mute_time)
+    userid = get_unique_userid(mastodon, username)
+    relations = mastodon.account_mute(userid, duration=mute_seconds)
+    if relations.get("muting"):
+        if mute_seconds:
+            cprint("  user " + username + " is now muted for " + mute_time, fg("blue"))
+        else:
+            cprint("  user " + username + " is now muted", fg("blue"))
 
 
 @command("<user>", "Users")
@@ -1670,12 +1941,12 @@ def unmute(mastodon, rest):
     """Unmutes a user by username or id.
 
     ex: unmute 23
-        unmute @user
         unmute @user@instance.example.com"""
-    userid = get_userid2(mastodon, rest)
+    userid = get_unique_userid(mastodon, rest)
     relations = mastodon.account_unmute(userid)
+    username = rest
     if not relations["muting"]:
-        cprint("  user " + str(userid) + " is now unmuted", fg("blue"))
+        cprint("  user " + username + " is now unmuted", fg("blue"))
 
 
 @command("<query>", "Discover")
@@ -1685,12 +1956,13 @@ def search(mastodon, rest):
     ex:  search #tagname
          search @user
          search @user@instance.example.com"""
+    global LAST_PAGE, LAST_CONTEXT
     usage = str("  usage: search #tagname\n" + "         search @username")
     stepper, rest = step_flag(rest)
     try:
         indicator = rest[:1]
         query = rest[1:]
-    except:
+    except Exception:
         cprint(usage, fg("red"))
         return
 
@@ -1704,19 +1976,37 @@ def search(mastodon, rest):
 
     # # hashtag search
     elif indicator == "#" and not query == "":
+        LAST_PAGE = mastodon.timeline_hashtag(query)
+        LAST_CONTEXT = "search for #{}".format(query)
         print_toots(
             mastodon,
-            mastodon.timeline_hashtag(query),
+            LAST_PAGE,
             stepper,
-            ctx_name="search for #{}".format(query),
+            ctx_name=LAST_CONTEXT,
             add_completion=False,
         )
     # end #
 
     else:
-        cprint("  Invalid format. (General search coming soon.)\n" + usage, fg("red"))
-
+        raise ValueError("  Invalid format.\n" + usage)
     return
+
+
+@command("<user> [<N>]", "Discover")
+def user(mastodon, rest):
+    """Displays profile information for another user
+
+     <user>:   a userID, @username, or @user@instance
+
+    ex: user 23
+        user @user
+        user @user@instance.example.com"""
+    userid = get_unique_userid(mastodon, rest, exact=False)
+    profile = mastodon.account(userid)
+    if profile:
+        printUser(profile)
+        return
+    raise Exception("user {rest} not found")
 
 
 @command("<user> [<N>]", "Discover")
@@ -1729,7 +2019,8 @@ def view(mastodon, rest):
     ex: view 23
         view @user 10
         view @user@instance.example.com"""
-    (userid, _, count) = rest.partition(" ")
+    global LAST_PAGE, LAST_CONTEXT
+    (user, _, count) = rest.partition(" ")
 
     # validate count argument
     if not count:
@@ -1738,15 +2029,15 @@ def view(mastodon, rest):
         try:
             count = int(count)
         except ValueError:
-            cprint("  invalid count: {}".format(count), fg("red"))
-            return
+            raise ValueError("  invalid count: {count}")
 
-    # validate userid argument
-    userid = get_userid2(mastodon, userid)
+    userid = get_unique_userid(mastodon, user, exact=False)
+    LAST_PAGE = mastodon.account_statuses(userid, limit=count)
+    LAST_CONTEXT = f"{user} timeline"
     print_toots(
         mastodon,
-        mastodon.account_statuses(userid, limit=count),
-        ctx_name="user timeline",
+        LAST_PAGE,
+        ctx_name=LAST_CONTEXT,
         add_completion=False,
     )
 
@@ -1831,11 +2122,10 @@ def accept(mastodon, rest):
     """Accepts a user's follow request by username or id.
 
     ex: accept 23
-        accept @user
         accept @user@instance.example.com"""
-    userid = get_userid2(mastodon, rest)
+    userid = get_unique_userid(mastodon, rest)
     mastodon.follow_request_authorize(userid)
-    cprint("  user {}'s request is accepted".format(userid), fg("blue"))
+    cprint(f"  user {rest}'s follow request is accepted", fg("blue"))
 
 
 @command("<user>", "Profile")
@@ -1843,11 +2133,10 @@ def reject(mastodon, rest):
     """Rejects a user's follow request by username or id.
 
     ex: reject 23
-        reject @user
         reject @user@instance.example.com"""
-    userid = get_userid2(mastodon, rest)
+    userid = get_unique_userid(mastodon, rest)
     mastodon.follow_request_reject(userid)
-    cprint("  user {}'s request is rejected".format(userid), fg("blue"))
+    cprint(f"  user {rest}'s follow request is rejected", fg("blue"))
 
 
 @command("", "Profile")
@@ -1890,6 +2179,12 @@ def about(mastodon, rest):
 
 @command("", "Profile")
 def quit(mastodon, rest):
+    """Ends the program."""
+    sys.exit("Goodbye!")
+
+
+@command("", "Profile")
+def exit(mastodon, rest):
     """Ends the program."""
     sys.exit("Goodbye!")
 
@@ -1956,16 +2251,18 @@ def listhome(mastodon, rest):
     """Show the toots from a list.
     ex:  listhome listname
          listhome 23"""
+    global LAST_PAGE, LAST_CONTEXT
     if not (list_support(mastodon)):
         return
     if not rest:
         cprint("Argument required.", fg("red"))
         return
     stepper, rest = step_flag(rest)
-
-    item = get_list_id(mastodon, rest)
-    list_toots = mastodon.timeline_list(item)
-    print_toots(mastodon, list_toots, stepper, ctx_name="list")
+    list_name = rest.strip()
+    item = get_list_id(mastodon, list_name)
+    LAST_PAGE = mastodon.timeline_list(item)
+    LAST_CONTEXT = f"list ({list_name})"
+    print_toots(mastodon, LAST_PAGE, stepper, ctx_name=LAST_CONTEXT)
 
 
 @command("<list>", "List")
@@ -1980,6 +2277,9 @@ def listaccounts(mastodon, rest):
 
     cprint("List: %s" % rest, fg("green"))
     for user in list_accounts:
+        username = "@" + user.get("acct")
+        if username not in completion_list:
+            bisect.insort(completion_list, username)
         printUser(user)
 
 
@@ -1999,7 +2299,7 @@ def listadd(mastodon, rest):
         return
 
     list_id = get_list_id(mastodon, items[0])
-    account_id = get_userid2(mastodon, items[1])
+    account_id = get_unique_userid(mastodon, items[1])
     mastodon.list_accounts_add(list_id, account_id)
     cprint("Added {} to list {}.".format(items[1], items[0]), fg("green"))
 
@@ -2021,7 +2321,7 @@ def listremove(mastodon, rest):
         return
 
     list_id = get_list_id(mastodon, items[0])
-    account_id = get_userid2(mastodon, items[1])
+    account_id = get_unique_userid(mastodon, items[1])
     mastodon.list_accounts_delete(list_id, account_id)
     cprint("Removed {} from list {}.".format(items[1], items[0]), fg("green"))
 
@@ -2125,7 +2425,8 @@ def main(instance, config, profile):
     print("\n")
 
     user = mastodon.account_verify_credentials()
-    prompt = "[@{} ({})]: ".format(str(user["username"]), profile)
+    username = str(user.get("username"))
+    prompt = update_prompt(username=username, context=LAST_CONTEXT, profile=profile)
 
     # Completion setup stuff
     if list_support(mastodon, silent=True):
@@ -2153,6 +2454,7 @@ def main(instance, config, profile):
             pass
         except Exception as e:
             cprint(e, fg("red"))
+        prompt = update_prompt(username=username, context=LAST_CONTEXT, profile=profile)
 
 
 if __name__ == "__main__":
