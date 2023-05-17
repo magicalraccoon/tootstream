@@ -150,7 +150,7 @@ def find_original_toot_id(toot):
 
 
 def rest_to_list(rest):
-    rest = (",".join(rest.split()))
+    rest = ",".join(rest.split())
     rest = rest.replace(",,", ",")
     rest = [x.strip() for x in rest.split(",")]
     return rest
@@ -218,9 +218,7 @@ def get_poll(toot):
                 poll_percentage = 0
             if i in own_votes:
                 selected = GLYPHS.get("voted")
-            poll_results += (
-                f"{selected} {i}: {poll_title} ({poll_votes_count}: {poll_percentage:.2f}%)\n"
-            )
+            poll_results += f"{selected} {i}: {poll_title} ({poll_votes_count}: {poll_percentage:.2f}%)\n"
         poll_results += f"  Total votes: {total_votes_count}"
         if poll.multiple:
             poll_results += f"\n  (Multiple votes may be cast.)"
@@ -314,7 +312,8 @@ def flaghandler_note(mastodon, rest):
             "F": "follow",
             "r": "follow_request",
             "p": "poll",
-            "u": "update"},
+            "u": "update",
+        },
     )
 
 
@@ -461,10 +460,7 @@ def print_toots(
         Default is true; threading needs this to be false.
     """
     if listing is None:
-        cprint(
-            "No toots in current context.",
-            fg("white") + bg("red"),
-        )
+        cprint("No toots in current context.", fg("white") + bg("red"))
         return
     user = mastodon.account_verify_credentials()
     ctx = "" if ctx_name is None else " in {}".format(ctx_name)
@@ -1221,27 +1217,18 @@ def vote(mastodon, rest):
             return
 
         if rest is None:
-            cprint(
-                "Note has no options.",
-                fg("white") + bg("red"),
-            )
+            cprint("Note has no options.", fg("white") + bg("red"))
             return
 
         vote_options = rest_to_list(rest)
         if len(vote_options) > 1 and not poll.get("multiple"):
-            cprint(
-                "Too many votes cast.",
-                fg("white") + bg("red"),
-            )
+            cprint("Too many votes cast.", fg("white") + bg("red"))
             return
 
         mastodon.poll_vote(poll_id, vote_options)
         print("Vote cast.")
     except Exception as e:
-        cprint(
-            f"  {e}",
-            fg("red"),
-        )
+        cprint(f"  {e}", fg("red"))
 
 
 @command("<id>", "Toots")
@@ -1291,7 +1278,10 @@ def fav(mastodon, rest):
         if favorite_id:
             favorite_global_id = IDS.to_global(favorite_id)
             if favorite_global_id is None:
-                cprint(f"  Can't favorite id {favorite_id}: Not found", fg("red") + attr("bold"))
+                cprint(
+                    f"  Can't favorite id {favorite_id}: Not found",
+                    fg("red") + attr("bold"),
+                )
                 next
             faved = mastodon.status_favourite(favorite_global_id)
             msg = f"  Favorited ({favorite_id}):\n" + get_content(faved)
@@ -1309,7 +1299,10 @@ def unfav(mastodon, rest):
         if favorite_id:
             favorite_global_id = IDS.to_global(favorite_id)
             if favorite_global_id is None:
-                cprint(f"  Can't unfavorite id {favorite_id}: Not found", fg("red") + attr("bold"))
+                cprint(
+                    f"  Can't unfavorite id {favorite_id}: Not found",
+                    fg("red") + attr("bold"),
+                )
                 next
             unfaved = mastodon.status_unfavourite(favorite_global_id)
             msg = f"  Removed favorite ({favorite_id}):\n" + get_content(unfaved)
@@ -1370,7 +1363,6 @@ def showhistory(mastodon, rest):
     history(mastodon, rest, show_toot=True)
 
 
-
 @command("<id>", "Toots")
 def history(mastodon, rest, show_toot=False):
     """Shows the history of the conversation for an ID.
@@ -1395,7 +1387,13 @@ def history(mastodon, rest, show_toot=False):
 
         if stepper is False:
             cprint("Current Toot:", fg("yellow"))
-        print_toots(mastodon, [current_toot], stepper, ctx_name="Current toot", show_toot=show_toot)
+        print_toots(
+            mastodon,
+            [current_toot],
+            stepper,
+            ctx_name="Current toot",
+            show_toot=show_toot,
+        )
         # printToot(current_toot)
         # completion_add(current_toot)
     except Exception as e:
@@ -1431,7 +1429,13 @@ def thread(mastodon, rest, show_toot=False):
         # Then display the rest
         # current_toot = mastodon.status(rest)
         conversation = mastodon.status_context(rest)
-        print_toots(mastodon, conversation["descendants"], stepper, show_toot=show_toot, sort_toots=False)
+        print_toots(
+            mastodon,
+            conversation["descendants"],
+            stepper,
+            show_toot=show_toot,
+            sort_toots=False,
+        )
 
     except Exception as e:
         raise e
@@ -1578,14 +1582,10 @@ def next(mastodon, rest):
             LAST_PAGE = curr_page
     if LAST_CONTEXT:
         cprint(
-            "No more toots in current context: " + LAST_CONTEXT,
-            fg("white") + bg("red"),
+            "No more toots in current context: " + LAST_CONTEXT, fg("white") + bg("red")
         )
     else:
-        cprint(
-            "No current context.",
-            fg("white") + bg("red"),
-        )
+        cprint("No current context.", fg("white") + bg("red"))
 
 
 @command("", "Timeline")
@@ -1603,14 +1603,10 @@ def prev(mastodon, rest):
             LAST_PAGE = curr_page
     if LAST_CONTEXT:
         cprint(
-            "No more toots in current context: " + LAST_CONTEXT,
-            fg("white") + bg("red"),
+            "No more toots in current context: " + LAST_CONTEXT, fg("white") + bg("red")
         )
     else:
-        cprint(
-            "No current context.",
-            fg("white") + bg("red"),
-        )
+        cprint("No current context.", fg("white") + bg("red"))
 
 
 @command("<timeline>", "Timeline")
@@ -1765,11 +1761,11 @@ def note(mastodon, rest):
         note_status = note.get("status", {})
         note_created_at = note_status.get("created_at")
         if note_created_at:
-            note_time = " " + stylize(
-                format_time(note_created_at), attr("dim")
-            )
+            note_time = " " + stylize(format_time(note_created_at), attr("dim"))
         note_media_attachments = note_status.get("media_attachments")
-        display_name = "  " + format_display_name(note.get("account").get("display_name"))
+        display_name = "  " + format_display_name(
+            note.get("account").get("display_name")
+        )
         username = format_username(note.get("account"))
         note_id = str(note.get("id"))
 
@@ -1799,7 +1795,10 @@ def note(mastodon, rest):
             elif note_type == "follow_request":
                 displayed_notification = True
                 cprint(display_name + username + " sent a follow request", fg("yellow"))
-                cprint("  Use 'accept' or 'reject' to accept or reject the request", fg("yellow"))
+                cprint(
+                    "  Use 'accept' or 'reject' to accept or reject the request",
+                    fg("yellow"),
+                )
 
             # Update
             elif note_type in ["update", "favourite", "reblog", "poll"]:
@@ -1979,11 +1978,7 @@ def search(mastodon, rest):
         LAST_PAGE = mastodon.timeline_hashtag(query)
         LAST_CONTEXT = "search for #{}".format(query)
         print_toots(
-            mastodon,
-            LAST_PAGE,
-            stepper,
-            ctx_name=LAST_CONTEXT,
-            add_completion=False,
+            mastodon, LAST_PAGE, stepper, ctx_name=LAST_CONTEXT, add_completion=False
         )
     # end #
 
@@ -2034,12 +2029,7 @@ def view(mastodon, rest):
     userid = get_unique_userid(mastodon, user, exact=False)
     LAST_PAGE = mastodon.account_statuses(userid, limit=count)
     LAST_CONTEXT = f"{user} timeline"
-    print_toots(
-        mastodon,
-        LAST_PAGE,
-        ctx_name=LAST_CONTEXT,
-        add_completion=False,
-    )
+    print_toots(mastodon, LAST_PAGE, ctx_name=LAST_CONTEXT, add_completion=False)
 
 
 @command("", "Profile")
