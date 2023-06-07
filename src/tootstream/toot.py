@@ -174,8 +174,13 @@ def list_support(mastodon, silent=False):
 def step_flag(rest):
     if "step" in rest:
         return True, rest.replace(" step", "")
-    else:
-        return False, rest
+    return False, rest
+
+
+def limit_flag(rest):
+    if rest.isdigit():
+        return int(rest), rest
+    return None, rest
 
 
 def get_content(toot):
@@ -432,6 +437,7 @@ def print_toots(
     mastodon,
     listing,
     stepper=False,
+    limit=None,
     ctx_name=None,
     add_completion=True,
     show_toot=False,
@@ -440,7 +446,7 @@ def print_toots(
     """Print toot listings and allow context dependent commands.
 
     If `stepper` is True it lets user step through listings with
-    enter key. Entering [a] aborts stepping.
+    enter key. Entering [q] aborts stepping.
 
     Commands that require a toot id or username are partially applied based on
     context (current toot in listing) so that only the remaining (if any)
@@ -1542,9 +1548,10 @@ def home(mastodon, rest):
     """Displays the Home timeline."""
     global LAST_PAGE, LAST_CONTEXT
     stepper, rest = step_flag(rest)
-    LAST_PAGE = mastodon.timeline_home()
+    limit, rest = limit_flag(rest)
+    LAST_PAGE = mastodon.timeline_home(limit=limit)
     LAST_CONTEXT = "home"
-    print_toots(mastodon, LAST_PAGE, stepper, ctx_name=LAST_CONTEXT)
+    print_toots(mastodon, LAST_PAGE, stepper, limit, ctx_name=LAST_CONTEXT)
 
 
 @command("", "Timeline")
@@ -1552,9 +1559,10 @@ def fed(mastodon, rest):
     """Displays the Federated timeline."""
     global LAST_PAGE, LAST_CONTEXT
     stepper, rest = step_flag(rest)
-    LAST_PAGE = mastodon.timeline_public()
+    limit, rest = limit_flag(rest)
+    LAST_PAGE = mastodon.timeline_public(limit=limit)
     LAST_CONTEXT = "federated timeline"
-    print_toots(mastodon, LAST_PAGE, stepper, ctx_name=LAST_CONTEXT)
+    print_toots(mastodon, LAST_PAGE, stepper, limit, ctx_name=LAST_CONTEXT)
 
 
 @command("", "Timeline")
@@ -1562,9 +1570,10 @@ def local(mastodon, rest):
     """Displays the Local timeline."""
     global LAST_PAGE, LAST_CONTEXT
     stepper, rest = step_flag(rest)
-    LAST_PAGE = mastodon.timeline_local()
+    limit, rest = limit_flag(rest)
+    LAST_PAGE = mastodon.timeline_local(limit=limit)
     LAST_CONTEXT = "local timeline"
-    print_toots(mastodon, LAST_PAGE, stepper, ctx_name=LAST_CONTEXT)
+    print_toots(mastodon, LAST_PAGE, stepper, limit, ctx_name=LAST_CONTEXT)
 
 
 @command("", "Timeline")
