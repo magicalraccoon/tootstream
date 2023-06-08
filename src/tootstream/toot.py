@@ -2055,7 +2055,8 @@ def followers(mastodon, rest):
     #       request more from server if first call doesn't get full list
     # TODO: optional username/userid to show another user's followers?
     user = mastodon.account_verify_credentials()
-    users = mastodon.fetch_remaining(mastodon.account_followers(user["id"]))
+    limit, rest = limit_flag(rest)
+    users = mastodon.fetch_remaining(mastodon.account_followers(user["id"], limit=limit))
     if not users:
         cprint("  Nobody follows you", fg("red"))
     else:
@@ -2070,7 +2071,8 @@ def following(mastodon, rest):
     #       request more from server if first call doesn't get full list
     # TODO: optional username/userid to show another user's following?
     user = mastodon.account_verify_credentials()
-    users = mastodon.fetch_remaining(mastodon.account_following(user["id"]))
+    limit, rest = limit_flag(rest)
+    users = mastodon.fetch_remaining(mastodon.account_following(user["id"], limit=limit))
     if not users:
         cprint("  You aren't following anyone", fg("red"))
     else:
@@ -2081,7 +2083,8 @@ def following(mastodon, rest):
 @command("", "Profile")
 def blocks(mastodon, rest):
     """Lists users you have blocked."""
-    users = mastodon.fetch_remaining(mastodon.blocks())
+    limit, rest = limit_flag(rest)
+    users = mastodon.fetch_remaining(mastodon.blocks(limit=limit))
     if not users:
         cprint("  You haven't blocked anyone (... yet)", fg("red"))
     else:
@@ -2090,9 +2093,23 @@ def blocks(mastodon, rest):
 
 
 @command("", "Profile")
+def domainblocks(mastodon, rest):
+    """Lists users you have blocked."""
+    limit, rest = limit_flag(rest)
+    domains = mastodon.fetch_remaining(mastodon.domain_blocks(limit=limit))
+    if not domains:
+        cprint("  You haven't blocked any domains (... yet)", fg("red"))
+    else:
+        cprint("  You have blocked:", fg("magenta"))
+        for domain in domains:
+            cprint("  " + domain, fg('cyan'))
+
+
+@command("", "Profile")
 def mutes(mastodon, rest):
     """Lists users you have muted."""
-    users = mastodon.fetch_remaining(mastodon.mutes())
+    limit, rest = limit_flag(rest)
+    users = mastodon.fetch_remaining(mastodon.mutes(limit=limit))
     if not users:
         cprint("  You haven't muted anyone (... yet)", fg("red"))
     else:
@@ -2257,11 +2274,17 @@ def listhome(mastodon, rest):
         cprint("Argument required.", fg("red"))
         return
     stepper, rest = step_flag(rest)
-    list_name = rest.strip()
+    rest_list = rest_to_list(rest)
+    limit = None
+    if len(rest_list) > 1:
+        list_name = rest_list.pop(0)
+        limit = rest_list.pop()
+    else:
+        list_name = rest_list[0]
     item = get_list_id(mastodon, list_name)
-    LAST_PAGE = mastodon.timeline_list(item)
+    LAST_PAGE = mastodon.timeline_list(item, limit=limit)
     LAST_CONTEXT = f"list ({list_name})"
-    print_toots(mastodon, LAST_PAGE, stepper, ctx_name=LAST_CONTEXT)
+    print_toots(mastodon, LAST_PAGE, stepper, limit, ctx_name=LAST_CONTEXT)
 
 
 @command("<list>", "List")
