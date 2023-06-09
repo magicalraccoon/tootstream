@@ -156,6 +156,17 @@ def rest_to_list(rest):
     return rest
 
 
+def rest_limit(rest):
+    rest_list = rest_to_list(rest)
+    limit = None
+    if len(rest_list) > 1:
+        rest = rest_list.pop(0)
+        limit = rest_list.pop()
+    else:
+        rest = rest_list[0]
+    return limit, rest
+
+
 def update_prompt(username, context, profile):
     if context:
         prompt = f"[@{username} <{context}> ({profile})]: "
@@ -1967,6 +1978,7 @@ def search(mastodon, rest):
     global LAST_PAGE, LAST_CONTEXT
     usage = str("  usage: search #tagname\n" + "         search @username")
     stepper, rest = step_flag(rest)
+    limit, rest = rest_limit(rest)
     try:
         indicator = rest[:1]
         query = rest[1:]
@@ -1976,7 +1988,7 @@ def search(mastodon, rest):
 
     # @ user search
     if indicator == "@" and not query == "":
-        users = mastodon.account_search(query)
+        users = mastodon.account_search(query, limit=limit)
 
         for user in users:
             printUser(user)
@@ -1984,7 +1996,7 @@ def search(mastodon, rest):
 
     # # hashtag search
     elif indicator == "#" and not query == "":
-        LAST_PAGE = mastodon.timeline_hashtag(query)
+        LAST_PAGE = mastodon.timeline_hashtag(query, limit=limit)
         LAST_CONTEXT = "search for #{}".format(query)
         print_toots(
             mastodon, LAST_PAGE, stepper, ctx_name=LAST_CONTEXT, add_completion=False
@@ -2274,13 +2286,7 @@ def listhome(mastodon, rest):
         cprint("Argument required.", fg("red"))
         return
     stepper, rest = step_flag(rest)
-    rest_list = rest_to_list(rest)
-    limit = None
-    if len(rest_list) > 1:
-        list_name = rest_list.pop(0)
-        limit = rest_list.pop()
-    else:
-        list_name = rest_list[0]
+    limit, list_name = rest_limit(rest)
     item = get_list_id(mastodon, list_name)
     LAST_PAGE = mastodon.timeline_list(item, limit=limit)
     LAST_CONTEXT = f"list ({list_name})"
