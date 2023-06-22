@@ -2106,7 +2106,7 @@ def blocks(mastodon, rest):
 
 @command("", "Profile")
 def domainblocks(mastodon, rest):
-    """Lists users you have blocked."""
+    """Lists domains you have blocked."""
     limit, rest = limit_flag(rest)
     domains = mastodon.fetch_remaining(mastodon.domain_blocks(limit=limit))
     if not domains:
