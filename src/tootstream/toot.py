@@ -213,6 +213,11 @@ def get_media_attachments(toot):
     )
     if show_media_links:
         for media in toot.get("media_attachments"):
+            description = media.get("description")
+            if description:
+                toot_parser.reset()
+                toot_parser.handle_data(description)
+                out.append(stylize("   " + nsfw + " " + toot_parser.get_text(), fg("white")))
             out.append(stylize("   " + nsfw + " " + media.url, fg("green")))
     return out
 
