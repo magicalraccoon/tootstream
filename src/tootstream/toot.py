@@ -1855,10 +1855,10 @@ def note(mastodon, rest):
 def dismiss(mastodon, rest):
     """Dismisses notifications.
 
-    ex: dismiss or dismiss 1234567
+    ex: dismiss or dismiss 1234567 [890123]
 
     dismiss clears all notifications if no note ID is provided.
-    dismiss 1234567 will dismiss note ID 1234567.
+    dismiss 1234567 will dismiss note ID 1234567. Dismiss accepts a list of IDs.
 
     The note ID is the id provided by the `note` command.
     """
@@ -1869,8 +1869,10 @@ def dismiss(mastodon, rest):
         else:
             if rest is None:
                 return
-            mastodon.notifications_dismiss(rest)
-            cprint(" Note " + rest + " was dismissed. ", fg("yellow"))
+            dismiss_ids = rest_to_list(rest)
+            for dismiss_id in dismiss_ids:
+                mastodon.notifications_dismiss(dismiss_id)
+                cprint(" Note " + dismiss_id + " was dismissed. ", fg("yellow"))
     except Exception as e:
         cprint("Something went wrong: {}".format(e), fg("red"))
 
