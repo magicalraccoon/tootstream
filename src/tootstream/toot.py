@@ -1380,6 +1380,34 @@ def unbookmark(mastodon, rest):
 
 
 @command("<id>", "Toots")
+def favthread(mastodon, rest):
+    """Favorites an entire thread
+
+    ex: favthread 23 """
+
+    rest = IDS.to_global(rest)
+    if rest is None:
+        return
+
+    ids = []
+
+    conversation = mastodon.status_context(rest)
+    ancestors = conversation.get('ancestors')
+    descendants = conversation.get('descendants')
+
+    ancestor_ids = [i.id for i in ancestors]
+    descendant_ids = [i.id for i in descendants]
+
+    ids = ancestor_ids + [rest] + descendant_ids
+    for favorite_global_id in ids:
+        faved = mastodon.status_favourite(favorite_global_id)
+        favorite_id = IDS.to_local(favorite_global_id)
+        msg = f"  Favorited ({favorite_id}):\n" + get_content(faved)
+        cprint(msg, attr("dim"))
+        print()
+
+
+@command("<id>", "Toots")
 def showhistory(mastodon, rest):
     """Shows the history of the conversation for an ID with CWs/ Filters displayed"""
     history(mastodon, rest, show_toot=True)
